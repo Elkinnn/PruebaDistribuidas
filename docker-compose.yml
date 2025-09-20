@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: prueba_postgres
+    environment:
+      POSTGRES_DB: prueba_sistema
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/sql:/docker-entrypoint-initdb.d
+    networks:
+      - prueba_network
+
+  # Gateway
+  gateway:
+    build: ./gateway
+    container_name: prueba_gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - ADMIN_SERVICE_URL=http://admin-service:3001
+      - MEDICO_SERVICE_URL=http://medico-service:3002
+    depends_on:
+      - admin-service
+      - medico-service
+    networks:
+      - prueba_network
+
+  # Admin Service
+  admin-service:
+    build: ./apps/admin-service
+    container_name: prueba_admin_service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/prueba_sistema
+    depends_on:
+      - postgres
+    networks:
+      - prueba_network
+
+  # Medico Service
+  medico-service:
+    build: ./apps/medico-service
+    container_name: prueba_medico_service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/prueba_sistema
+    depends_on:
+      - postgres
+    networks:
+      - prueba_network
+
+  # Frontend
+  frontend:
+    build: ./apps/frontend
+    container_name: prueba_frontend
+    ports:
+      - "3003:3003"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+    depends_on:
+      - gateway
+    networks:
+      - prueba_network
+
+volumes:
+  postgres_data:
+
+networks:
+  prueba_network:
+    driver: bridge

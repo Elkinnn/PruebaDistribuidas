@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Paciente {
+  id              String   @id @default(uuid())
+  nombre          String
+  apellido        String
+  email           String   @unique
+  telefono        String?
+  fechaNacimiento DateTime
+  genero          Genero
+  direccion       String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  consultas       Consulta[]
+  citas           Cita[]
+
+  @@map("pacientes")
+}
+
+model Consulta {
+  id            String   @id @default(uuid())
+  pacienteId    String
+  medicoId      String
+  fecha         DateTime
+  motivo        String
+  sintomas      String?
+  diagnostico   String?
+  tratamiento   String?
+  observaciones String?
+  proximaCita   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  paciente      Paciente @relation(fields: [pacienteId], references: [id])
+
+  @@map("consultas")
+}
+
+model Cita {
+  id          String      @id @default(uuid())
+  pacienteId  String
+  medicoId    String
+  fecha       DateTime
+  hora        String
+  motivo      String
+  estado      EstadoCita  @default(PROGRAMADA)
+  observaciones String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relaciones
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+
+  @@map("citas")
+}
+
+enum UserRole {
+  ADMIN
+  MEDICO
+  PACIENTE
+}
+
+enum Genero {
+  M
+  F
+  OTRO
+}
+
+enum EstadoCita {
+  PROGRAMADA
+  CONFIRMADA
+  CANCELADA
+  COMPLETADA
+}

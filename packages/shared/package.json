@@ -1,0 +1,13 @@
+{
+  "name": "@prueba/shared",
+  "version": "1.0.0",
+  "description": "Código compartido entre servicios",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "echo 'No build step required for Node.js'"
+  },
+  "dependencies": {
+    "joi": "^17.9.2",
+    "uuid": "^9.0.0"
+  }
+}
