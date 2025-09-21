@@ -3,9 +3,9 @@ import { medicoApi } from "../../api/medico";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
-import Toolbar from "./components/Toolbar";
-import Modal from "./components/Modal";
-import AppointmentCard from "./components/AppointmentCard";
+import Toolbar from "../../components/ui/Toolbar";
+import Modal from "../../components/ui/Modal";
+import AppointmentCard from "../../components/ui/AppointmentCard";
 
 function isInCourse(c, now = new Date()) {
   const i = new Date(c.fechaInicio), f = new Date(c.fechaFin);
@@ -23,8 +23,12 @@ export default function Citas() {
 
   async function load() {
     setLoading(true);
-    try { setItems(await medicoApi.citas()); }
-    finally { setLoading(false); }
+    try {
+      const data = await medicoApi.citas();
+      setItems(data);
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
@@ -48,14 +52,19 @@ export default function Citas() {
     if (enCurso) return setMsg("Debes terminar la cita en curso antes de agendar otra.");
     if (solapa(inicio, fin)) return setMsg("El horario se solapa con otra cita.");
 
-    await medicoApi.crearCita({ pacienteNombre, motivo, fechaInicio: i.toISOString(), fechaFin: f.toISOString() });
+    await medicoApi.crearCita({
+      pacienteNombre,
+      motivo,
+      fechaInicio: i.toISOString(),
+      fechaFin: f.toISOString(),
+    });
     setOpen(false);
     setForm({ pacienteNombre: "", motivo: "", inicio: "", fin: "" });
     load();
   }
 
-  async function terminar(id){ await medicoApi.terminarCita(id); load(); }
-  async function cancelar(id){ await medicoApi.cancelarCita(id); load(); }
+  async function terminar(id) { await medicoApi.terminarCita(id); load(); }
+  async function cancelar(id) { await medicoApi.cancelarCita(id); load(); }
 
   return (
     <div className="grid gap-6">
@@ -71,7 +80,6 @@ export default function Citas() {
         </div>
       )}
 
-      {/* Lista */}
       <div className="grid gap-4">
         {loading ? (
           <Card><div className="p-6 text-slate-500">Cargando…</div></Card>
@@ -84,27 +92,42 @@ export default function Citas() {
         )}
       </div>
 
-      {/* Modal crear */}
       <Modal open={open} onClose={() => setOpen(false)}>
         <form className="grid gap-3" onSubmit={crear}>
           <h3 className="text-lg font-semibold text-slate-900">Nueva Cita</h3>
-          <Input label="Paciente" value={form.pacienteNombre}
-            onChange={(e) => setForm((s) => ({ ...s, pacienteNombre: e.target.value }))} />
-          <Input label="Motivo" value={form.motivo}
-            onChange={(e) => setForm((s) => ({ ...s, motivo: e.target.value }))} />
+          <Input
+            label="Paciente"
+            value={form.pacienteNombre}
+            onChange={(e) => setForm((s) => ({ ...s, pacienteNombre: e.target.value }))}
+          />
+          <Input
+            label="Motivo"
+            value={form.motivo}
+            onChange={(e) => setForm((s) => ({ ...s, motivo: e.target.value }))}
+          />
           <div className="grid gap-2">
             <label className="text-sm font-medium text-slate-700">Inicio</label>
-            <input type="datetime-local"
+            <input
+              type="datetime-local"
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-4 focus:ring-slate-100"
-              value={form.inicio} onChange={(e) => setForm((s) => ({ ...s, inicio: e.target.value }))}/>
+              value={form.inicio}
+              onChange={(e) => setForm((s) => ({ ...s, inicio: e.target.value }))}
+            />
           </div>
           <div className="grid gap-2">
             <label className="text-sm font-medium text-slate-700">Fin</label>
-            <input type="datetime-local"
+            <input
+              type="datetime-local"
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-4 focus:ring-slate-100"
-              value={form.fin} onChange={(e) => setForm((s) => ({ ...s, fin: e.target.value }))}/>
+              value={form.fin}
+              onChange={(e) => setForm((s) => ({ ...s, fin: e.target.value }))}
+            />
           </div>
-          {msg && <div className="rounded-lg bg-rose-50 p-2 text-sm text-rose-700 ring-1 ring-rose-200">{msg}</div>}
+          {msg && (
+            <div className="rounded-lg bg-rose-50 p-2 text-sm text-rose-700 ring-1 ring-rose-200">
+              {msg}
+            </div>
+          )}
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button type="submit">Crear</Button>
