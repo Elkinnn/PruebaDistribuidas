@@ -5,11 +5,11 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
                 <colgroup>
-                    <col className="w-[22%]" /> {/* Nombre */}
-                    <col className="w-[43%]" /> {/* Dirección */}
-                    <col className="w-[15%]" /> {/* Teléfono */}
-                    <col className="w-[10%]" /> {/* Estado */}
-                    <col className="w-[10%]" /> {/* Acciones */}
+                    <col className="w-[22%]" />
+                    <col className="w-[43%]" /> 
+                    <col className="w-[15%]" /> 
+                    <col className="w-[10%]" /> 
+                    <col className="w-[10%]" /> 
                 </colgroup>
 
                 <thead>

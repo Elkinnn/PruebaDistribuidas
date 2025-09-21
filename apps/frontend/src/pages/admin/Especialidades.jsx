@@ -65,7 +65,7 @@ export default function Especialidades() {
         }
     }
 
-    async function confirmDelete(item) {
+    function askDelete(item) {
         setConfirm({ open: true, item });
     }
 
@@ -138,7 +138,7 @@ export default function Especialidades() {
                         setServerError("");
                         setModalOpen(true);
                     }}
-                    onDelete={confirmDelete}
+                    onDelete={askDelete}
                 />
             )}
 
@@ -157,11 +157,12 @@ export default function Especialidades() {
                 serverError={serverError}
             />
 
-            {/* Confirmación de borrado */}
+            {/* Confirmación de borrado (usando la API correcta del ConfirmModal) */}
             <ConfirmModal
                 open={confirm.open}
+                onClose={() => setConfirm({ open: false, item: null })}
                 title="Eliminar especialidad"
-                description={
+                message={
                     <>
                         ¿Seguro que deseas eliminar{" "}
                         <span className="font-semibold">“{confirm.item?.nombre}”</span>?
@@ -169,9 +170,9 @@ export default function Especialidades() {
                         Esta acción no se puede deshacer.
                     </>
                 }
-                confirmLabel="Eliminar"
-                danger
-                onCancel={() => setConfirm({ open: false, item: null })}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                tone="danger"
                 onConfirm={onConfirmDelete}
             />
 

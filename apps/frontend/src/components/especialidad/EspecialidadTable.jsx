@@ -7,9 +7,9 @@ export default function EspecialidadTable({ items, rows, onEdit, onDelete }) {
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <table className="w-full table-fixed border-separate border-spacing-0 text-left text-sm">
                 <colgroup>
-                    <col className="w-[30%]" /> {/* Nombre */}
-                    <col className="w-[55%]" /> {/* Descripción */}
-                    <col className="w-[15%]" /> {/* Acciones */}
+                    <col className="w-[30%]" /> 
+                    <col className="w-[55%]" /> 
+                    <col className="w-[15%]" />
                 </colgroup>
 
                 <thead className="bg-slate-50 text-slate-700">

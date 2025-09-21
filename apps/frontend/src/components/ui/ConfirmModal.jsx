@@ -8,7 +8,7 @@ export default function ConfirmModal({
     message,
     confirmText = "Aceptar",
     cancelText = "Cancelar",
-    tone = "danger", 
+    tone = "danger", // danger | primary
 }) {
     const confirmClasses =
         tone === "danger"
@@ -18,21 +18,21 @@ export default function ConfirmModal({
     return (
         <Modal
             open={open}
-            onClose={onClose}       // <- importante para que la X y el overlay cierren
+            onClose={onClose}   // overlay, ✕ y ESC cierran
             title={title}
-            size="sm"               // <- más pequeño
+            size="sm"           // modal compacto
             footer={
                 <>
                     <button
                         type="button"
-                        onClick={onClose}  // <- cancelar cierra
+                        onClick={onClose}
                         className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                         {cancelText}
                     </button>
                     <button
                         type="button"
-                        onClick={onConfirm} // el padre cierra al terminar
+                        onClick={onConfirm}
                         className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${confirmClasses}`}
                     >
                         {confirmText}
