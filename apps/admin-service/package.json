@@ -11,7 +11,8 @@
   "test": "jest",
   "test:watch": "jest --watch",
   "seed:admin": "node scripts/seed-admin.js",
-  "create:test-users": "node scripts/create-test-users.js"
+  "create:test-users": "node scripts/create-test-users.js",
+  "test:medico-creation": "node scripts/test-medico-creation.js"
 },
 
   "dependencies": {

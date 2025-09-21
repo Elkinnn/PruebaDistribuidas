@@ -5,6 +5,7 @@ const createMedicoSchema = Joi.object({
   nombres: Joi.string().max(100).required(),
   apellidos: Joi.string().max(100).required(),
   email: Joi.string().email().max(150).required(),
+  password: Joi.string().min(6).max(100).required(),
   activo: Joi.boolean().optional(),
 });
 

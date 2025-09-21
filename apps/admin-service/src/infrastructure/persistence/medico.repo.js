@@ -1,4 +1,5 @@
 const { pool } = require('./db');
+const bcrypt = require('bcryptjs');
 
 // Listado con paginación y filtros (hospitalId, q por nombre/apellido/email)
 async function list({ page = 1, size = 20, q = '', hospitalId }) {
@@ -50,27 +51,67 @@ async function findById(id) {
 }
 
 async function create(dto) {
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.query(
+    await conn.beginTransaction();
+
+    // 1. Crear el médico
+    const [medicoResult] = await conn.query(
       `INSERT INTO Medico (hospitalId, nombres, apellidos, email, activo)
        VALUES (:hospitalId, :nombres, :apellidos, :email, COALESCE(:activo, TRUE))`,
-      dto
+      {
+        hospitalId: dto.hospitalId,
+        nombres: dto.nombres,
+        apellidos: dto.apellidos,
+        email: dto.email,
+        activo: dto.activo ?? true
+      }
     );
-    return findById(result.insertId);
+
+    const medicoId = medicoResult.insertId;
+
+    // 2. Crear el usuario asociado
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    
+    await conn.query(
+      `INSERT INTO Usuario (email, password, rol, medicoId, activo)
+       VALUES (:email, :password, 'MEDICO', :medicoId, TRUE)`,
+      {
+        email: dto.email,
+        password: passwordHash,
+        medicoId: medicoId
+      }
+    );
+
+    await conn.commit();
+    return findById(medicoId);
   } catch (e) {
-    // UNIQUE (hospitalId, email)
-    if (e && e.code === 'ER_DUP_ENTRY') {
+    await conn.rollback();
+    
+    // UNIQUE (hospitalId, email) en Medico
+    if (e && e.code === 'ER_DUP_ENTRY' && e.sqlMessage.includes('uk_medico_hospital_email')) {
       const err = new Error('Ya existe un médico con ese email en ese hospital');
       err.status = 409;
       throw err;
     }
+    
+    // UNIQUE email en Usuario
+    if (e && e.code === 'ER_DUP_ENTRY' && e.sqlMessage.includes('email')) {
+      const err = new Error('Ya existe un usuario con ese email');
+      err.status = 409;
+      throw err;
+    }
+    
     // FK hospital inexistente
     if (e && e.code === 'ER_NO_REFERENCED_ROW_2') {
       const err = new Error('El hospital indicado no existe');
       err.status = 400;
       throw err;
     }
+    
     throw e;
+  } finally {
+    conn.release();
   }
 }
 

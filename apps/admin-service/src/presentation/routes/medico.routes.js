@@ -38,7 +38,10 @@ router.post('/', async (req, res) => {
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
 
     const item = await repo.create(value);
-    res.status(201).json({ data: item });
+    res.status(201).json({ 
+      data: item,
+      message: 'Médico creado exitosamente. El usuario puede iniciar sesión con las credenciales proporcionadas.'
+    });
   } catch (e) {
     res.status(e.status || 500).json({ error: 'ERROR_CREATE', message: e.message });
   }
