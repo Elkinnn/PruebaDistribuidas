@@ -31,9 +31,21 @@ app.get('/db/health', async (_req, res) => {
 });
 
 /* ------------ Rutas de dominio ------------ */
-// 👉 importa y monta el CRUD de Hospitales
+// Hospitales CRUD
 const hospitalesRouter = require('./presentation/routes/hospital.routes');
 app.use('/hospitales', hospitalesRouter);
+
+// Especialidades CRUD
+const especialidadesRouter = require('./presentation/routes/especialidad.routes');
+app.use('/especialidades', especialidadesRouter);
+
+// Asignación Hospital ↔ Especialidad
+// expone: 
+//   GET    /hospitales/:hospitalId/especialidades
+//   POST   /hospitales/:hospitalId/especialidades/:especialidadId
+//   DELETE /hospitales/:hospitalId/especialidades/:especialidadId
+const hospEspRouter = require('./presentation/routes/hospital-especialidad.routes');
+app.use('/', hospEspRouter);
 
 /* ------------ 404 y manejador de errores ------------ */
 app.use((_req, res) => {
