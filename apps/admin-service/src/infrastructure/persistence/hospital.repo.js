@@ -1,8 +1,13 @@
+// apps/admin-service/src/infrastructure/persistence/hospital.repo.js
 const { pool } = require('./db');
-const { v4: uuid } = require('uuid');
-const repo = require('../../infrastructure/persistence/hospital.repo');
 
-
+/**
+ * Lista hospitales con paginación y búsqueda opcional por nombre.
+ * @param {Object} opts
+ * @param {number} opts.page
+ * @param {number} opts.size
+ * @param {string} opts.q
+ */
 async function list({ page = 1, size = 20, q = '' }) {
   const offset = (page - 1) * size;
 
@@ -15,60 +20,86 @@ async function list({ page = 1, size = 20, q = '' }) {
   }
 
   const [[{ total }]] = await pool.query(
-    `SELECT COUNT(*) AS total FROM Hospital ${where}`, params
+    `SELECT COUNT(*) AS total FROM Hospital ${where}`,
+    params
   );
 
   const [rows] = await pool.query(
     `SELECT id, nombre, direccion, telefono, activo
-     FROM Hospital ${where}
-     ORDER BY nombre ASC
-     LIMIT :limit OFFSET :offset`, params
+       FROM Hospital ${where}
+   ORDER BY nombre ASC
+      LIMIT :limit OFFSET :offset`,
+    params
   );
 
-  return { data: rows, meta: { page: Number(page), size: Number(size), total } };
+  return {
+    data: rows,
+    meta: { page: Number(page), size: Number(size), total }
+  };
 }
 
+/**
+ * Busca un hospital por ID.
+ * @param {number} id
+ */
 async function findById(id) {
   const [rows] = await pool.query(
     `SELECT id, nombre, direccion, telefono, activo
-     FROM Hospital WHERE id = :id`, { id }
+       FROM Hospital
+      WHERE id = :id`,
+    { id: Number(id) }
   );
   return rows[0] || null;
 }
 
+/**
+ * Crea un hospital. El ID lo genera MySQL (AUTO_INCREMENT).
+ * @param {Object} dto
+ */
 async function create(dto) {
-  const id = uuid();
-  await pool.query(
-    `INSERT INTO Hospital (id, nombre, direccion, telefono, activo)
-     VALUES (:id, :nombre, :direccion, :telefono, COALESCE(:activo, TRUE))`,
-    { id, ...dto }
+  const [result] = await pool.query(
+    `INSERT INTO Hospital (nombre, direccion, telefono, activo)
+     VALUES (:nombre, :direccion, :telefono, COALESCE(:activo, TRUE))`,
+    dto
   );
-  return findById(id);
+  // insertId = ID autogenerado por MySQL
+  return findById(result.insertId);
 }
 
+/**
+ * Actualiza un hospital por ID (solo campos presentes en dto).
+ * @param {number} id
+ * @param {Object} dto
+ */
 async function update(id, dto) {
-  // Solo campos permitidos
   const fields = [];
-  const params = { id };
+  const params = { id: Number(id) };
 
-  if (dto.nombre !== undefined) { fields.push('nombre = :nombre'); params.nombre = dto.nombre; }
+  if (dto.nombre !== undefined)    { fields.push('nombre = :nombre');       params.nombre = dto.nombre; }
   if (dto.direccion !== undefined) { fields.push('direccion = :direccion'); params.direccion = dto.direccion; }
-  if (dto.telefono !== undefined) { fields.push('telefono = :telefono'); params.telefono = dto.telefono; }
-  if (dto.activo !== undefined) { fields.push('activo = :activo'); params.activo = dto.activo; }
+  if (dto.telefono !== undefined)  { fields.push('telefono = :telefono');   params.telefono = dto.telefono; }
+  if (dto.activo !== undefined)    { fields.push('activo = :activo');       params.activo = dto.activo; }
 
   if (!fields.length) return findById(id);
 
   const setClause = fields.join(', ');
   const [result] = await pool.query(
-    `UPDATE Hospital SET ${setClause} WHERE id = :id`, params
+    `UPDATE Hospital SET ${setClause} WHERE id = :id`,
+    params
   );
+
   if (result.affectedRows === 0) return null;
   return findById(id);
 }
 
+/**
+ * Elimina un hospital por ID.
+ * @param {number} id
+ */
 async function remove(id) {
   const [result] = await pool.query(
-    `DELETE FROM Hospital WHERE id = :id`, { id }
+    `DELETE FROM Hospital WHERE id = :id`,
+    { id: Number(id) }
   );
   return result.affectedRows > 0;
 }
