@@ -293,20 +293,336 @@ async function createByMedico({ medico, payload, userId }) {
 }
 
 /* ============================
+   Listar citas (ADMIN)
+   ============================ */
+async function list(filters = {}) {
+  const {
+    page = 1,
+    size = 20,
+    hospitalId,
+    medicoId,
+    estado,
+    desde,
+    hasta,
+    q
+  } = filters;
+
+  let where = [];
+  let params = {};
+
+  if (hospitalId) {
+    where.push('c.hospitalId = :hospitalId');
+    params.hospitalId = +hospitalId;
+  }
+  if (medicoId) {
+    where.push('c.medicoId = :medicoId');
+    params.medicoId = +medicoId;
+  }
+  if (estado) {
+    where.push('c.estado = :estado');
+    params.estado = estado;
+  }
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+  if (q) {
+    where.push('(c.pacienteNombre LIKE :q OR c.motivo LIKE :q)');
+    params.q = `%${q}%`;
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  // Contar total
+  const [countResult] = await pool.query(
+    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    params
+  );
+  const total = countResult[0].total;
+
+  // Obtener datos paginados
+  const offset = (page - 1) * size;
+  const [rows] = await pool.query(
+    `SELECT
+       c.id, c.hospitalId, c.medicoId, c.pacienteId,
+       c.pacienteNombre, c.pacienteTelefono, c.pacienteEmail,
+       c.motivo, c.fechaInicio, c.fechaFin, c.estado,
+       c.creadaPorId, c.actualizadaPorId, c.createdAt, c.updatedAt,
+       h.nombre as hospitalNombre,
+       m.nombres as medicoNombres, m.apellidos as medicoApellidos
+     FROM Cita c
+     LEFT JOIN Hospital h ON c.hospitalId = h.id
+     LEFT JOIN Medico m ON c.medicoId = m.id
+     ${whereClause}
+     ORDER BY c.fechaInicio DESC
+     LIMIT :offset, :size`,
+    { ...params, offset, size }
+  );
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size)
+    }
+  };
+}
+
+/* ============================
+   Listar citas por médico
+   ============================ */
+async function listByMedico(medicoId, filters = {}) {
+  const {
+    page = 1,
+    size = 20,
+    estado,
+    desde,
+    hasta
+  } = filters;
+
+  let where = ['c.medicoId = :medicoId'];
+  let params = { medicoId: +medicoId };
+
+  if (estado) {
+    where.push('c.estado = :estado');
+    params.estado = estado;
+  }
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+
+  const whereClause = `WHERE ${where.join(' AND ')}`;
+
+  // Contar total
+  const [countResult] = await pool.query(
+    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    params
+  );
+  const total = countResult[0].total;
+
+  // Obtener datos paginados
+  const offset = (page - 1) * size;
+  const [rows] = await pool.query(
+    `SELECT
+       c.id, c.hospitalId, c.medicoId, c.pacienteId,
+       c.pacienteNombre, c.pacienteTelefono, c.pacienteEmail,
+       c.motivo, c.fechaInicio, c.fechaFin, c.estado,
+       c.creadaPorId, c.actualizadaPorId, c.createdAt, c.updatedAt,
+       h.nombre as hospitalNombre
+     FROM Cita c
+     LEFT JOIN Hospital h ON c.hospitalId = h.id
+     ${whereClause}
+     ORDER BY c.fechaInicio DESC
+     LIMIT :offset, :size`,
+    { ...params, offset, size }
+  );
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size)
+    }
+  };
+}
+
+/* ============================
+   Actualizar cita (ADMIN)
+   ============================ */
+async function updateAdmin(id, dto, userId) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Verificar que la cita existe
+    const existing = await findById(id);
+    if (!existing) {
+      await conn.rollback();
+      return null;
+    }
+
+    // Si se cambia médico, verificar coherencia hospital-médico
+    if (dto.medicoId && dto.hospitalId) {
+      const [[{ okHosp }]] = await conn.query(
+        `SELECT COUNT(*) okHosp FROM Medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
+        { medicoId: +dto.medicoId, hospitalId: +dto.hospitalId }
+      );
+      if (!okHosp) {
+        const err = new Error('El médico no pertenece a ese hospital');
+        err.status = 400;
+        throw err;
+      }
+    }
+
+    // Si se cambian fechas, verificar solape
+    if (dto.fechaInicio || dto.fechaFin) {
+      const fechaInicio = dto.fechaInicio || existing.fechaInicio;
+      const fechaFin = dto.fechaFin || existing.fechaFin;
+      const medicoId = dto.medicoId || existing.medicoId;
+
+      if (await hasOverlapConn(conn, {
+        medicoId: +medicoId,
+        fechaInicio,
+        fechaFin,
+        excludeId: +id,
+      })) {
+        const err = new Error('El horario se solapa con otra cita del mismo médico');
+        err.status = 409;
+        throw err;
+      }
+    }
+
+    // Construir query de actualización
+    const updates = [];
+    const params = { id: +id, actualizadaPorId: userId };
+
+    if (dto.hospitalId !== undefined) {
+      updates.push('hospitalId = :hospitalId');
+      params.hospitalId = +dto.hospitalId;
+    }
+    if (dto.medicoId !== undefined) {
+      updates.push('medicoId = :medicoId');
+      params.medicoId = +dto.medicoId;
+    }
+    if (dto.motivo !== undefined) {
+      updates.push('motivo = :motivo');
+      params.motivo = dto.motivo;
+    }
+    if (dto.fechaInicio !== undefined) {
+      updates.push('fechaInicio = :fechaInicio');
+      params.fechaInicio = dto.fechaInicio;
+    }
+    if (dto.fechaFin !== undefined) {
+      updates.push('fechaFin = :fechaFin');
+      params.fechaFin = dto.fechaFin;
+    }
+    if (dto.estado !== undefined) {
+      updates.push('estado = :estado');
+      params.estado = dto.estado;
+    }
+
+    if (updates.length === 0) {
+      await conn.rollback();
+      return existing;
+    }
+
+    updates.push('actualizadaPorId = :actualizadaPorId');
+    updates.push('updatedAt = NOW()');
+
+    await conn.query(
+      `UPDATE Cita SET ${updates.join(', ')} WHERE id = :id`,
+      params
+    );
+
+    await conn.commit();
+    return findById(id);
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/* ============================
+   Eliminar cita
+   ============================ */
+async function remove(id) {
+  const [result] = await pool.query(
+    'DELETE FROM Cita WHERE id = :id',
+    { id: +id }
+  );
+  return result.affectedRows > 0;
+}
+
+/* ============================
+   Reprogramar cita (MÉDICO)
+   ============================ */
+async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, userId }) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Verificar que la cita existe y pertenece al médico
+    const [cita] = await conn.query(
+      `SELECT id, estado, fechaInicio FROM Cita 
+       WHERE id = :citaId AND medicoId = :medicoId`,
+      { citaId: +citaId, medicoId: +medicoId }
+    );
+
+    if (!cita.length) {
+      await conn.rollback();
+      return { notFound: true };
+    }
+
+    const citaData = cita[0];
+
+    // Verificar que no esté en el pasado
+    if (new Date(citaData.fechaInicio) < new Date()) {
+      await conn.rollback();
+      return { locked: true };
+    }
+
+    // Verificar solape
+    if (await hasOverlapConn(conn, {
+      medicoId: +medicoId,
+      fechaInicio,
+      fechaFin,
+      excludeId: +citaId,
+    })) {
+      await conn.rollback();
+      return { overlap: true };
+    }
+
+    // Actualizar cita
+    await conn.query(
+      `UPDATE Cita 
+       SET fechaInicio = :fechaInicio, fechaFin = :fechaFin, 
+           actualizadaPorId = :userId, updatedAt = NOW()
+       WHERE id = :citaId`,
+      { citaId: +citaId, fechaInicio, fechaFin, userId }
+    );
+
+    await conn.commit();
+    return { data: await findById(citaId) };
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/* ============================
    Exports
    ============================ */
 module.exports = {
   // lecturas
   findById,
+  list,
+  listByMedico,
 
   // creación
   createAdmin,
   createByMedico,
 
-  // (si tienes más funciones en este archivo, añádelas aquí)
-  // list,
-  // listByMedico,
-  // updateAdmin,
-  // remove,
-  // reprogramarByMedico,
+  // actualización
+  updateAdmin,
+  reprogramarByMedico,
+
+  // eliminación
+  remove,
 };
