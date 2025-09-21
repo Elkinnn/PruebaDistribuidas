@@ -40,6 +40,10 @@ const medicoEspecialidadRouter = require('./presentation/routes/medico-especiali
 const authRouter = require('./presentation/routes/auth.routes');
 const { auth, requireRole } = require('./presentation/middlewares/auth');
 
+const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
+const citaMedicoRouter = require('./presentation/routes/cita.medico.routes');
+
+
 /* ------------ Rutas públicas ------------ */
 // Exponer login (NO requiere token)
 app.use(authRouter);
@@ -51,6 +55,13 @@ app.use('/especialidades', auth, requireRole('ADMIN_GLOBAL'), especialidadesRout
 app.use('/', auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
 app.use('/medicos', auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
 app.use('/', auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
+
+
+// Rutas admin (CRUD completo)
+app.use('/', auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
+
+// Rutas médico (sus propias citas)
+app.use('/', auth, requireRole('MEDICO'), citaMedicoRouter);
 
 /* ------------ 404 y manejador de errores ------------ */
 app.use((_req, res) => {
@@ -66,3 +77,8 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`AdminService (Express) escuchando en :${PORT}`);
 });
+
+
+
+
+
