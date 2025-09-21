@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Building2, Search, AlertTriangle } from "lucide-react";
 import HospitalTable from "../../components/hospital/HospitalTable";
-import HospitalFormModal from "../../components/hospital/HospitalFormModal";
+import HospitalFormModal from "../../components/hospital/HospitalForm";
 import Pagination from "../../components/shared/Pagination";
+import ConfirmModal from "../../components/ui/ConfirmModal";
 import {
     listHospitals,
     createHospital,
@@ -21,6 +22,10 @@ export default function Hospitales() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+
+    // modal de confirmación de borrado
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [toDelete, setToDelete] = useState(null);
 
     async function load() {
         setLoading(true);
@@ -50,12 +55,24 @@ export default function Hospitales() {
         load();
     }
 
-    async function handleDelete(h) {
-        const ok = window.confirm(`¿Eliminar "${h.nombre}"?`);
-        if (!ok) return;
-        await deleteHospital(h.id);
-        // si borramos el último de la página, retrocedemos una página si aplica
-        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
+    // Abrir modal de confirmación
+    function askDelete(h) {
+        setToDelete(h);
+        setConfirmOpen(true);
+    }
+
+    // Confirmar borrado
+    async function confirmDelete() {
+        if (!toDelete) return;
+        await deleteHospital(toDelete.id);
+
+        // ajustar paginación si se borra el último de la página
+        const newTotal = total - 1;
+        const maxPage = Math.max(1, Math.ceil(newTotal / pageSize));
+
+        setConfirmOpen(false);
+        setToDelete(null);
+
         if (page > maxPage) setPage(maxPage);
         else load();
     }
@@ -111,12 +128,12 @@ export default function Hospitales() {
                 </div>
             ) : (
                 <HospitalTable
-                    rows={rows}
+                    items={rows}
                     onEdit={(h) => {
                         setEditing(h);
                         setModalOpen(true);
                     }}
-                    onDelete={handleDelete}
+                    onDelete={askDelete}
                 />
             )}
 
@@ -137,6 +154,26 @@ export default function Hospitales() {
                 }}
                 initialData={editing}
                 onSubmit={editing ? handleEdit : handleCreate}
+            />
+
+            {/* Modal de confirmación de borrado */}
+            <ConfirmModal
+                open={confirmOpen}
+                onClose={() => {
+                    setConfirmOpen(false);
+                    setToDelete(null);
+                }}
+                title="Eliminar hospital"
+                message={
+                    <>
+                        ¿Seguro que deseas eliminar{" "}
+                        <span className="font-semibold">“{toDelete?.nombre}”</span>?<br />
+                        Esta acción no se puede deshacer.
+                    </>
+                }
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                onConfirm={confirmDelete}
             />
 
             {/* Nota de mock */}
