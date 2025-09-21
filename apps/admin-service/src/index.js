@@ -30,31 +30,27 @@ app.get('/db/health', async (_req, res) => {
   }
 });
 
-/* ------------ Rutas de dominio ------------ */
-// Hospitales CRUD
+/* ------------ Importar rutas ------------ */
 const hospitalesRouter = require('./presentation/routes/hospital.routes');
-app.use('/hospitales', hospitalesRouter);
-
-// Especialidades CRUD
 const especialidadesRouter = require('./presentation/routes/especialidad.routes');
-app.use('/especialidades', especialidadesRouter);
-
-// Asignación Hospital ↔ Especialidad
-// expone: 
-//   GET    /hospitales/:hospitalId/especialidades
-//   POST   /hospitales/:hospitalId/especialidades/:especialidadId
-//   DELETE /hospitales/:hospitalId/especialidades/:especialidadId
 const hospEspRouter = require('./presentation/routes/hospital-especialidad.routes');
-app.use('/', hospEspRouter);
-
-// Médicos CRUD
 const medicosRouter = require('./presentation/routes/medico.routes');
-app.use('/medicos', medicosRouter);
-
 const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
-app.use('/', medicoEspecialidadRouter);
 
+const authRouter = require('./presentation/routes/auth.routes');
+const { auth, requireRole } = require('./presentation/middlewares/auth');
 
+/* ------------ Rutas públicas ------------ */
+// Exponer login (NO requiere token)
+app.use(authRouter);
+
+/* ------------ Rutas protegidas ------------ */
+// Solo ADMIN_GLOBAL puede manejar estos CRUD
+app.use('/hospitales', auth, requireRole('ADMIN_GLOBAL'), hospitalesRouter);
+app.use('/especialidades', auth, requireRole('ADMIN_GLOBAL'), especialidadesRouter);
+app.use('/', auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
+app.use('/medicos', auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
+app.use('/', auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
 
 /* ------------ 404 y manejador de errores ------------ */
 app.use((_req, res) => {
