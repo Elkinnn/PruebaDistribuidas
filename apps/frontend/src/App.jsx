@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import AdminDashboard from "./pages/admin/Dashboard";
 import MedicoDashboard from "./pages/medico/Dashboard";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 
 // Protección de rutas según rol
 function Protected({ roles, children }) {
@@ -17,11 +17,11 @@ function Protected({ roles, children }) {
 
 export default function App() {
   return (
-    <Layout>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/home" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route
           path="/admin/*"
@@ -41,6 +41,5 @@ export default function App() {
           }
         />
       </Routes>
-    </Layout>
   );
 }
