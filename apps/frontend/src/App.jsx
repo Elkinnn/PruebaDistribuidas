@@ -1,9 +1,15 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
-import AdminDashboard from "./pages/admin/Dashboard";
 import MedicoDashboard from "./pages/medico/Dashboard";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import Hospitales from "./pages/admin/Hospitales";
+import Especialidades from "./pages/admin/Especialidades";
+import Medicos from "./pages/admin/Medicos";
+import Citas from "./pages/admin/Citas";
+import Empleados from "./pages/admin/Empleados";
 
 // Protección de rutas según rol
 function Protected({ roles, children }) {
@@ -17,29 +23,35 @@ function Protected({ roles, children }) {
 
 export default function App() {
   return (
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/home" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route index element={<AdminDashboard />} />   {/* <- antes AdminHome */}
+      <Route path="hospitales" element={<Hospitales />} />
+      <Route path="especialidades" element={<Especialidades />} />
+      <Route path="medicos" element={<Medicos />} />
+      <Route path="citas" element={<Citas />} />
+      <Route path="empleados" element={<Empleados />} />
 
-        <Route
-          path="/admin/*"
-          element={
-            <Protected roles={["ADMIN_GLOBAL"]}>
-              <AdminDashboard />
-            </Protected>
-          }
-        />
+      <Route
+        path="/admin/*"
+        element={
+          <Protected roles={["ADMIN_GLOBAL"]}>
+            <AdminLayout />
+          </Protected>
+        }
+      />
 
-        <Route
-          path="/medico/*"
-          element={
-            <Protected roles={["MEDICO"]}>
-              <MedicoDashboard />
-            </Protected>
-          }
-        />
-      </Routes>
+      <Route
+        path="/medico/*"
+        element={
+          <Protected roles={["MEDICO"]}>
+            <MedicoDashboard />
+          </Protected>
+        }
+      />
+    </Routes>
   );
 }
