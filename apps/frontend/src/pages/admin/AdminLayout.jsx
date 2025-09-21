@@ -40,14 +40,6 @@ export default function AdminLayout() {
             <div className="flex items-center justify-between px-3 py-4">
                 <div className="flex items-center gap-2">
                     <Logo compact={collapsed} />
-                    {!collapsed && (
-                        <div className="leading-tight">
-                            <p className="font-semibold text-slate-900">Clinix</p>
-                            <p className="text-[11px] tracking-wider text-emerald-700 font-medium">
-                                GESTIÓN HOSPITALARIA
-                            </p>
-                        </div>
-                    )}
                 </div>
                 {/* Toggle collapse (solo desktop) */}
                 <button
