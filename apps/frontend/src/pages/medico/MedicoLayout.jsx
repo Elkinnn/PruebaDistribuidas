@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { medicoApi } from "../../api/medico";
+import { logoutMedico } from "../../api/auth.medico";
 
 export default function MedicoLayout() {
   const nav = useNavigate();
@@ -12,30 +12,23 @@ export default function MedicoLayout() {
     const userData = localStorage.getItem("clinix_user_medico");
     
     if (token && userData) {
-      setUser(JSON.parse(userData));
-      // Verificar token con el servidor
-      medicoApi.me()
-        .then((response) => {
-          if (response.success) {
-            setUser(response.user);
-            localStorage.setItem("clinix_user_medico", JSON.stringify(response.user));
-          }
-        })
-        .catch(() => {
-          // Token inválido, limpiar y redirigir
-          logoutMedico();
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      try {
+        const userObj = JSON.parse(userData);
+        setUser(userObj);
+        // En modo mock, no necesitamos verificar con el servidor
+        setLoading(false);
+      } catch (error) {
+        // Datos corruptos, limpiar y redirigir
+        logoutMedico();
+        nav("/medico/login");
+      }
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [nav]);
 
-  function logoutMedico() {
-    localStorage.removeItem("clinix_token_medico");
-    localStorage.removeItem("clinix_user_medico");
+  function handleLogout() {
+    logoutMedico();
     nav("/medico/login");
   }
 
@@ -69,13 +62,13 @@ export default function MedicoLayout() {
             
             <div className="flex items-center space-x-4">
               <div className="text-sm text-slate-600">
-                <span className="font-medium">{user.nombre} {user.apellido}</span>
+                <span className="font-medium">{user.nombre}</span>
                 <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
                   {user.especialidad}
                 </span>
               </div>
               <button
-                onClick={logoutMedico}
+                onClick={handleLogout}
                 className="text-sm text-slate-500 hover:text-slate-700"
               >
                 Cerrar sesión

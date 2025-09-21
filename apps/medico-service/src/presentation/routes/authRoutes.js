@@ -9,7 +9,7 @@ const medicosPrueba = [
   {
     id: 'med-001',
     email: 'dr.garcia@clinix.com',
-    password: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4Jz8Kz8Kz8', // password: medico123
+    password: '$2a$12$bipV4Y2RfjKADYcq9TrmuOxFGoHzOnLP70nLHzhTnO8RzDLO10IrG', // password: medico123
     nombre: 'Dr. García',
     apellido: 'Rodríguez',
     especialidad: 'Cardiología',
@@ -19,7 +19,7 @@ const medicosPrueba = [
   {
     id: 'med-002',
     email: 'dr.martinez@clinix.com',
-    password: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4Jz8Kz8Kz8', // password: medico123
+    password: '$2a$12$bipV4Y2RfjKADYcq9TrmuOxFGoHzOnLP70nLHzhTnO8RzDLO10IrG', // password: medico123
     nombre: 'Dr. Martínez',
     apellido: 'López',
     especialidad: 'Neurología',
