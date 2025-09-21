@@ -47,6 +47,15 @@ app.use('/especialidades', especialidadesRouter);
 const hospEspRouter = require('./presentation/routes/hospital-especialidad.routes');
 app.use('/', hospEspRouter);
 
+// Médicos CRUD
+const medicosRouter = require('./presentation/routes/medico.routes');
+app.use('/medicos', medicosRouter);
+
+const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
+app.use('/', medicoEspecialidadRouter);
+
+
+
 /* ------------ 404 y manejador de errores ------------ */
 app.use((_req, res) => {
   res.status(404).json({ error: 'NOT_FOUND', message: 'Recurso no encontrado' });
