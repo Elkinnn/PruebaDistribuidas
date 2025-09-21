@@ -1,5 +1,12 @@
 const express = require('express')
 const router = express.Router()
+const AuthService = require('../../infrastructure/auth/AuthService')
+
+const authService = new AuthService()
+
+// Middleware de autenticación para todas las rutas
+router.use(authService.authenticateToken.bind(authService))
+router.use(authService.requireMedicoRole.bind(authService))
 
 // GET /citas - Obtener todas las citas
 router.get('/', async (req, res) => {

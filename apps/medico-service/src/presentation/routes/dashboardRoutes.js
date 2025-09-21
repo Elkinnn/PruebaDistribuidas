@@ -1,5 +1,12 @@
 const express = require('express')
 const router = express.Router()
+const AuthService = require('../../infrastructure/auth/AuthService')
+
+const authService = new AuthService()
+
+// Middleware de autenticación para todas las rutas
+router.use(authService.authenticateToken.bind(authService))
+router.use(authService.requireMedicoRole.bind(authService))
 
 // GET /dashboard/stats - Obtener estadísticas del dashboard médico
 router.get('/stats', async (req, res) => {

@@ -1,67 +1,71 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
 
-// Admin
+// ADMIN (ya existente)
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Hospitales from "./pages/admin/Hospitales";
 import Especialidades from "./pages/admin/Especialidades";
 import Medicos from "./pages/admin/Medicos";
-import Citas from "./pages/admin/Citas";
+import CitasAdmin from "./pages/admin/Citas";
 import Empleados from "./pages/admin/Empleados";
+import AdminLogin from "./pages/Login"; // <- login del admin que ya tienen
+import ForgotPassword from "./pages/ForgotPassword";
 
-// Médico
+// MÉDICO (independiente)
 import MedicoLayout from "./pages/medico/MedicoLayout";
 import MedicoHome from "./pages/medico/Home";
 import MedicoCitas from "./pages/medico/Citas";
 import MedicoEspecialidades from "./pages/medico/Especialidades";
 import MedicoPerfil from "./pages/medico/Perfil";
+import MedicoLogin from "./pages/medico/Login";
 
-// Protección de rutas según rol
-function Protected({ roles, children }) {
+// Guards separados
+function AdminProtected({ children }) {
   const token = localStorage.getItem("clinix_token");
-  const user = JSON.parse(localStorage.getItem("clinix_user") || "null");
-
-  if (!token || !user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.rol)) return <Navigate to="/login" replace />;
+  const user  = JSON.parse(localStorage.getItem("clinix_user") || "null");
+  if (!token || !user || user?.rol !== "ADMIN_GLOBAL") return <Navigate to="/login" replace />;
+  return children;
+}
+function MedicoProtected({ children }) {
+  const token = localStorage.getItem("clinix_token_medico");
+  const user  = JSON.parse(localStorage.getItem("clinix_user_medico") || "null");
+  if (!token || !user || user?.rol !== "MEDICO") return <Navigate to="/medico/login" replace />;
   return children;
 }
 
 export default function App() {
   return (
     <Routes>
-      {/* Rutas públicas */}
+      {/* Público del ADMIN */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<AdminLogin />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      {/* Admin */}
+      {/* ADMIN protegido */}
       <Route
         path="/admin/*"
         element={
-          <Protected roles={["ADMIN_GLOBAL"]}>
+          <AdminProtected>
             <AdminLayout />
-          </Protected>
+          </AdminProtected>
         }
       >
         <Route index element={<AdminDashboard />} />
         <Route path="hospitales" element={<Hospitales />} />
         <Route path="especialidades" element={<Especialidades />} />
         <Route path="medicos" element={<Medicos />} />
-        <Route path="citas" element={<Citas />} />
+        <Route path="citas" element={<CitasAdmin />} />
         <Route path="empleados" element={<Empleados />} />
       </Route>
 
-      {/* Médico */}
+      {/* MÉDICO: login propio + área protegida */}
+      <Route path="/medico/login" element={<MedicoLogin />} />
       <Route
         path="/medico/*"
         element={
-          <Protected roles={["MEDICO"]}>
+          <MedicoProtected>
             <MedicoLayout />
-          </Protected>
+          </MedicoProtected>
         }
       >
         <Route index element={<MedicoHome />} />

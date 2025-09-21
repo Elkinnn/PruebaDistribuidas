@@ -23,6 +23,7 @@ app.get('/health', (req, res) => {
 })
 
 // Routes
+app.use('/auth', require('./presentation/routes/authRoutes'))
 app.use('/pacientes', require('./presentation/routes/pacienteRoutes'))
 app.use('/consultas', require('./presentation/routes/consultaRoutes'))
 app.use('/citas', require('./presentation/routes/citaRoutes'))

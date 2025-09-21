@@ -2,10 +2,16 @@ const express = require('express')
 const router = express.Router()
 const PacienteUseCases = require('../../application/useCases/PacienteUseCases')
 const PacienteDTO = require('../../domain/dtos/PacienteDTO')
+const AuthService = require('../../infrastructure/auth/AuthService')
 
 // Inyección de dependencias
 const pacienteRepository = require('../../infrastructure/persistence/PacienteRepository')
 const pacienteUseCases = new PacienteUseCases(pacienteRepository)
+const authService = new AuthService()
+
+// Middleware de autenticación para todas las rutas
+router.use(authService.authenticateToken.bind(authService))
+router.use(authService.requireMedicoRole.bind(authService))
 
 // GET /pacientes - Obtener todos los pacientes
 router.get('/', async (req, res) => {

@@ -1,13 +1,27 @@
-import { api } from "./client";
+// src/api/medico.js
+import { apiMedico as api } from "./client.medico";
 
-// Ajusta los paths a tu API Gateway
 export const medicoApi = {
-  me: () => api.get("/me"),
-  citas: () => api.get("/api/citas"),
-  crearCita: (dto) => api.post("/api/citas", dto), // back pone hospital/medico desde JWT
-  terminarCita: (id) => api.patch(`/api/citas/${id}/terminar`),
-  cancelarCita: (id) => api.patch(`/api/citas/${id}/cancelar`),
+  // Autenticación
+  me: () => api.get("/auth/me"),
+  
+  // Citas
+  citas: () => api.get("/citas"),
+  citasHoy: () => api.get("/citas/hoy"),
+  crearCita: (dto) => api.post("/citas", dto),
+  terminarCita: (id) => api.patch(`/citas/${id}/terminar`),
+  cancelarCita: (id) => api.patch(`/citas/${id}/cancelar`),
 
-  espHospital: () => api.get("/api/especialidades/hospital"),
-  misEsp: () => api.get("/api/especialidades/mias"),
+  // Pacientes
+  pacientes: () => api.get("/pacientes"),
+  paciente: (id) => api.get(`/pacientes/${id}`),
+  crearPaciente: (dto) => api.post("/pacientes", dto),
+  actualizarPaciente: (id, dto) => api.put(`/pacientes/${id}`, dto),
+
+  // Consultas
+  consultas: () => api.get("/consultas"),
+  crearConsulta: (dto) => api.post("/consultas", dto),
+
+  // Dashboard
+  stats: () => api.get("/dashboard/stats"),
 };
