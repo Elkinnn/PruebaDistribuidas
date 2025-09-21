@@ -1,117 +1,312 @@
+// apps/admin-service/src/infrastructure/persistence/cita.repo.js
 const { pool } = require('./db');
 
-// listado general con filtros (para admin)
-async function list({ page=1, size=20, hospitalId, medicoId, estado, desde, hasta, q }) {
-  const offset = (page-1)*size;
-  const params = { limit:+size, offset, };
-  const where = [];
+/* ============================
+   Normalizadores
+   ============================ */
+function normStr(s) { return (s ?? '').trim(); }
+function normEmail(s) { return normStr(s).toLowerCase(); }
+function normPhone(s) { return normStr(s).replace(/\D+/g, ''); } // solo dígitos
 
-  if (hospitalId) { where.push('c.hospitalId = :hospitalId'); params.hospitalId = +hospitalId; }
-  if (medicoId)   { where.push('c.medicoId = :medicoId');     params.medicoId   = +medicoId;   }
-  if (estado)     { where.push('c.estado = :estado');         params.estado     = estado;      }
-  if (desde)      { where.push('c.fechaInicio >= :desde');    params.desde      = desde;       }
-  if (hasta)      { where.push('c.fechaFin    <= :hasta');    params.hasta      = hasta;       }
-  if (q)          { where.push('(c.pacienteNombre LIKE :q OR c.motivo LIKE :q)'); params.q = `%${q}%`; }
-
-  const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
-
-  const [[{ total }]] = await pool.query(
-    `SELECT COUNT(*) AS total
-       FROM Cita c ${whereSQL}`, params);
-
-  const [rows] = await pool.query(
-    `SELECT c.*, m.nombres AS medicoNombres, m.apellidos AS medicoApellidos
-       FROM Cita c
-       JOIN Medico m ON m.id = c.medicoId
-      ${whereSQL}
-   ORDER BY c.fechaInicio DESC
-      LIMIT :limit OFFSET :offset`, params);
-
-  return { data: rows, meta: { page:+page, size:+size, total } };
+/* ============================
+   Snapshot ligero para Cita
+   ============================ */
+function snapshotFromPaciente(p) {
+  const nombre = [p.nombres ?? '', p.apellidos ?? ''].join(' ').trim();
+  return {
+    pacienteNombre: nombre || null,
+    pacienteTelefono: p.telefono || null,
+    pacienteEmail: p.email || null,
+  };
 }
 
-async function listByMedico(medicoId, { page=1, size=20, estado, desde, hasta } = {}) {
-  return list({ page, size, medicoId, estado, desde, hasta });
+/* ============================
+   Búsqueda de Paciente
+   Orden: documento → email → teléfono → (nombre + fechaNacimiento)
+   ============================ */
+async function findPaciente(conn, hospitalId, p) {
+  const documento = normStr(p.documento);
+  const email = normEmail(p.email);
+  const telefono = normPhone(p.telefono);
+  const nombres = normStr(p.nombres);
+  const apellidos = normStr(p.apellidos);
+  const fechaNacimiento = p.fechaNacimiento ?? null;
+
+  if (documento) {
+    const [r] = await conn.query(
+      `SELECT id FROM Paciente
+       WHERE hospitalId = :hospitalId AND documento = :documento
+       LIMIT 1`,
+      { hospitalId, documento }
+    );
+    if (r.length) return r[0];
+  }
+
+  if (email) {
+    const [r] = await conn.query(
+      `SELECT id FROM Paciente
+       WHERE hospitalId = :hospitalId AND LOWER(email) = :email
+       LIMIT 1`,
+      { hospitalId, email }
+    );
+    if (r.length) return r[0];
+  }
+
+  if (telefono) {
+    // compara 'solo dígitos' en BD
+    const [r] = await conn.query(
+      `SELECT id FROM Paciente
+       WHERE hospitalId = :hospitalId
+         AND REPLACE(REPLACE(REPLACE(REPLACE(telefono,' ',''),'-',''),'(',''),')','') = :telefono
+       LIMIT 1`,
+      { hospitalId, telefono }
+    );
+    if (r.length) return r[0];
+  }
+
+  if (nombres && apellidos && fechaNacimiento) {
+    const [r] = await conn.query(
+      `SELECT id FROM Paciente
+       WHERE hospitalId = :hospitalId
+         AND nombres = :nombres
+         AND apellidos = :apellidos
+         AND fechaNacimiento = :fechaNacimiento
+       LIMIT 1`,
+      { hospitalId, nombres, apellidos, fechaNacimiento }
+    );
+    if (r.length) return r[0];
+  }
+
+  return null;
 }
 
+/* ============================
+   Crea paciente si no existe (con manejo de duplicidad)
+   ============================ */
+async function ensurePacienteId(conn, hospitalId, paciente) {
+  // normaliza entrada
+  paciente = {
+    ...paciente,
+    documento: normStr(paciente.documento),
+    email: normEmail(paciente.email),
+    telefono: normPhone(paciente.telefono),
+    nombres: normStr(paciente.nombres),
+    apellidos: normStr(paciente.apellidos),
+  };
+
+  // intenta encontrar antes de crear
+  const found = await findPaciente(conn, hospitalId, paciente);
+  if (found) return found.id;
+
+  try {
+    const [ins] = await conn.query(
+      `INSERT INTO Paciente
+        (hospitalId, nombres, apellidos, fechaNacimiento, sexo, telefono, email, documento, activo)
+       VALUES
+        (:hospitalId, :nombres, :apellidos, :fechaNacimiento, :sexo, :telefono, :email, :documento, 1)`,
+      {
+        hospitalId,
+        nombres: paciente.nombres,
+        apellidos: paciente.apellidos,
+        fechaNacimiento: paciente.fechaNacimiento ?? null,
+        sexo: paciente.sexo ?? null,
+        telefono: paciente.telefono || null,
+        email: paciente.email || null,
+        documento: paciente.documento || null,
+      }
+    );
+    return ins.insertId;
+  } catch (e) {
+    // Si hay UNIQUE y se dio condición de carrera → re-busca y devuelve el existente
+    if (e && (e.code === 'ER_DUP_ENTRY' || e.errno === 1062)) {
+      const again = await findPaciente(conn, hospitalId, paciente);
+      if (again) return again.id;
+    }
+    throw e;
+  }
+}
+
+/* ============================
+   Solapes
+   ============================ */
+async function hasOverlapConn(conn, { medicoId, fechaInicio, fechaFin, excludeId }) {
+  const params = { medicoId, inicio: fechaInicio, fin: fechaFin };
+  let exclude = '';
+  if (excludeId) { exclude = 'AND c.id <> :excludeId'; params.excludeId = +excludeId; }
+
+  const [rows] = await conn.query(
+    `SELECT c.id FROM Cita c
+      WHERE c.medicoId = :medicoId
+        AND c.estado IN ('PROGRAMADA')
+        ${exclude}
+        AND (:inicio < c.fechaFin)
+        AND (:fin    > c.fechaInicio)
+      LIMIT 1`,
+    params
+  );
+  return rows.length > 0;
+}
+
+/* ============================
+   Lectura por id
+   ============================ */
 async function findById(id) {
-  const [rows] = await pool.query(`SELECT * FROM Cita WHERE id = :id`, { id:+id });
+  const [rows] = await pool.query(
+    `SELECT
+       id, hospitalId, medicoId, pacienteId,
+       pacienteNombre, pacienteTelefono, pacienteEmail,
+       motivo, fechaInicio, fechaFin, estado,
+       creadaPorId, actualizadaPorId, createdAt, updatedAt
+     FROM Cita
+     WHERE id = :id
+     LIMIT 1`,
+    { id: +id }
+  );
   return rows[0] || null;
 }
 
+/* ============================
+   Crear cita (ADMIN)
+   ============================ */
 async function createAdmin(dto) {
-  const [r] = await pool.query(
-    `INSERT INTO Cita
-     (hospitalId, medicoId, pacienteId, motivo, pacienteNombre, fechaInicio, fechaFin, estado, creadaPorId)
-     VALUES (:hospitalId, :medicoId, :pacienteId, :motivo, :pacienteNombre, :fechaInicio, :fechaFin, 'PROGRAMADA', :creadaPorId)`,
-    dto
-  );
-  return findById(r.insertId);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // coherencia médico-hospital
+    const [[{ okHosp }]] = await conn.query(
+      `SELECT COUNT(*) okHosp FROM Medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
+      { medicoId: +dto.medicoId, hospitalId: +dto.hospitalId }
+    );
+    if (!okHosp) { const err = new Error('El médico no pertenece a ese hospital'); err.status = 400; throw err; }
+
+    // solape
+    if (await hasOverlapConn(conn, {
+      medicoId: +dto.medicoId,
+      fechaInicio: dto.fechaInicio,
+      fechaFin: dto.fechaFin,
+      excludeId: null,
+    })) { const err = new Error('El horario se solapa con otra cita del mismo médico'); err.status = 409; throw err; }
+
+    // resolver paciente
+    let pacienteId = dto.pacienteId ? +dto.pacienteId : null;
+    let snap = { pacienteNombre: null, pacienteTelefono: null, pacienteEmail: null };
+
+    if (!pacienteId && dto.paciente) {
+      pacienteId = await ensurePacienteId(conn, +dto.hospitalId, dto.paciente);
+      snap = snapshotFromPaciente(dto.paciente);
+    } else if (pacienteId) {
+      const [pr] = await conn.query(
+        `SELECT nombres, apellidos, telefono, email FROM Paciente WHERE id = :id LIMIT 1`,
+        { id: pacienteId }
+      );
+      if (!pr.length) { const err = new Error('pacienteId no existe'); err.status = 400; throw err; }
+      snap = snapshotFromPaciente(pr[0]);
+    }
+
+    const [ins] = await conn.query(
+      `INSERT INTO Cita
+       (hospitalId, medicoId, pacienteId, pacienteNombre, pacienteTelefono, pacienteEmail,
+        motivo, fechaInicio, fechaFin, estado, creadaPorId)
+       VALUES
+       (:hospitalId, :medicoId, :pacienteId, :pacienteNombre, :pacienteTelefono, :pacienteEmail,
+        :motivo, :fechaInicio, :fechaFin, 'PROGRAMADA', :creadaPorId)`,
+      {
+        hospitalId: +dto.hospitalId,
+        medicoId: +dto.medicoId,
+        pacienteId,
+        ...snap,
+        motivo: dto.motivo,
+        fechaInicio: dto.fechaInicio,
+        fechaFin: dto.fechaFin,
+        creadaPorId: dto.creadaPorId ?? null,
+      }
+    );
+
+    await conn.commit();
+    return findById(ins.insertId);
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
 }
 
+/* ============================
+   Crear cita (MÉDICO)
+   ============================ */
 async function createByMedico({ medico, payload, userId }) {
-  // hospitalId se toma del médico
-  const dto = {
-    hospitalId: medico.hospitalId,
-    medicoId: medico.id,
-    pacienteId: payload.pacienteId,
-    motivo: payload.motivo,
-    pacienteNombre: payload.pacienteNombre || '', // si decides capturar nombre libre además del pacienteId
-    fechaInicio: payload.fechaInicio,
-    fechaFin: payload.fechaFin,
-    creadaPorId: userId
-  };
-  return createAdmin(dto);
-}
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
 
-async function updateAdmin(id, dto, userId) {
-  const fields = [];
-  const params = { id:+id, actualizadaPorId: userId };
+    if (await hasOverlapConn(conn, {
+      medicoId: +medico.id,
+      fechaInicio: payload.fechaInicio,
+      fechaFin: payload.fechaFin,
+      excludeId: null,
+    })) { const err = new Error('El horario se solapa con otra cita del mismo médico'); err.status = 409; throw err; }
 
-  for (const k of ['hospitalId','medicoId','pacienteId','motivo','pacienteNombre','fechaInicio','fechaFin','estado']) {
-    if (dto[k] !== undefined) { fields.push(`${k} = :${k}`); params[k] = dto[k]; }
+    let pacienteId = payload.pacienteId ? +payload.pacienteId : null;
+    let snap = { pacienteNombre: null, pacienteTelefono: null, pacienteEmail: null };
+
+    if (!pacienteId && payload.paciente) {
+      pacienteId = await ensurePacienteId(conn, +medico.hospitalId, payload.paciente);
+      snap = snapshotFromPaciente(payload.paciente);
+    } else if (pacienteId) {
+      const [pr] = await conn.query(
+        `SELECT nombres, apellidos, telefono, email FROM Paciente WHERE id = :id LIMIT 1`,
+        { id: pacienteId }
+      );
+      if (!pr.length) { const err = new Error('pacienteId no existe'); err.status = 400; throw err; }
+      snap = snapshotFromPaciente(pr[0]);
+    }
+
+    const [ins] = await conn.query(
+      `INSERT INTO Cita
+       (hospitalId, medicoId, pacienteId, pacienteNombre, pacienteTelefono, pacienteEmail,
+        motivo, fechaInicio, fechaFin, estado, creadaPorId)
+       VALUES
+       (:hospitalId, :medicoId, :pacienteId, :pacienteNombre, :pacienteTelefono, :pacienteEmail,
+        :motivo, :fechaInicio, :fechaFin, 'PROGRAMADA', :creadaPorId)`,
+      {
+        hospitalId: +medico.hospitalId,
+        medicoId: +medico.id,
+        pacienteId,
+        ...snap,
+        motivo: payload.motivo,
+        fechaInicio: payload.fechaInicio,
+        fechaFin: payload.fechaFin,
+        creadaPorId: userId ?? null,
+      }
+    );
+
+    await conn.commit();
+    return findById(ins.insertId);
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
   }
-  if (!fields.length) return findById(id);
-  const set = fields.join(', ') + ', updatedAt = NOW(), actualizadaPorId = :actualizadaPorId';
-  const [res] = await pool.query(`UPDATE Cita SET ${set} WHERE id = :id`, params);
-  if (res.affectedRows===0) return null;
-  return findById(id);
 }
 
-// Reprogramar por médico: solo fechas, solo si la cita aún no empezó y le pertenece
-async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, userId }) {
-  // Verificar pertenencia y que no haya iniciado
-  const [rows] = await pool.query(
-    `SELECT id, medicoId, fechaInicio FROM Cita WHERE id = :id AND medicoId = :medicoId`,
-    { id:+citaId, medicoId:+medicoId }
-  );
-  const cita = rows[0];
-  if (!cita) return { notFound: true };
-
-  const now = new Date();
-  if (new Date(cita.fechaInicio) <= now) {
-    return { locked: true }; // ya inició/pasó
-  }
-
-  const [res] = await pool.query(
-    `UPDATE Cita
-        SET fechaInicio = :fechaInicio,
-            fechaFin    = :fechaFin,
-            updatedAt   = NOW(),
-            actualizadaPorId = :userId
-      WHERE id = :id`,
-    { id:+citaId, fechaInicio, fechaFin, userId:+userId }
-  );
-  if (res.affectedRows===0) return { notFound: true };
-  return { data: await findById(citaId) };
-}
-
-async function remove(id) {
-  const [r] = await pool.query(`DELETE FROM Cita WHERE id = :id`, { id:+id });
-  return r.affectedRows > 0;
-}
-
+/* ============================
+   Exports
+   ============================ */
 module.exports = {
-  list, listByMedico, findById,
-  createAdmin, createByMedico, updateAdmin, reprogramarByMedico, remove
+  // lecturas
+  findById,
+
+  // creación
+  createAdmin,
+  createByMedico,
+
+  // (si tienes más funciones en este archivo, añádelas aquí)
+  // list,
+  // listByMedico,
+  // updateAdmin,
+  // remove,
+  // reprogramarByMedico,
 };

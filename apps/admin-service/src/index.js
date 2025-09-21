@@ -31,39 +31,43 @@ app.get('/db/health', async (_req, res) => {
 });
 
 /* ------------ Importar rutas ------------ */
+const authRouter = require('./presentation/routes/auth.routes');
+const { auth, requireRole } = require('./presentation/middlewares/auth');
+
 const hospitalesRouter = require('./presentation/routes/hospital.routes');
 const especialidadesRouter = require('./presentation/routes/especialidad.routes');
 const hospEspRouter = require('./presentation/routes/hospital-especialidad.routes');
+
 const medicosRouter = require('./presentation/routes/medico.routes');
 const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
-
-const authRouter = require('./presentation/routes/auth.routes');
-const { auth, requireRole } = require('./presentation/middlewares/auth');
 
 const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
 const citaMedicoRouter = require('./presentation/routes/cita.medico.routes');
 
-
 /* ------------ Rutas públicas ------------ */
-// Exponer login (NO requiere token)
+// Login (no requiere token)
 app.use(authRouter);
 
-/* ------------ Rutas protegidas ------------ */
-// Solo ADMIN_GLOBAL puede manejar estos CRUD
-app.use('/hospitales', auth, requireRole('ADMIN_GLOBAL'), hospitalesRouter);
+/* ------------ Rutas protegidas (ADMIN) ------------ */
+// CRUDs de admin con prefijos claros
+app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospitalesRouter);
 app.use('/especialidades', auth, requireRole('ADMIN_GLOBAL'), especialidadesRouter);
-app.use('/', auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
-app.use('/medicos', auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
-app.use('/', auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
 
+// asignación hospital-Especialidad bajo /hospitales
+app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
 
-// Rutas admin (CRUD completo)
-app.use('/', auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
+// CRUD de médicos y asignación médico-especialidad bajo /medicos
+app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
+app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
 
-// Rutas médico (sus propias citas)
-app.use('/', auth, requireRole('MEDICO'), citaMedicoRouter);
+// Citas de admin bajo /citas
+app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
 
-/* ------------ 404 y manejador de errores ------------ */
+/* ------------ Rutas protegidas (MÉDICO) ------------ */
+// Rutas propias del médico bajo /mis-citas
+app.use('/mis-citas',      auth, requireRole('MEDICO'),        citaMedicoRouter);
+
+/* ------------ 404 y errores ------------ */
 app.use((_req, res) => {
   res.status(404).json({ error: 'NOT_FOUND', message: 'Recurso no encontrado' });
 });
@@ -77,8 +81,3 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`AdminService (Express) escuchando en :${PORT}`);
 });
-
-
-
-
-

@@ -5,11 +5,12 @@ const { loadMedico } = require('../middlewares/loadMedico');
 
 const router = Router();
 
-// Todas estas rutas requieren auth (rol MEDICO) en index.js y además cargamos su médico
+// MONTADO EN /mis-citas DESDE index.js
+// Todas requieren auth (rol MEDICO) y cargamos su médico
 router.use(loadMedico);
 
 // GET /mis-citas?page=&size=&estado=&desde=&hasta=
-router.get('/mis-citas', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const result = await repo.listByMedico(req.medico.id, {
       page: +req.query.page || 1,
@@ -24,8 +25,8 @@ router.get('/mis-citas', async (req, res) => {
   }
 });
 
-// POST /mis-citas  (crea cita propia del médico)
-router.post('/mis-citas', async (req, res) => {
+// POST /mis-citas
+router.post('/', async (req, res) => {
   try {
     const { error, value } = createCitaMedicoSchema.validate(req.body, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
@@ -33,12 +34,13 @@ router.post('/mis-citas', async (req, res) => {
     const item = await repo.createByMedico({ medico: req.medico, payload: value, userId: req.user.id });
     res.status(201).json({ data: item });
   } catch (e) {
-    res.status(500).json({ error: 'ERROR_CREATE_OWN', message: e.message });
+    const status = e.status || 500;
+    res.status(status).json({ error: status === 409 ? 'CONFLICT' : 'ERROR_CREATE_OWN', message: e.message });
   }
 });
 
-// PUT /mis-citas/:id/reprogramar  (solo fechas y si aún no inició)
-router.put('/mis-citas/:id/reprogramar', async (req, res) => {
+// PUT /mis-citas/:id/reprogramar
+router.put('/:id/reprogramar', async (req, res) => {
   try {
     const { error, value } = reprogramarSchema.validate(req.body, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
@@ -50,8 +52,10 @@ router.put('/mis-citas/:id/reprogramar', async (req, res) => {
       fechaFin: value.fechaFin,
       userId: req.user.id
     });
+
     if (r.notFound) return res.status(404).json({ error: 'NOT_FOUND', message: 'Cita no encontrada' });
-    if (r.locked) return res.status(409).json({ error: 'CONFLICT', message: 'La cita ya inició o pasó; no se puede reprogramar' });
+    if (r.locked)   return res.status(409).json({ error: 'CONFLICT', message: 'La cita ya inició o pasó; no se puede reprogramar' });
+    if (r.overlap)  return res.status(409).json({ error: 'CONFLICT', message: 'El horario se solapa con otra cita del mismo médico' });
 
     res.json({ data: r.data });
   } catch (e) {

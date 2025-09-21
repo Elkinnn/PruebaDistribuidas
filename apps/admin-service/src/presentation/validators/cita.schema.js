@@ -1,49 +1,62 @@
 const Joi = require('joi');
 
-const base = {
-  hospitalId: Joi.number().integer().positive(),
-  medicoId: Joi.number().integer().positive(),
-  pacienteId: Joi.number().integer().positive().required(),
-  motivo: Joi.string().required(),
-  fechaInicio: Joi.date().iso().required(),
-  fechaFin: Joi.date().iso().required()
-    .greater(Joi.ref('fechaInicio')).messages({
-      'date.greater': 'fechaFin debe ser mayor que fechaInicio'
-    }),
-  estado: Joi.string().valid('PROGRAMADA','CANCELADA','ATENDIDA')
+const pacienteInline = Joi.object({
+  nombres:   Joi.string().max(100).required(),
+  apellidos: Joi.string().max(100).required(),
+  documento: Joi.string().max(30).allow('', null),
+  telefono:  Joi.string().max(50).allow('', null),
+  email:     Joi.string().email().max(150).allow('', null),
+  fechaNacimiento: Joi.date().iso().allow(null), // acepta 'YYYY-MM-DD' o ISO
+  sexo: Joi.string().valid('MASCULINO','FEMENINO','OTRO').allow(null),
+});
+
+const baseCamposCita = {
+  motivo:       Joi.string().min(2).required(),
+  fechaInicio:  Joi.date().iso().required(),
+  fechaFin:     Joi.date().iso().greater(Joi.ref('fechaInicio')).required(),
 };
 
 const createCitaAdminSchema = Joi.object({
-  ...base,
-  hospitalId: base.hospitalId.required(),
-  medicoId: base.medicoId.required(),
-});
+  hospitalId: Joi.number().integer().required(),
+  medicoId:   Joi.number().integer().required(),
 
-const createCitaMedicoSchema = Joi.object({
-  pacienteId: base.pacienteId,
-  motivo: base.motivo,
-  fechaInicio: base.fechaInicio,
-  fechaFin: base.fechaFin,
-});
+  pacienteId: Joi.number().integer(),
+  paciente:   pacienteInline,        // “paciente en línea”
 
-const reprogramarSchema = Joi.object({
-  fechaInicio: base.fechaInicio,
-  fechaFin: base.fechaFin
-}).min(1);
+  ...baseCamposCita,
+})
+  .oxor('pacienteId', 'paciente')     // exactamente uno de los dos
+  .prefs({ convert: true, abortEarly: false });
 
 const updateAdminSchema = Joi.object({
-  hospitalId: base.hospitalId,
-  medicoId: base.medicoId,
-  pacienteId: base.pacienteId,
-  motivo: base.motivo,
-  fechaInicio: base.fechaInicio,
-  fechaFin: base.fechaFin,
-  estado: base.estado
-}).min(1);
+  hospitalId: Joi.number().integer(),
+  medicoId:   Joi.number().integer(),
+
+  pacienteId: Joi.number().integer(),
+  paciente:   pacienteInline,        // si actualizas y quieres cambiar paciente
+
+  motivo:      Joi.string().min(2),
+  fechaInicio: Joi.date().iso(),
+  fechaFin:    Joi.date().iso().greater(Joi.ref('fechaInicio')),
+  estado:      Joi.string().valid('PROGRAMADA','CANCELADA','ATENDIDA'),
+}).min(1).prefs({ convert: true, abortEarly: false });
+
+const createCitaMedicoSchema = Joi.object({
+  pacienteId: Joi.number().integer(),
+  paciente:   pacienteInline,        // médico también puede crear paciente al vuelo
+  ...baseCamposCita,
+})
+  .oxor('pacienteId', 'paciente')
+  .prefs({ convert: true, abortEarly: false });
+
+const reprogramarSchema = Joi.object({
+  fechaInicio: Joi.date().iso().required(),
+  fechaFin:    Joi.date().iso().greater(Joi.ref('fechaInicio')).required(),
+}).prefs({ convert: true, abortEarly: false });
 
 module.exports = {
   createCitaAdminSchema,
+  updateAdminSchema,
   createCitaMedicoSchema,
   reprogramarSchema,
-  updateAdminSchema
 };

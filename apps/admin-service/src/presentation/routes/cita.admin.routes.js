@@ -4,8 +4,10 @@ const { createCitaAdminSchema, updateAdminSchema } = require('../validators/cita
 
 const router = Router();
 
+// MONTADO EN /citas DESDE index.js
+
 // GET /citas?page=&size=&hospitalId=&medicoId=&estado=&desde=&hasta=&q=
-router.get('/citas', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const result = await repo.list({
       page: +req.query.page || 1,
@@ -23,7 +25,8 @@ router.get('/citas', async (req, res) => {
   }
 });
 
-router.get('/citas/:id', async (req, res) => {
+// GET /citas/:id
+router.get('/:id', async (req, res) => {
   try {
     const item = await repo.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'NOT_FOUND', message: 'Cita no encontrada' });
@@ -33,18 +36,21 @@ router.get('/citas/:id', async (req, res) => {
   }
 });
 
-router.post('/citas', async (req, res) => {
+// POST /citas
+router.post('/', async (req, res) => {
   try {
     const { error, value } = createCitaAdminSchema.validate(req.body, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
     const item = await repo.createAdmin({ ...value, creadaPorId: req.user.id });
     res.status(201).json({ data: item });
   } catch (e) {
-    res.status(500).json({ error: 'ERROR_CREATE', message: e.message });
+    const status = e.status || 500;
+    res.status(status).json({ error: status === 409 ? 'CONFLICT' : 'ERROR_CREATE', message: e.message });
   }
 });
 
-router.put('/citas/:id', async (req, res) => {
+// PUT /citas/:id
+router.put('/:id', async (req, res) => {
   try {
     const { error, value } = updateAdminSchema.validate(req.body, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
@@ -52,11 +58,13 @@ router.put('/citas/:id', async (req, res) => {
     if (!item) return res.status(404).json({ error: 'NOT_FOUND', message: 'Cita no encontrada' });
     res.json({ data: item });
   } catch (e) {
-    res.status(500).json({ error: 'ERROR_UPDATE', message: e.message });
+    const status = e.status || 500;
+    res.status(status).json({ error: status === 409 ? 'CONFLICT' : 'ERROR_UPDATE', message: e.message });
   }
 });
 
-router.delete('/citas/:id', async (req, res) => {
+// DELETE /citas/:id
+router.delete('/:id', async (req, res) => {
   try {
     const ok = await repo.remove(req.params.id);
     if (!ok) return res.status(404).json({ error: 'NOT_FOUND', message: 'Cita no encontrada' });
