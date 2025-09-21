@@ -4,8 +4,8 @@ const mre = require('../../infrastructure/persistence/medico-especialidad.repo')
 const router = Router();
 
 /* Listar especialidades de un médico
-   GET /medicos/:medicoId/especialidades?page=&size= */
-router.get('/medicos/:medicoId/especialidades', async (req, res) => {
+   GET /:medicoId/especialidades?page=&size= */
+router.get('/:medicoId/especialidades', async (req, res) => {
   try {
     const page = Number(req.query.page || 1);
     const size = Number(req.query.size || 20);
@@ -17,8 +17,8 @@ router.get('/medicos/:medicoId/especialidades', async (req, res) => {
 });
 
 /* Asignar especialidad a médico
-   POST /medicos/:medicoId/especialidades/:especialidadId */
-router.post('/medicos/:medicoId/especialidades/:especialidadId', async (req, res) => {
+   POST /:medicoId/especialidades/:especialidadId */
+router.post('/:medicoId/especialidades/:especialidadId', async (req, res) => {
   try {
     const item = await mre.addToMedico(req.params.medicoId, req.params.especialidadId);
     res.status(201).json({ data: item });
@@ -28,8 +28,8 @@ router.post('/medicos/:medicoId/especialidades/:especialidadId', async (req, res
 });
 
 /* Quitar especialidad de médico
-   DELETE /medicos/:medicoId/especialidades/:especialidadId */
-router.delete('/medicos/:medicoId/especialidades/:especialidadId', async (req, res) => {
+   DELETE /:medicoId/especialidades/:especialidadId */
+router.delete('/:medicoId/especialidades/:especialidadId', async (req, res) => {
   try {
     const ok = await mre.removeFromMedico(req.params.medicoId, req.params.especialidadId);
     if (!ok) return res.status(404).json({ error: 'NOT_FOUND', message: 'No estaba asignada' });
