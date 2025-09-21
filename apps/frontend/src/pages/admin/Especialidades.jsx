@@ -3,6 +3,8 @@ import { Plus, Stethoscope, Search, AlertTriangle } from "lucide-react";
 import Pagination from "../../components/shared/Pagination";
 import EspecialidadTable from "../../components/especialidad/EspecialidadTable";
 import EspecialidadFormModal from "../../components/especialidad/EspecialidadFormModal";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+
 import {
     listEspecialidades,
     createEspecialidad,
@@ -11,7 +13,7 @@ import {
 } from "../../api/especialidad";
 
 export default function Especialidades() {
-    const [rows, setRows] = useState([]);
+    const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const pageSize = 8;
@@ -23,10 +25,12 @@ export default function Especialidades() {
     const [editing, setEditing] = useState(null);
     const [serverError, setServerError] = useState("");
 
+    const [confirm, setConfirm] = useState({ open: false, item: null });
+
     async function load() {
         setLoading(true);
         const { items, total } = await listEspecialidades({ page, pageSize, q });
-        setRows(items);
+        setItems(items);
         setTotal(total);
         setLoading(false);
     }
@@ -45,7 +49,7 @@ export default function Especialidades() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e.message || "No se pudo crear");
+            setServerError(e?.message || "No se pudo crear.");
         }
     }
 
@@ -57,14 +61,20 @@ export default function Especialidades() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e.message || "No se pudo actualizar");
+            setServerError(e?.message || "No se pudo actualizar.");
         }
     }
 
-    async function handleDelete(item) {
-        const ok = window.confirm(`¿Eliminar "${item.nombre}"?`);
-        if (!ok) return;
+    async function confirmDelete(item) {
+        setConfirm({ open: true, item });
+    }
+
+    async function onConfirmDelete() {
+        const item = confirm.item;
+        if (!item) return;
         await deleteEspecialidad(item.id);
+        setConfirm({ open: false, item: null });
+
         const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
         if (page > maxPage) setPage(maxPage);
         else load();
@@ -77,7 +87,7 @@ export default function Especialidades() {
 
     return (
         <div className="space-y-4">
-            {/* Header con botón a la DERECHA */}
+            {/* Header con acción a la derecha */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -121,7 +131,15 @@ export default function Especialidades() {
                     Cargando…
                 </div>
             ) : (
-                <EspecialidadTable rows={rows} onEdit={(e) => { setEditing(e); setModalOpen(true); }} onDelete={handleDelete} />
+                <EspecialidadTable
+                    items={items}
+                    onEdit={(e) => {
+                        setEditing(e);
+                        setServerError("");
+                        setModalOpen(true);
+                    }}
+                    onDelete={confirmDelete}
+                />
             )}
 
             {/* Paginación */}
@@ -130,10 +148,31 @@ export default function Especialidades() {
             {/* Modal Crear/Editar */}
             <EspecialidadFormModal
                 open={modalOpen}
-                onClose={() => { setModalOpen(false); setEditing(null); }}
+                onClose={() => {
+                    setModalOpen(false);
+                    setEditing(null);
+                }}
                 initialData={editing}
                 onSubmit={editing ? handleEdit : handleCreate}
                 serverError={serverError}
+            />
+
+            {/* Confirmación de borrado */}
+            <ConfirmModal
+                open={confirm.open}
+                title="Eliminar especialidad"
+                description={
+                    <>
+                        ¿Seguro que deseas eliminar{" "}
+                        <span className="font-semibold">“{confirm.item?.nombre}”</span>?
+                        <br />
+                        Esta acción no se puede deshacer.
+                    </>
+                }
+                confirmLabel="Eliminar"
+                danger
+                onCancel={() => setConfirm({ open: false, item: null })}
+                onConfirm={onConfirmDelete}
             />
 
             {/* Nota mock */}

@@ -1,66 +1,89 @@
 import { Pencil, Trash2 } from "lucide-react";
 
-export default function HospitalTable({ items, onEdit, onDelete }) {
+export default function HospitalTable({ items = [], onEdit, onDelete }) {
     return (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full border-separate border-spacing-0">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
+                <colgroup>
+                    <col className="w-[22%]" /> {/* Nombre */}
+                    <col className="w-[43%]" /> {/* Dirección */}
+                    <col className="w-[15%]" /> {/* Teléfono */}
+                    <col className="w-[10%]" /> {/* Estado */}
+                    <col className="w-[10%]" /> {/* Acciones */}
+                </colgroup>
+
                 <thead>
-                    <tr className="bg-slate-50 text-left text-sm text-slate-600">
-                        <th className="px-4 py-3 font-medium">Nombre</th>
-                        <th className="px-4 py-3 font-medium">Dirección</th>
-                        <th className="px-4 py-3 font-medium">Teléfono</th>
-                        <th className="px-4 py-3 font-medium">Estado</th>
-                        <th className="px-4 py-3 text-right font-medium">Acciones</th>
+                    <tr className="bg-slate-50 text-left text-slate-700">
+                        <th className="px-4 py-3 font-semibold">Nombre</th>
+                        <th className="px-4 py-3 font-semibold">Dirección</th>
+                        <th className="px-4 py-3 font-semibold">Teléfono</th>
+                        <th className="px-4 py-3 font-semibold">Estado</th>
+                        <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                     </tr>
                 </thead>
-                <tbody className="text-slate-800">
-                    {items.map((h, i) => (
-                        <tr
-                            key={h.id}
-                            className={`text-sm ${i % 2 ? "bg-white" : "bg-slate-50/40"}`}
-                        >
-                            <td className="px-4 py-4 font-semibold">{h.nombre}</td>
-                            <td className="px-4 py-4">
-                                <p className="line-clamp-2 text-slate-700">{h.direccion || "-"}</p>
-                            </td>
-                            <td className="px-4 py-4">{h.telefono || "-"}</td>
-                            <td className="px-4 py-4">
-                                <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${h.activo
-                                            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                                            : "bg-slate-100 text-slate-600 ring-slate-300"
-                                        }`}
-                                >
-                                    {h.activo ? "Activo" : "Inactivo"}
-                                </span>
-                            </td>
-                            <td className="px-4 py-4">
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        onClick={() => onEdit?.(h)}
-                                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
-                                        title="Editar"
-                                    >
-                                        <Pencil size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => onDelete?.(h)}
-                                        className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
 
-                    {items.length === 0 && (
+                <tbody className="divide-y divide-slate-100 text-slate-800">
+                    {items.length === 0 ? (
                         <tr>
                             <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                                 No hay hospitales.
                             </td>
                         </tr>
+                    ) : (
+                        items.map((h, i) => (
+                            <tr key={h.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
+                                {/* Nombre: 1 línea */}
+                                <td className="px-4 py-3 font-semibold">
+                                    <div className="truncate" title={h.nombre}>
+                                        {h.nombre}
+                                    </div>
+                                </td>
+
+                                {/* Dirección: 2 líneas máx + rompe palabras largas */}
+                                <td className="px-4 py-3">
+                                    <p className="line-clamp-2 break-words text-slate-700" title={h.direccion || "-"}>
+                                        {h.direccion || "-"}
+                                    </p>
+                                </td>
+
+                                {/* Teléfono: 1 línea */}
+                                <td className="px-4 py-3">
+                                    <div className="truncate" title={h.telefono || "-"}>
+                                        {h.telefono || "-"}
+                                    </div>
+                                </td>
+
+                                <td className="px-4 py-3">
+                                    <span
+                                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${h.activo
+                                                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                                                : "bg-slate-100 text-slate-600 ring-slate-300"
+                                            }`}
+                                    >
+                                        {h.activo ? "Activo" : "Inactivo"}
+                                    </span>
+                                </td>
+
+                                <td className="px-4 py-3">
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => onEdit?.(h)}
+                                            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                                            title="Editar"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete?.(h)}
+                                            className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))
                     )}
                 </tbody>
             </table>

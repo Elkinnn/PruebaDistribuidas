@@ -1,93 +1,119 @@
-import { useEffect, useState } from "react";
-import { X, Check } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Modal from "../ui/Modal";
+import { Check } from "lucide-react";
 
-export default function EspecialidadFormModal({ open, onClose, onSubmit, initialData, serverError }) {
-    const [form, setForm] = useState({ nombre: "", descripcion: "" });
-    const [touched, setTouched] = useState(false);
+const EMPTY = { nombre: "", descripcion: "" };
+
+export default function EspecialidadFormModal({
+    open,
+    onClose,
+    onSubmit,
+    initialData,
+    serverError = "",
+}) {
+    const [values, setValues] = useState(EMPTY);
+    const [touched, setTouched] = useState({});
+
+    const isEdit = !!initialData?.id;
 
     useEffect(() => {
-        setForm(
-            initialData
-                ? { nombre: initialData.nombre || "", descripcion: initialData.descripcion || "" }
-                : { nombre: "", descripcion: "" }
-        );
-        setTouched(false);
+        setValues(initialData ? { ...EMPTY, ...initialData } : EMPTY);
+        setTouched({});
     }, [initialData, open]);
 
-    const nombreError = touched && !form.nombre.trim() ? "El nombre es obligatorio" : "";
+    const errors = useMemo(() => {
+        const e = {};
+        if (!values.nombre?.trim()) e.nombre = "El nombre es obligatorio.";
+        return e;
+    }, [values]);
+
+    const isInvalid = Object.keys(errors).length > 0;
+
+    function setField(k, v) {
+        setValues((s) => ({ ...s, [k]: v }));
+    }
+
+    function markAllTouched() {
+        setTouched({ nombre: true, descripcion: true });
+    }
 
     function handleSubmit(e) {
         e.preventDefault();
-        setTouched(true);
-        if (nombreError) return;
-        onSubmit(form);
+        markAllTouched();
+        if (isInvalid) return;
+        onSubmit?.(values);
     }
 
-    if (!open) return null;
-
     return (
-        <>
-            <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
-            <div className="fixed inset-0 z-50 grid place-items-center p-4">
-                <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-                        <h3 className="text-sm font-semibold">
-                            {initialData ? "Editar especialidad" : "Nueva especialidad"}
-                        </h3>
-                        <button className="rounded-md p-1 text-slate-500 hover:bg-slate-100" onClick={onClose}>
-                            <X size={18} />
-                        </button>
+        <Modal
+            open={open}
+            onClose={onClose}
+            title={isEdit ? "Editar especialidad" : "Nueva especialidad"}
+            maxWidth="max-w-2xl"
+            footer={
+                <>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="especialidad-form"
+                        disabled={isInvalid}
+                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white ${isInvalid
+                                ? "cursor-not-allowed bg-emerald-300"
+                                : "bg-emerald-600 hover:bg-emerald-700"
+                            }`}
+                    >
+                        <Check size={16} /> Guardar
+                    </button>
+                </>
+            }
+        >
+            <form id="especialidad-form" onSubmit={handleSubmit} className="space-y-5">
+                {serverError ? (
+                    <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+                        {serverError}
                     </div>
+                ) : null}
 
-                    <form className="grid gap-3 p-5" onSubmit={handleSubmit}>
-                        {serverError ? (
-                            <div className="rounded-lg bg-rose-50 p-2 text-sm text-rose-700 ring-1 ring-rose-200">
-                                {serverError}
-                            </div>
-                        ) : null}
-
-                        <div>
-                            <label className="text-sm font-medium text-slate-700">Nombre *</label>
-                            <input
-                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                                value={form.nombre}
-                                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-                                onBlur={() => setTouched(true)}
-                                placeholder="Ej: Cardiología"
-                            />
-                            {nombreError && <p className="mt-1 text-xs text-rose-600">{nombreError}</p>}
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-slate-700">Descripción</label>
-                            <textarea
-                                rows={3}
-                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                                value={form.descripcion}
-                                onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-                                placeholder="Detalle opcional"
-                            />
-                        </div>
-
-                        <div className="mt-2 flex justify-end gap-2">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-                            >
-                                <Check size={16} />
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
+                {/* Nombre */}
+                <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Nombre <span className="text-rose-600">*</span>
+                    </label>
+                    <input
+                        className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${touched.nombre && errors.nombre
+                                ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                                : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
+                            }`}
+                        placeholder="Ej: Cardiología"
+                        value={values.nombre}
+                        onBlur={() => setTouched((t) => ({ ...t, nombre: true }))}
+                        onChange={(e) => setField("nombre", e.target.value)}
+                    />
+                    {touched.nombre && errors.nombre ? (
+                        <p className="mt-1 text-xs text-rose-600">{errors.nombre}</p>
+                    ) : null}
                 </div>
-            </div>
-        </>
+
+                {/* Descripción */}
+                <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Descripción
+                    </label>
+                    <textarea
+                        rows={3}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                        placeholder="Detalle opcional"
+                        value={values.descripcion}
+                        onChange={(e) => setField("descripcion", e.target.value)}
+                    />
+                </div>
+            </form>
+        </Modal>
     );
 }
