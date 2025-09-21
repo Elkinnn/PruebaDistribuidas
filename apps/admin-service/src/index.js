@@ -1,48 +1,37 @@
-const express = require('express')
-const cors = require('cors')
-const helmet = require('helmet')
-const morgan = require('morgan')
-require('dotenv').config()
+// apps/admin-service/src/index.js
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const mysql = require('mysql2/promise');
 
-const app = express()
-const PORT = process.env.PORT || 3001
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(morgan('dev'));
 
-// Middleware
-app.use(helmet())
-app.use(cors())
-app.use(morgan('combined'))
-app.use(express.json())
+const PORT = process.env.ADMIN_SERVICE_PORT || 3001;
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    service: 'admin-service',
-    timestamp: new Date().toISOString() 
-  })
-})
+// endpoint para probar la conexión a MySQL
+app.get('/db/health', async (_req, res) => {
+  try {
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'hospitalservice',
+    });
 
-// Routes
-app.use('/users', require('./presentation/routes/userRoutes'))
-app.use('/config', require('./presentation/routes/configRoutes'))
-app.use('/reports', require('./presentation/routes/reportRoutes'))
-app.use('/dashboard', require('./presentation/routes/dashboardRoutes'))
+    await conn.query('SELECT 1');
+    await conn.end();
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  })
-})
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' })
-})
+    res.json({ ok: true, db: 'up' });
+  } catch (e) {
+    res.status(500).json({ ok: false, db: 'down', error: e.message });
+  }
+});
 
 app.listen(PORT, () => {
-  console.log(`🔧 Admin Service running on port ${PORT}`)
-  console.log(`📊 Health check: http://localhost:${PORT}/health`)
-})
+  console.log(`AdminService (Express) escuchando en :${PORT}`);
+});
