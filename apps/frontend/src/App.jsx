@@ -2,9 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import MedicoDashboard from "./pages/medico/Dashboard";
 import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
 import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/Dashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import Hospitales from "./pages/admin/Hospitales";
 import Especialidades from "./pages/admin/Especialidades";
 import Medicos from "./pages/admin/Medicos";
@@ -27,22 +26,22 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route index element={<AdminDashboard />} />   {/* <- antes AdminHome */}
-      <Route path="hospitales" element={<Hospitales />} />
-      <Route path="especialidades" element={<Especialidades />} />
-      <Route path="medicos" element={<Medicos />} />
-      <Route path="citas" element={<Citas />} />
-      <Route path="empleados" element={<Empleados />} />
 
       <Route
-        path="/admin/*"
+        path="/admin"
         element={
           <Protected roles={["ADMIN_GLOBAL"]}>
             <AdminLayout />
           </Protected>
         }
-      />
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="hospitales" element={<Hospitales />} />
+        <Route path="especialidades" element={<Especialidades />} />
+        <Route path="medicos" element={<Medicos />} />
+        <Route path="citas" element={<Citas />} />
+        <Route path="empleados" element={<Empleados />} />
+      </Route>
 
       <Route
         path="/medico/*"

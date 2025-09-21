@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
@@ -108,12 +108,6 @@ export default function Login() {
                 <span className="text-sm font-medium text-slate-700">
                   Contraseña
                 </span>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium text-emerald-700 hover:underline"
-                >
-                  ¿Olvidaste tu contraseña?
-                </Link>
               </div>
               <div className="relative">
                 <input
