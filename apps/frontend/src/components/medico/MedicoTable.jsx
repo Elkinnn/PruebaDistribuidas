@@ -5,21 +5,13 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="overflow-x-auto">
                 <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-sm">
-                    <colgroup>
-                        <col className="w-[30%]" /> 
-                        <col className="w-[30%]" /> 
-                        <col className="w-[25%]" /> 
-                        <col className="w-[7%]" />  
-                        <col className="w-[8%]" />  
-                    </colgroup>
-
                     <thead className="bg-slate-50 text-slate-700">
                         <tr>
-                            <th className="px-4 py-3 font-semibold">Médico</th>
-                            <th className="px-4 py-3 font-semibold">Hospital</th>
-                            <th className="px-4 py-3 font-semibold">Email</th>
-                            <th className="px-4 py-3 font-semibold">Estado</th>
-                            <th className="px-4 py-3 text-right font-semibold">Acciones</th>
+                            <th className="w-[30%] px-4 py-3 font-semibold">Médico</th>
+                            <th className="w-[30%] px-4 py-3 font-semibold">Hospital</th>
+                            <th className="w-[25%] px-4 py-3 font-semibold">Email</th>
+                            <th className="w-[7%]  px-4 py-3 font-semibold">Estado</th>
+                            <th className="w-[8%]  px-4 py-3 text-right font-semibold">Acciones</th>
                         </tr>
                     </thead>
 
@@ -33,24 +25,28 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
                         ) : (
                             items.map((m, i) => (
                                 <tr key={m.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
-                                    <td className="px-4 py-3 font-medium">
+                                    {/* Médico */}
+                                    <td className="max-w-0 px-4 py-3 font-medium">
                                         <div className="truncate whitespace-nowrap" title={`${m.nombres} ${m.apellidos}`}>
                                             {m.nombres} {m.apellidos}
                                         </div>
                                     </td>
 
-                                    <td className="px-4 py-3">
+                                    {/* Hospital */}
+                                    <td className="max-w-0 px-4 py-3">
                                         <div className="truncate whitespace-nowrap" title={hospitalMap[m.hospitalId] || "-"}>
                                             {hospitalMap[m.hospitalId] || "-"}
                                         </div>
                                     </td>
 
-                                    <td className="px-4 py-3">
-                                        <div className="truncate whitespace-nowrap" title={m.email}>
-                                            {m.email}
+                                    {/* Email */}
+                                    <td className="max-w-0 px-4 py-3">
+                                        <div className="truncate whitespace-nowrap" title={m.email || "-"}>
+                                            {m.email || "-"}
                                         </div>
                                     </td>
 
+                                    {/* Estado */}
                                     <td className="px-4 py-3">
                                         <span
                                             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${m.activo
@@ -62,6 +58,7 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
                                         </span>
                                     </td>
 
+                                    {/* Acciones */}
                                     <td className="px-4 py-3">
                                         <div className="flex justify-end gap-2">
                                             <button
