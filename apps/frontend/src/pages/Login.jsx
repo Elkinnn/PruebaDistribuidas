@@ -1,128 +1,159 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import Input from "../components/ui/Input";
+import Logo from "../components/ui/Logo";
+import { loginRequest } from "../api/auth";
 
-const Login = () => {
-  const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
-  const { register, handleSubmit, formState: { errors } } = useForm()
+export default function Login() {
+  const nav = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState("");
 
-  const onSubmit = async (data) => {
+  const emailError =
+    touched && !/^\S+@\S+\.\S+$/.test(email) ? "Correo inválido" : "";
+  const pwdError = touched && password.length < 6 ? "Mínimo 6 caracteres" : "";
+  const formInvalid = !!emailError || !!pwdError || !email || !password;
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setTouched(true);
+    if (formInvalid) return;
+
     try {
-      // Simular autenticación
-      console.log('Login data:', data)
-      toast.success('Inicio de sesión exitoso')
-      navigate('/')
-    } catch (error) {
-      toast.error('Error en el inicio de sesión')
+      setLoading(true);
+      setServerError("");
+      const { token, user } = await loginRequest({ email, password });
+
+      localStorage.setItem("clinix_token", token);
+      localStorage.setItem("clinix_user", JSON.stringify(user));
+
+      if (user?.rol === "ADMIN_GLOBAL") nav("/admin");
+      else if (user?.rol === "MEDICO") nav("/medico");
+      else nav("/");
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        "No se pudo iniciar sesión. Revisa tus credenciales.";
+      setServerError(msg);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <LogIn className="h-6 w-6 text-blue-600" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Iniciar Sesión
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Accede a tu cuenta para continuar
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-sky-50 to-indigo-50">
+      <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-center gap-12 px-6 py-10 md:grid-cols-2">
+        {/* Lado izquierdo: texto */}
+        <div className="hidden md:block">
+          <Logo className="mb-6" />
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            Bienvenido a Clinix
+          </h1>
+          <p className="mt-3 max-w-md text-slate-600">
+            Plataforma de gestión hospitalaria para administradores y médicos.
+            Seguridad, trazabilidad y agilidad en cada atención.
           </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Correo electrónico
-              </label>
-              <input
-                {...register('email', { 
-                  required: 'El correo es requerido',
-                  pattern: {
-                    value: /^\S+@\S+$/i,
-                    message: 'Correo inválido'
-                  }
-                })}
-                type="email"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="tu@email.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+
+          <div className="mt-10 grid grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+              <p className="mb-1 text-sm font-semibold text-emerald-700">
+                Citas y pacientes
+              </p>
+              <p className="text-sm text-slate-600">
+                Agenda, estado y seguimiento clínico en tiempo real.
+              </p>
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Contraseña
-              </label>
-              <div className="mt-1 relative">
+            <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+              <p className="mb-1 text-sm font-semibold text-emerald-700">
+                Centros y personal
+              </p>
+              <p className="text-sm text-slate-600">
+                Administra hospitales, especialidades, médicos y empleados.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card de Login */}
+        <Card className="mx-auto w-full max-w-md backdrop-blur-sm">
+          <div className="border-b border-slate-200/70 p-6">
+            <div className="flex items-center justify-between">
+              <Logo />
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                Acceso seguro
+              </span>
+            </div>
+          </div>
+
+          <form className="grid gap-4 p-6" onSubmit={onSubmit} noValidate>
+            <Input
+              label="Correo electrónico"
+              type="email"
+              autoComplete="email"
+              placeholder="tu-correo@clinix.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched(true)}
+              error={emailError}
+            />
+
+            <div className="grid gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">
+                  Contraseña
+                </span>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-emerald-700 hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+              <div className="relative">
                 <input
-                  {...register('password', { 
-                    required: 'La contraseña es requerida',
-                    minLength: {
-                      value: 6,
-                      message: 'Mínimo 6 caracteres'
-                    }
-                  })}
-                  type={showPassword ? 'text' : 'password'}
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Tu contraseña"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                  type={showPwd ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched(true)}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-xs text-slate-500 hover:bg-slate-100"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showPwd ? "Ocultar" : "Ver"}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Recordarme
-              </label>
+              {pwdError ? (
+                <span className="text-xs text-rose-600">{pwdError}</span>
+              ) : null}
             </div>
 
-            <div className="text-sm">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
-          </div>
+            {serverError ? (
+              <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+                {serverError}
+              </div>
+            ) : null}
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Iniciar Sesión
-            </button>
-          </div>
-        </form>
+            <Button type="submit" disabled={formInvalid || loading} loading={loading}>
+              Ingresar
+            </Button>
+
+            <p className="text-center text-xs text-slate-500">
+              Al continuar aceptas las políticas de seguridad de Clinix.
+            </p>
+          </form>
+        </Card>
       </div>
     </div>
-  )
+  );
 }
-
-export default Login
