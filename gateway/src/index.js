@@ -41,35 +41,74 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
-// Proxy simple para el resto de rutas
-app.use('/hospitales', createProxyMiddleware({
-  target: ADMIN,
-  changeOrigin: true,
-  timeout: 30000
-}));
+// Helper para pasar headers de autorización
+function passAuthHeaders(proxyReq, req, res) {
+  if (req.headers.authorization) {
+    proxyReq.setHeader('authorization', req.headers.authorization);
+    console.log('[AUTH] Passing authorization header');
+  }
+}
+
+// Proxy para hospitales usando axios directo
+app.use('/hospitales', async (req, res) => {
+  try {
+    console.log(`[HOSPITALES] ${req.method} ${req.url} -> ${ADMIN}/hospitales${req.url}`);
+    
+    const config = {
+      method: req.method,
+      url: `${ADMIN}/hospitales${req.url}`,
+      headers: {
+        ...req.headers
+      },
+      timeout: 30000
+    };
+    
+    // Solo agregar data si hay body
+    if (req.body && Object.keys(req.body).length > 0) {
+      config.data = req.body;
+    }
+    
+    const response = await axios(config);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('[HOSPITALES ERROR]', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ 
+        error: 'PROXY_ERROR', 
+        message: 'Error de conexión con el servicio de hospitales' 
+      });
+    }
+  }
+});
 
 app.use('/especialidades', createProxyMiddleware({
   target: ADMIN,
   changeOrigin: true,
-  timeout: 30000
+  timeout: 30000,
+  onProxyReq: passAuthHeaders
 }));
 
 app.use('/medicos', createProxyMiddleware({
   target: ADMIN,
   changeOrigin: true,
-  timeout: 30000
+  timeout: 30000,
+  onProxyReq: passAuthHeaders
 }));
 
 app.use('/empleados', createProxyMiddleware({
   target: ADMIN,
   changeOrigin: true,
-  timeout: 30000
+  timeout: 30000,
+  onProxyReq: passAuthHeaders
 }));
 
 app.use('/citas', createProxyMiddleware({
   target: ADMIN,
   changeOrigin: true,
-  timeout: 30000
+  timeout: 30000,
+  onProxyReq: passAuthHeaders
 }));
 
 // health del gateway

@@ -5,7 +5,12 @@ export async function listHospitals({ page = 1, pageSize = 8, q = "" } = {}) {
         const response = await apiClient.get('/hospitales', {
             params: { page, size: pageSize, q }
         });
-        return response.data;
+        
+        // Transformar respuesta del backend: { data, meta: { total } } -> { items, total }
+        return {
+            items: response.data.data || [],
+            total: response.data.meta?.total || 0
+        };
     } catch (error) {
         console.error('Error fetching hospitals:', error);
         throw error;
@@ -14,7 +19,13 @@ export async function listHospitals({ page = 1, pageSize = 8, q = "" } = {}) {
 
 export async function createHospital(data) {
     try {
-        const response = await apiClient.post('/hospitales', data);
+        // Convertir activo de número a boolean si es necesario
+        const hospitalData = { ...data };
+        if (hospitalData.activo !== undefined) {
+            hospitalData.activo = Boolean(hospitalData.activo);
+        }
+        
+        const response = await apiClient.post('/hospitales', hospitalData);
         return response.data.data;
     } catch (error) {
         console.error('Error creating hospital:', error);
@@ -24,10 +35,20 @@ export async function createHospital(data) {
 
 export async function updateHospital(id, data) {
     try {
-        const response = await apiClient.put(`/hospitales/${id}`, data);
+        // Remover el id del data para evitar conflictos con la validación del backend
+        const { id: _, ...updateData } = data;
+        
+        // Convertir activo de número a boolean si es necesario
+        if (updateData.activo !== undefined) {
+            updateData.activo = Boolean(updateData.activo);
+        }
+        
+        
+        const response = await apiClient.put(`/hospitales/${id}`, updateData);
         return response.data.data;
     } catch (error) {
-        console.error('Error updating hospital:', error);
+        console.error('❌ Error updating hospital:', error);
+        console.error('❌ Error response:', error.response?.data);
         throw error;
     }
 }
