@@ -31,18 +31,28 @@ function validate(payload) {
     if (!payload.paciente || !payload.paciente.trim()) {
         throw new Error("El nombre del paciente es obligatorio.");
     }
-    if (payload.medicoId === undefined || payload.medicoId === null || payload.medicoId === "") {
+    if (
+        payload.medicoId === undefined ||
+        payload.medicoId === null ||
+        payload.medicoId === ""
+    ) {
         throw new Error("El médico es obligatorio.");
     }
-    if (!payload.fechaHora) {
+
+    if (!payload.fechaInicio || !payload.fechaFin) {
         throw new Error("La fecha y hora son obligatorias.");
     }
-}
 
-/**
- * Lista con filtro y paginación.
- * q busca en: paciente, motivo, estado (case-insensitive).
- */
+    const ini = new Date(payload.fechaInicio).getTime();
+    const fin = new Date(payload.fechaFin).getTime();
+
+    if (!Number.isFinite(ini) || !Number.isFinite(fin)) {
+        throw new Error("Fechas no válidas.");
+    }
+    if (fin <= ini) {
+        throw new Error("La hora de fin debe ser posterior al inicio.");
+    }
+}
 export async function listCitas({ page = 1, pageSize = 8, q = "" } = {}) {
     const all = readAll();
 
@@ -60,11 +70,11 @@ export async function listCitas({ page = 1, pageSize = 8, q = "" } = {}) {
         })
         : all;
 
-    // Orden por fecha (desc)
+    // Orden por fecha de inicio (desc)
     filtered = filtered.sort((a, b) => {
-        const fa = a.fechaHora || "";
-        const fb = b.fechaHora || "";
-        return fb.localeCompare(fa);
+        const fa = a.fechaInicio || "";
+        const fb = b.fechaInicio || "";
+        return (fb || "").localeCompare(fa || "");
     });
 
     const total = filtered.length;
@@ -74,22 +84,28 @@ export async function listCitas({ page = 1, pageSize = 8, q = "" } = {}) {
 
     return sleep({ items, total });
 }
-
-/**
- * Crea una cita.
- * values esperado: { paciente, medicoId, fechaHora, motivo?, estado? }
- * estado: "pendiente" | "confirmada" | "cancelada"
- */
 export async function createCita(values) {
     const all = readAll();
 
     const payload = {
         id: genId(),
+        // Datos básicos
+        hospitalId: Number(values.hospitalId),
         paciente: (values.paciente || "").trim(),
+        pacienteInfo: values.pacienteInfo || null,
+
+        // Médico
         medicoId: Number(values.medicoId),
-        fechaHora: toISO(values.fechaHora),
+
+        // Fechas (guardar en ISO UTC)
+        fechaInicio: toISO(values.fechaInicio),
+        fechaFin: toISO(values.fechaFin),
+
+        // Otros
         motivo: values.motivo || "",
         estado: values.estado || "pendiente",
+
+        // Metadatos
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
@@ -101,9 +117,6 @@ export async function createCita(values) {
     return sleep(payload);
 }
 
-/**
- * Actualiza una cita por id.
- */
 export async function updateCita(id, values) {
     const all = readAll();
     const idx = all.findIndex((c) => c.id === id);
@@ -111,13 +124,39 @@ export async function updateCita(id, values) {
 
     const merged = {
         ...all[idx],
-        paciente: values.paciente !== undefined ? String(values.paciente).trim() : all[idx].paciente,
+
+        // Permitir actualizar todos estos campos
+        hospitalId:
+            values.hospitalId !== undefined
+                ? Number(values.hospitalId)
+                : all[idx].hospitalId,
+
+        paciente:
+            values.paciente !== undefined
+                ? String(values.paciente).trim()
+                : all[idx].paciente,
+
+        pacienteInfo:
+            values.pacienteInfo !== undefined
+                ? values.pacienteInfo
+                : all[idx].pacienteInfo,
+
         medicoId:
             values.medicoId !== undefined ? Number(values.medicoId) : all[idx].medicoId,
-        fechaHora:
-            values.fechaHora !== undefined ? toISO(values.fechaHora) : all[idx].fechaHora,
+
+        fechaInicio:
+            values.fechaInicio !== undefined
+                ? toISO(values.fechaInicio)
+                : all[idx].fechaInicio,
+
+        fechaFin:
+            values.fechaFin !== undefined
+                ? toISO(values.fechaFin)
+                : all[idx].fechaFin,
+
         motivo: values.motivo !== undefined ? values.motivo : all[idx].motivo,
         estado: values.estado !== undefined ? values.estado : all[idx].estado,
+
         updatedAt: new Date().toISOString(),
     };
 
@@ -128,9 +167,6 @@ export async function updateCita(id, values) {
     return sleep(merged);
 }
 
-/**
- * Elimina una cita por id.
- */
 export async function deleteCita(id) {
     const all = readAll();
     const idx = all.findIndex((c) => c.id === id);
