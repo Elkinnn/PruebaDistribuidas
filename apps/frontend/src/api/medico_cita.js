@@ -97,3 +97,96 @@ export async function deleteCita(id) {
 }
 
 export const CITA_ESTADOS = ESTADOS;
+function _toDate(v) { const d = new Date(v); return isNaN(d) ? null : d; }
+function _isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth()    === b.getMonth() &&
+         a.getDate()     === b.getDate();
+}
+function _startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function _endOfMonth(d){  return new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59,999); }
+function _fmtHora(d){ return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+
+/**
+ * Devuelve las citas de HOY asignadas al médico.
+ * @param {Object} params
+ * @param {number|string} [params.medicoId]  // si tu sesión no lo aporta por token
+ * @param {number} [params.limit=5]
+ * @param {"PROGRAMADA"|"ATENDIDA"|"CANCELADA"} [params.estado] // opcional
+ * @returns {Promise<{success:boolean,data:Array}>}
+ */
+export async function citasHoyMedico({ medicoId, limit = 5, estado } = {}) {
+  const hoy = new Date();
+  const all = readAll();
+
+  let items = all.filter(c => {
+    if (medicoId != null && String(c.medicoId) !== String(medicoId)) return false;
+    const di = _toDate(c.inicio); if (!di) return false;
+    if (!_isSameDay(di, hoy)) return false;
+    if (estado && c.estado !== estado) return false;
+    return true;
+  });
+
+  items = items
+    .sort((a,b) => String(a.inicio).localeCompare(String(b.inicio)))
+    .slice(0, limit)
+    .map(c => {
+      const di = _toDate(c.inicio);
+      return {
+        id: c.id,
+        hora: di ? _fmtHora(di) : "",
+        estado: c.estado,
+        motivo: c.motivo || "",
+        paciente: {
+          nombre: c.paciente?.nombres || "",
+          apellido: c.paciente?.apellidos || "",
+        },
+      };
+    });
+
+  return sleep({ success: true, data: items });
+}
+
+/**
+ * KPIs del dashboard del médico
+ *  - totalPacientes: pacientes únicos en sus citas
+ *  - citasHoy: número de citas (cualquier estado) para hoy
+ *  - consultasMes: # de citas ATENDIDA en el mes actual
+ * @param {Object} params
+ * @param {number|string} [params.medicoId]
+ * @returns {Promise<{success:boolean,data:{totalPacientes:number,citasHoy:number,consultasMes:number}}>}
+ */
+export async function statsMedico({ medicoId } = {}) {
+  const all = readAll();
+  const now = new Date();
+  const iniMes = _startOfMonth(now), finMes = _endOfMonth(now);
+
+  const mCitas = all.filter(c => (medicoId == null || String(c.medicoId) === String(medicoId)));
+
+  // Pacientes únicos (por documento o nombre+apellido si no hay doc)
+  const seen = new Set();
+  for (const c of mCitas) {
+    const doc = (c.paciente?.documento || "").trim();
+    const key = doc || `${(c.paciente?.nombres||"").trim()}|${(c.paciente?.apellidos||"").trim()}`;
+    if (key.trim()) seen.add(key);
+  }
+  const totalPacientes = seen.size;
+
+  const citasHoy = mCitas.filter(c => {
+    const di = _toDate(c.inicio); if (!di) return false;
+    return _isSameDay(di, now);
+  }).length;
+
+  const consultasMes = mCitas.filter(c => {
+    const di = _toDate(c.inicio); if (!di) return false;
+    return di >= iniMes && di <= finMes && c.estado === "ATENDIDA";
+  }).length;
+
+  return sleep({ success: true, data: { totalPacientes, citasHoy, consultasMes } });
+}
+
+/** Export agrupado opcional para consumir como objeto */
+export const medicoCitaApi = {
+  citasHoy: (args) => citasHoyMedico(args),
+  stats:   (args) => statsMedico(args),
+};
