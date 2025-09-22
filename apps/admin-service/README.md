@@ -105,6 +105,14 @@ curl http://localhost:3001/health
 - `PUT /medicos/:id` - Actualizar médico
 - `DELETE /medicos/:id` - Eliminar médico (soft delete)
 
+### Empleados
+- `GET /empleados` - Listar empleados
+- `GET /empleados/:id` - Obtener empleado por ID
+- `POST /empleados` - Crear empleado
+- `PUT /empleados/:id` - Actualizar empleado
+- `DELETE /empleados/:id` - Eliminar empleado
+- `GET /empleados/stats/:hospitalId` - Estadísticas de empleados por hospital
+
 ### Usuarios
 - `GET /usuarios` - Listar usuarios
 - `GET /usuarios/:id` - Obtener usuario por ID
@@ -161,6 +169,20 @@ JWT_EXPIRES_IN=24h
   nombres: "string",
   apellidos: "string",
   email: "string",
+  activo: boolean
+}
+```
+
+### Empleado
+```javascript
+{
+  id: "uuid",
+  hospitalId: "uuid",
+  nombres: "string",
+  apellidos: "string",
+  tipo: "LIMPIEZA" | "SEGURIDAD" | "RECEPCION" | "ADMINISTRATIVO" | "OTRO",
+  email: "string",
+  telefono: "string",
   activo: boolean
 }
 ```

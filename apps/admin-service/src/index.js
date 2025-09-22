@@ -41,6 +41,8 @@ const hospEspRouter = require('./presentation/routes/hospital-especialidad.route
 const medicosRouter = require('./presentation/routes/medico.routes');
 const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
 
+const empleadosRouter = require('./presentation/routes/empleado.routes');
+
 const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
 
 /* ------------ Rutas públicas ------------ */
@@ -58,6 +60,9 @@ app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
 // CRUD de médicos y asignación médico-especialidad bajo /medicos
 app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
 app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
+
+// CRUD de empleados bajo /empleados
+app.use('/empleados',      auth, requireRole('ADMIN_GLOBAL'), empleadosRouter);
 
 // Citas de admin bajo /citas
 app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);

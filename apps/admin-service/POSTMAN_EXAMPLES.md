@@ -104,6 +104,50 @@ Content-Type: application/json
 }
 ```
 
+### 8. Listar Empleados
+**GET** `http://localhost:3001/empleados`
+
+**Headers:**
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+```
+
+**Query Parameters (opcionales):**
+```
+?page=1&size=20&hospitalId=1&tipo=RECEPCION&q=Juan
+```
+
+### 9. Crear Empleado
+**POST** `http://localhost:3001/empleados`
+
+**Headers:**
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+```
+
+**Body (JSON):**
+```json
+{
+  "hospitalId": 1,
+  "nombres": "Juan",
+  "apellidos": "Pérez",
+  "tipo": "RECEPCION",
+  "email": "juan.perez@hospital.com",
+  "telefono": "555-0123"
+}
+```
+
+### 10. Estadísticas de Empleados
+**GET** `http://localhost:3001/empleados/stats/1`
+
+**Headers:**
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+```
+
 ## 👨‍⚕️ Endpoints de Médico (requieren token de médico)
 
 ### 8. Mis Citas
