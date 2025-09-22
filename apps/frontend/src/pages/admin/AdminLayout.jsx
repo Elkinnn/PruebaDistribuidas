@@ -17,8 +17,9 @@ import { logout } from "../../api/auth";
 
 const links = [
     { to: "/admin", label: "Dashboard", Icon: LayoutDashboard, end: true },
-    { to: "/admin/hospitales", label: "Hospitales", Icon: Building2 },
     { to: "/admin/especialidades", label: "Especialidades", Icon: Stethoscope },
+    { to: "/admin/hospitales", label: "Hospitales", Icon: Building2 },
+
     { to: "/admin/medicos", label: "Médicos", Icon: UserCog },
     { to: "/admin/citas", label: "Citas", Icon: CalendarClock },
     { to: "/admin/empleados", label: "Empleados", Icon: Users },

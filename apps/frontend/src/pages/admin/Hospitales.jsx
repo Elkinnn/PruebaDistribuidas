@@ -9,7 +9,9 @@ import {
     createHospital,
     updateHospital,
     deleteHospital,
+    getHospitalEspecialidades,
 } from "../../api/hospital";
+import { listEspecialidades } from "../../api/especialidad";
 
 export default function Hospitales() {
     const [rows, setRows] = useState([]);
@@ -27,16 +29,43 @@ export default function Hospitales() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [toDelete, setToDelete] = useState(null);
 
+    // especialidades disponibles
+    const [especialidades, setEspecialidades] = useState([]);
+
     async function load() {
         setLoading(true);
         const { items, total } = await listHospitals({ page, pageSize, q });
-        setRows(items);
+        
+        // Cargar especialidades para cada hospital
+        const hospitalsWithEspecialidades = await Promise.all(
+            items.map(async (hospital) => {
+                try {
+                    const especialidades = await getHospitalEspecialidades(hospital.id);
+                    return { ...hospital, especialidades };
+                } catch (error) {
+                    console.error(`Error loading especialidades for hospital ${hospital.id}:`, error);
+                    return { ...hospital, especialidades: [] };
+                }
+            })
+        );
+        
+        setRows(hospitalsWithEspecialidades);
         setTotal(total);
         setLoading(false);
     }
 
+    async function loadEspecialidades() {
+        try {
+            const { items } = await listEspecialidades({ page: 1, pageSize: 1000 }); // Cargar todas
+            setEspecialidades(items);
+        } catch (error) {
+            console.error('Error loading especialidades:', error);
+        }
+    }
+
     useEffect(() => {
         load();
+        loadEspecialidades();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, q]);
 
@@ -53,6 +82,25 @@ export default function Hospitales() {
         setModalOpen(false);
         setEditing(null);
         load();
+    }
+
+    async function handleEditClick(hospital) {
+        try {
+            // Cargar las especialidades del hospital
+            const especialidades = await getHospitalEspecialidades(hospital.id);
+            const hospitalWithEspecialidades = {
+                ...hospital,
+                especialidades: especialidades.map(esp => esp.id)
+            };
+            
+            setEditing(hospitalWithEspecialidades);
+            setModalOpen(true);
+        } catch (error) {
+            console.error('Error loading hospital especialidades:', error);
+            // Si falla, abrir el modal sin especialidades
+            setEditing(hospital);
+            setModalOpen(true);
+        }
     }
 
     // Abrir modal de confirmación
@@ -129,10 +177,7 @@ export default function Hospitales() {
             ) : (
                 <HospitalTable
                     items={rows}
-                    onEdit={(h) => {
-                        setEditing(h);
-                        setModalOpen(true);
-                    }}
+                    onEdit={handleEditClick}
                     onDelete={askDelete}
                 />
             )}
@@ -154,6 +199,7 @@ export default function Hospitales() {
                 }}
                 initialData={editing}
                 onSubmit={editing ? handleEdit : handleCreate}
+                especialidades={especialidades}
             />
 
             {/* Modal de confirmación de borrado */}

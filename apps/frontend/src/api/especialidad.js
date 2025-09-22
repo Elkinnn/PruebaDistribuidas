@@ -23,6 +23,14 @@ export async function createEspecialidad(data) {
         return response.data.data;
     } catch (error) {
         console.error('Error creating especialidad:', error);
+        
+        // Extraer mensaje de error más específico
+        if (error.response?.data?.message) {
+            const customError = new Error(error.response.data.message);
+            customError.status = error.response.status;
+            throw customError;
+        }
+        
         throw error;
     }
 }
@@ -36,6 +44,14 @@ export async function updateEspecialidad(id, data) {
         return response.data.data;
     } catch (error) {
         console.error('Error updating especialidad:', error);
+        
+        // Extraer mensaje de error más específico
+        if (error.response?.data?.message) {
+            const customError = new Error(error.response.data.message);
+            customError.status = error.response.status;
+            throw customError;
+        }
+        
         throw error;
     }
 }

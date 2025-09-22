@@ -49,7 +49,9 @@ export default function Especialidades() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo crear.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo crear la especialidad.";
+            setServerError(errorMessage);
         }
     }
 
@@ -61,7 +63,9 @@ export default function Especialidades() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo actualizar.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo actualizar la especialidad.";
+            setServerError(errorMessage);
         }
     }
 
