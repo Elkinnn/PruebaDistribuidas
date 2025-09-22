@@ -14,6 +14,7 @@ const updateMedicoSchema = Joi.object({
   nombres: Joi.string().max(100),
   apellidos: Joi.string().max(100),
   email: Joi.string().email().max(150),
+  password: Joi.string().min(6).max(100).allow(''), // permitir password vacío para mantener actual
   activo: Joi.boolean(),
 }).min(1);
 

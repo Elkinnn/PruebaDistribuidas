@@ -53,6 +53,11 @@ router.put('/:id', async (req, res) => {
     const { error, value } = updateMedicoSchema.validate(req.body, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
 
+    // Si el password está vacío, removerlo para no actualizar la contraseña
+    if (value.password === '') {
+      delete value.password;
+    }
+
     const item = await repo.update(req.params.id, value);
     if (!item) return res.status(404).json({ error: 'NOT_FOUND', message: 'Médico no encontrado' });
     res.json({ data: item });

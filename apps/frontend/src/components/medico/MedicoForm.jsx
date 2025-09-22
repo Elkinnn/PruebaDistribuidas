@@ -7,6 +7,7 @@ const empty = {
     nombres: "",
     apellidos: "",
     email: "",
+    password: "",
     activo: true,
 };
 
@@ -31,6 +32,7 @@ export default function MedicoForm({
                     nombres: initialData.nombres ?? "",
                     apellidos: initialData.apellidos ?? "",
                     email: initialData.email ?? "",
+                    password: "", // No mostrar password en edición por seguridad
                     activo: !!initialData.activo,
                 }
                 : empty
@@ -48,8 +50,14 @@ export default function MedicoForm({
             const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim());
             if (!ok) e.email = "Formato de email inválido.";
         }
+        // Validar password: obligatorio en creación, opcional en edición
+        if (!isEdit && !values.password.trim()) {
+            e.password = "La contraseña es obligatoria.";
+        } else if (values.password.trim() && values.password.length < 6) {
+            e.password = "La contraseña debe tener al menos 6 caracteres.";
+        }
         return e;
-    }, [values]);
+    }, [values, isEdit]);
 
     const isInvalid = Object.keys(errors).length > 0;
 
@@ -62,6 +70,7 @@ export default function MedicoForm({
             nombres: true,
             apellidos: true,
             email: true,
+            password: true,
         });
     }
     function handleSubmit(e) {
@@ -192,6 +201,32 @@ export default function MedicoForm({
                     {touched.email && errors.email ? (
                         <p className="mt-1 text-xs text-rose-600">{errors.email}</p>
                     ) : null}
+                </div>
+
+                {/* Password */}
+                <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Contraseña {!isEdit && <span className="text-rose-600">*</span>}
+                    </label>
+                    <input
+                        type="password"
+                        value={values.password}
+                        onChange={(e) => setField("password", e.target.value)}
+                        onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                        placeholder={isEdit ? "Dejar vacío para mantener la actual" : "Mínimo 6 caracteres"}
+                        className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${touched.password && errors.password
+                                ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                                : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
+                            }`}
+                    />
+                    {touched.password && errors.password ? (
+                        <p className="mt-1 text-xs text-rose-600">{errors.password}</p>
+                    ) : null}
+                    {isEdit && (
+                        <p className="mt-1 text-xs text-slate-500">
+                            Deja vacío para mantener la contraseña actual
+                        </p>
+                    )}
                 </div>
 
                 {/* Activo */}

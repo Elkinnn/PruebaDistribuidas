@@ -117,12 +117,40 @@ app.use('/especialidades', async (req, res) => {
   }
 });
 
-app.use('/medicos', createProxyMiddleware({
-  target: ADMIN,
-  changeOrigin: true,
-  timeout: 30000,
-  onProxyReq: passAuthHeaders
-}));
+// Proxy para médicos usando axios directo
+app.use('/medicos', async (req, res) => {
+  try {
+    console.log(`[MEDICOS] ${req.method} ${req.url} -> ${ADMIN}/medicos${req.url}`);
+    
+    
+    const config = {
+      method: req.method,
+      url: `${ADMIN}/medicos${req.url}`,
+      headers: {
+        ...req.headers
+      },
+      timeout: 30000
+    };
+    
+    // Solo agregar data si hay body
+    if (req.body && Object.keys(req.body).length > 0) {
+      config.data = req.body;
+    }
+    
+    const response = await axios(config);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('[MEDICOS ERROR]', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ 
+        error: 'PROXY_ERROR', 
+        message: 'Error de conexión con el servicio de médicos' 
+      });
+    }
+  }
+});
 
 app.use('/empleados', createProxyMiddleware({
   target: ADMIN,
