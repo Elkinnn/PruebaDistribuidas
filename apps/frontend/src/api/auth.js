@@ -1,23 +1,26 @@
-const MOCK_USERS = [
+const MOCK_ADMINS = [
   {
     id: "u-admin-1",
     email: "admin@clinix.ec",
-    password: "Clinix123",      // demo
+    password: "Clinix123",  // demo
     rol: "ADMIN_GLOBAL",
   },
+];
+
+const MOCK_MEDICOS = [
   {
     id: "u-medico-1",
     email: "medico@clinix.ec",
-    password: "Clinix123",      // demo
+    password: "Clinix123",  // demo
     rol: "MEDICO",
   },
 ];
 
-export async function loginRequest({ email, password }) {
-  // pequeño delay para UX
-  await new Promise((r) => setTimeout(r, 500));
+const delay = (ms = 500) => new Promise((r) => setTimeout(r, ms));
 
-  const user = MOCK_USERS.find(
+export async function loginAdminRequest({ email, password }) {
+  await delay();
+  const user = MOCK_ADMINS.find(
     (u) => u.email.toLowerCase() === String(email).toLowerCase()
   );
   if (!user || user.password !== password) {
@@ -25,11 +28,24 @@ export async function loginRequest({ email, password }) {
     error.response = { data: { message: "Correo o contraseña incorrectos." } };
     throw error;
   }
-
-  // token de mentira para simular sesión
   const token = btoa(`${user.id}.${user.rol}.${Date.now()}`);
   const { password: _omit, ...safeUser } = user;
+  return { token, user: safeUser };
+}
 
+// Opcional: para un login de médicos en otra ruta/pantalla distinta
+export async function loginMedicoRequest({ email, password }) {
+  await delay();
+  const user = MOCK_MEDICOS.find(
+    (u) => u.email.toLowerCase() === String(email).toLowerCase()
+  );
+  if (!user || user.password !== password) {
+    const error = new Error("Credenciales inválidas");
+    error.response = { data: { message: "Correo o contraseña incorrectos." } };
+    throw error;
+  }
+  const token = btoa(`${user.id}.${user.rol}.${Date.now()}`);
+  const { password: _omit, ...safeUser } = user;
   return { token, user: safeUser };
 }
 

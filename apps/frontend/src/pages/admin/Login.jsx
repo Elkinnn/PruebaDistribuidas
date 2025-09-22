@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
-import Input from "../components/ui/Input";
-import Logo from "../components/ui/Logo";
-import { loginRequest } from "../api/auth";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import Input from "../../components/ui/Input";
+import Logo from "../../components/ui/Logo";
+import { loginAdminRequest } from "../../api/auth";
 
-export default function Login() {
+export default function AdminLogin() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,14 +28,13 @@ export default function Login() {
     try {
       setLoading(true);
       setServerError("");
-      const { token, user } = await loginRequest({ email, password });
+      const { token, user } = await loginAdminRequest({ email, password });
 
       localStorage.setItem("clinix_token", token);
       localStorage.setItem("clinix_user", JSON.stringify(user));
 
-      if (user?.rol === "ADMIN_GLOBAL") nav("/admin");
-      else if (user?.rol === "MEDICO") nav("/medico");
-      else nav("/");
+      // Este login es SOLO para admins
+      nav("/admin");
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -56,7 +55,7 @@ export default function Login() {
             Bienvenido a Clinix
           </h1>
           <p className="mt-3 max-w-md text-slate-600">
-            Plataforma de gestión hospitalaria para administradores y médicos.
+            Plataforma de gestión hospitalaria para administradores.
             Seguridad, trazabilidad y agilidad en cada atención.
           </p>
 
@@ -96,7 +95,7 @@ export default function Login() {
               label="Correo electrónico"
               type="email"
               autoComplete="email"
-              placeholder="tu-correo@clinix.com"
+              placeholder="admin@clinix.ec"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setTouched(true)}
