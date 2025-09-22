@@ -5,7 +5,12 @@ export async function listEspecialidades({ page = 1, pageSize = 8, q = "" } = {}
         const response = await apiClient.get('/especialidades', {
             params: { page, size: pageSize, q }
         });
-        return response.data;
+        
+        // Transformar respuesta del backend: { data, meta: { total } } -> { items, total }
+        return {
+            items: response.data.data || [],
+            total: response.data.meta?.total || 0
+        };
     } catch (error) {
         console.error('Error fetching especialidades:', error);
         throw error;
@@ -24,7 +29,10 @@ export async function createEspecialidad(data) {
 
 export async function updateEspecialidad(id, data) {
     try {
-        const response = await apiClient.put(`/especialidades/${id}`, data);
+        // Remover el id del data para evitar conflictos con la validación del backend
+        const { id: _, ...updateData } = data;
+        
+        const response = await apiClient.put(`/especialidades/${id}`, updateData);
         return response.data.data;
     } catch (error) {
         console.error('Error updating especialidad:', error);
