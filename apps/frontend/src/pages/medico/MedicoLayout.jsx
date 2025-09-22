@@ -168,6 +168,7 @@ export default function MedicoLayout() {
             </button>
           </div>
         </aside>
+        
 
         {/* ================= DRAWER móvil ================= */}
         {mobileOpen && (
