@@ -25,7 +25,7 @@ export default function MedicoCitaForm({
   subtitle = "Agenda una nueva consulta médica",
 }) {
   return (
-    <div className="bg-white rounded-2xl p-6 max-w-3xl w-full mx-4 overflow-hidden">
+    <div className="bg-white rounded-2xl p-6 max-w-3xl w-full  overflow-hidden">
       {/* Header con icono */}
       <div className="flex items-center mb-6">
         <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
