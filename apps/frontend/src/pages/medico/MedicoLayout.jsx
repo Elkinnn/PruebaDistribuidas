@@ -1,137 +1,257 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+// src/pages/medico/MedicoLayout.jsx
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  CalendarClock,
+  Stethoscope,
+  User,
+  LogOut,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import Logo from "../../components/ui/Logo";         // mismo Logo que usas en Admin
 import { logoutMedico } from "../../api/auth.medico";
+
+const links = [
+  { to: "/medico", label: "Dashboard", Icon: LayoutDashboard, end: true },
+  { to: "/medico/citas", label: "Citas", Icon: CalendarClock },
+  { to: "/medico/especialidades", label: "Especialidades", Icon: Stethoscope },
+  { to: "/medico/perfil", label: "Perfil", Icon: User },
+];
 
 export default function MedicoLayout() {
   const nav = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Anchos sincronizados con AdminLayout
+  const SIDEBAR_W = collapsed ? "w-20" : "w-64";
+  const SIDEBAR_W_PX = collapsed ? "80px" : "256px";
 
   useEffect(() => {
     const token = localStorage.getItem("clinix_token_medico");
     const userData = localStorage.getItem("clinix_user_medico");
-    
-    if (token && userData) {
-      try {
-        const userObj = JSON.parse(userData);
-        setUser(userObj);
-        // En modo mock, no necesitamos verificar con el servidor
-        setLoading(false);
-      } catch (error) {
-        // Datos corruptos, limpiar y redirigir
-        logoutMedico();
-        nav("/medico/login");
-      }
-    } else {
+
+    if (!token || !userData) {
+      setLoading(false);
+      nav("/medico/login", { replace: true });
+      return;
+    }
+
+    try {
+      setUser(JSON.parse(userData));
+    } catch {
+      logoutMedico();
+      nav("/medico/login", { replace: true });
+      return;
+    } finally {
       setLoading(false);
     }
   }, [nav]);
-
-  function handleLogout() {
-    logoutMedico();
-    nav("/medico/login");
-  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-slate-600">Cargando...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto" />
+          <p className="mt-2 text-sm text-slate-600">Cargando…</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    nav("/medico/login");
-    return null;
-  }
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-lg flex flex-col">
-        {/* Header del Sidebar */}
-        <div className="p-6 border-b border-slate-200">
-          <Link to="/medico" className="text-xl font-bold text-emerald-600">
-            Clinix Médico
-          </Link>
-        </div>
-        
-        {/* Información del Usuario */}
-        <div className="p-4 border-b border-slate-200">
-          <div className="text-sm text-slate-600">
-            <div className="font-medium text-slate-900">{user.nombre}</div>
-            <div className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full inline-block mt-1">
-              {user.especialidad}
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900">
+      {/* GRID base: header + contenido; en desktop agrega la col del sidebar */}
+      <div
+        className={`grid h-full grid-rows-[56px_1fr] grid-cols-1 md:[grid-template-columns:var(--sb)_1fr]`}
+        style={{ "--sb": SIDEBAR_W_PX }}
+      >
+        {/* ================= HEADER (igual que Admin) ================= */}
+        <header className="row-start-1 col-span-1 md:col-span-2 flex items-stretch border-b border-slate-200 bg-white/85 backdrop-blur">
+          {/* Izquierda: ancho del sidebar (Logo + toggle) */}
+          <div
+            className={`hidden md:flex items-center justify-between border-r border-slate-200 px-3 ${SIDEBAR_W}`}
+          >
+            {/* Puedes personalizar Logo para que diga Clinix Médico si tu componente lo soporta */}
+            <Logo compact={collapsed} />
+            <button
+              onClick={() => setCollapsed((s) => !s)}
+              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
+              title={collapsed ? "Expandir menú" : "Colapsar menú"}
+              aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+            >
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+          </div>
+
+          {/* Derecha: botón menú móvil + info rápida del médico */}
+          <div className="flex flex-1 items-center justify-between px-3">
+            <button
+              className="md:hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div className="ml-auto flex items-center gap-3 text-sm text-slate-600">
+              <span className="hidden sm:flex items-center gap-2">
+                <span className="font-medium text-slate-800">{user?.nombre}</span>
+                {user?.especialidad && (
+                  <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs">
+                    {user.especialidad}
+                  </span>
+                )}
+              </span>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Navegación */}
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            to="/medico"
-            className="flex items-center px-4 py-3 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-            </svg>
-            Dashboard
-          </Link>
-          
-          <Link
-            to="/medico/citas"
-            className="flex items-center px-4 py-3 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Citas
-          </Link>
-          
-          <Link
-            to="/medico/especialidades"
-            className="flex items-center px-4 py-3 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Especialidades
-          </Link>
-          
-          <Link
-            to="/medico/perfil"
-            className="flex items-center px-4 py-3 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Perfil
-          </Link>
-        </nav>
+        {/* ================= SIDEBAR desktop ================= */}
+        <aside
+          className={`row-start-2 col-start-1 hidden md:flex h-full flex-col border-r border-slate-200 bg-white/90 backdrop-blur ${SIDEBAR_W} transition-[width] duration-200 overflow-y-auto`}
+          aria-label="Menú médico"
+        >
+          {/* Tarjeta mini de perfil (solo cuando no está colapsado) */}
+          {!collapsed && (
+            <div className="px-3 pt-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="text-sm">
+                  <div className="font-semibold text-slate-900 truncate">{user?.nombre}</div>
+                  {user?.especialidad && (
+                    <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                      {user.especialidad}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Cerrar Sesión en la parte inferior */}
-        <div className="p-4 border-t border-slate-200">
-          <button
-            onClick={handleLogout}
-            className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-700 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Cerrar Sesión
-          </button>
-        </div>
-      </aside>
+          <nav className="mt-2 flex-1 space-y-1 px-2">
+            {links.map(({ to, label, Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                title={label}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium
+                   hover:bg-emerald-50 hover:text-emerald-700
+                   ${isActive ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200" : "text-slate-600"}`
+                }
+              >
+                <Icon className="shrink-0" size={18} />
+                <span className={`${collapsed ? "hidden" : "inline"} truncate`}>{label}</span>
+              </NavLink>
+            ))}
+          </nav>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+          <div className="border-t border-slate-200 px-2 pb-3 pt-1">
+            <button
+              onClick={() => {
+                logoutMedico();
+                nav("/medico/login", { replace: true });
+              }}
+              title="Cerrar sesión"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <LogOut size={18} />
+              <span className={`${collapsed ? "hidden" : "inline"}`}>Cerrar sesión</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* ================= DRAWER móvil ================= */}
+        {mobileOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/30 md:hidden"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              className="fixed inset-y-0 left-0 z-50 w-64 md:hidden"
+              role="dialog"
+              aria-label="Menú móvil médico"
+              onKeyDown={(e) => e.key === "Escape" && setMobileOpen(false)}
+            >
+              <div className="flex h-full flex-col border-r border-slate-200 bg-white/95 backdrop-blur overflow-y-auto">
+                <div className="flex items-center justify-between px-3 py-4">
+                  <Logo compact={false} />
+                  <button
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
+                    aria-label="Cerrar menú"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                </div>
+
+                {/* Perfil corto */}
+                <div className="px-3 pb-2">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-sm">
+                      <div className="font-semibold text-slate-900 truncate">{user?.nombre}</div>
+                      {user?.especialidad && (
+                        <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          {user.especialidad}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <nav className="mt-1 flex-1 space-y-1 px-2">
+                  {links.map(({ to, label, Icon, end }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      title={label}
+                      className={({ isActive }) =>
+                        `group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium
+                         hover:bg-emerald-50 hover:text-emerald-700
+                         ${isActive ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200" : "text-slate-600"}`
+                      }
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <Icon className="shrink-0" size={18} />
+                      <span className="truncate">{label}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+
+                <div className="border-t border-slate-200 px-2 pb-3 pt-1">
+                  <button
+                    onClick={() => {
+                      logoutMedico();
+                      nav("/medico/login", { replace: true });
+                    }}
+                    title="Cerrar sesión"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <LogOut size={18} />
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ================= CONTENIDO ================= */}
+        <main className="row-start-2 col-start-1 md:col-start-2 overflow-y-auto p-4 md:p-6">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

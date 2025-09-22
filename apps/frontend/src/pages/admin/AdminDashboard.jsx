@@ -1,5 +1,10 @@
 import {
-    Building2, Stethoscope, UsersRound, CalendarDays, TrendingUp, Activity
+    Building2,
+    Stethoscope,
+    Users,          
+    CalendarDays,
+    TrendingUp,
+    Activity,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -7,7 +12,7 @@ export default function AdminDashboard() {
     const kpis = [
         { label: "Hospitales", value: 6, delta: "+1", Icon: Building2, color: "text-emerald-600" },
         { label: "Médicos", value: 42, delta: "+5", Icon: Stethoscope, color: "text-sky-600" },
-        { label: "Pacientes", value: 1280, delta: "+32", Icon: UsersRound, color: "text-indigo-600" },
+        { label: "Pacientes", value: 1280, delta: "+32", Icon: Users, color: "text-indigo-600" }, // <- aquí
         { label: "Citas hoy", value: 87, delta: "-3", Icon: CalendarDays, color: "text-amber-600" },
     ];
 
@@ -57,7 +62,10 @@ export default function AdminDashboard() {
                             <div className={`rounded-lg bg-slate-50 p-2 ${color}`}>
                                 <Icon size={18} />
                             </div>
-                            <span className={`text-xs font-medium ${delta.startsWith("+") ? "text-emerald-600" : "text-rose-600"}`}>
+                            <span
+                                className={`text-xs font-medium ${delta.startsWith("+") ? "text-emerald-600" : "text-rose-600"
+                                    }`}
+                            >
                                 {delta}
                             </span>
                         </div>
@@ -73,7 +81,9 @@ export default function AdminDashboard() {
             <section className="grid gap-4 lg:grid-cols-3">
                 {/* Ocupación por especialidad */}
                 <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-1">
-                    <h3 className="mb-3 text-sm font-semibold text-slate-800">Ocupación por especialidad</h3>
+                    <h3 className="mb-3 text-sm font-semibold text-slate-800">
+                        Ocupación por especialidad
+                    </h3>
                     <div className="space-y-3">
                         {ocupacion.map((o) => (
                             <div key={o.nombre}>
@@ -102,7 +112,7 @@ export default function AdminDashboard() {
                         {semana.map((d) => (
                             <div key={d.d} className="flex flex-col items-center">
                                 <div
-                                    className="w-8 rounded-md bg-indigo-500 transition-all"
+                                    className="w-8 rounded-md bg-indigo-500/80 transition-all"
                                     style={{ height: `${Math.max(12, d.v)}px` }}
                                     title={`${d.v} citas`}
                                 />
