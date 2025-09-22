@@ -4,46 +4,53 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Modal from "../../components/ui/Modal";
 import MedicoCitaForm from "../../components/medico_cita/MedicoCitaForm";
+// Si tu API está en src/api/cita.js cambia la import a "../../api/cita"
 import { listCitas, createCita, updateCita, deleteCita } from "../../api/medico_cita";
 
 function isoToLocal(dt) {
   if (!dt) return "";
-  const d = new Date(dt); if (isNaN(d)) return "";
-  const p = (n)=>String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  const d = new Date(dt);
+  if (isNaN(d)) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 export default function Citas() {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null);      // objeto cita o null
+  const [editing, setEditing] = useState(null); // objeto cita o null
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState(""); // 👈 mensaje para <MedicoCitaForm />
   const [q, setQ] = useState("");
 
   // bloquear scroll del body con modal abierto
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
-  const emptyForm = useMemo(() => ({
-    medicoId: "",
-    inicio: "",
-    fin: "",
-    motivo: "",
-    estado: "PROGRAMADA",
-    paciente: {
-      nombres: "",
-      apellidos: "",
-      documento: "",
-      telefono: "",
-      email: "",
-      fechaNacimiento: "",
-      sexo: "masculino",
-    },
-  }), []);
+  const emptyForm = useMemo(
+    () => ({
+      medicoId: "",
+      inicio: "",
+      fin: "",
+      motivo: "",
+      estado: "PROGRAMADA",
+      paciente: {
+        nombres: "",
+        apellidos: "",
+        documento: "",
+        telefono: "",
+        email: "",
+        fechaNacimiento: "",
+        sexo: "masculino",
+      },
+    }),
+    []
+  );
   const [form, setForm] = useState(emptyForm);
 
   // mock de médicos (cámbialo por tu API)
@@ -58,14 +65,18 @@ export default function Citas() {
     try {
       const res = await listCitas({ q, pageSize: 1000 });
       setItems(res.items);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(() => { load(); }, [q]);
+  useEffect(() => {
+    load();
+  }, [q]);
 
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
-    setMsg("");
+    setMsg(""); // limpiar banner
     setOpen(true);
   }
   function openEdit(cita) {
@@ -86,7 +97,7 @@ export default function Citas() {
         sexo: cita.paciente?.sexo || "masculino",
       },
     });
-    setMsg("");
+    setMsg(""); // limpiar banner
     setOpen(true);
   }
 
@@ -106,7 +117,9 @@ export default function Citas() {
       setForm(emptyForm);
       await load();
     } catch (err) {
+      // mostrará, por ejemplo: "La fecha de fin debe ser mayor que la de inicio."
       setMsg(err.message || "Error al guardar.");
+      // NO cerramos el modal para que se vea el banner de error
     }
   }
 
@@ -114,7 +127,9 @@ export default function Citas() {
     try {
       await deleteCita(id); // bloquea si está PROGRAMADA
       await load();
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   return (
@@ -132,23 +147,32 @@ export default function Citas() {
             placeholder="Buscar (paciente, motivo, estado)…"
             className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
           />
-          <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">Nueva Cita</Button>
+          <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
+            Nueva Cita
+          </Button>
         </div>
       </div>
 
       {/* Lista */}
       <div className="grid gap-4">
         {loading && <p className="text-slate-500 text-sm">Cargando…</p>}
-        {!loading && items.length === 0 && <Card className="p-6"><p className="text-slate-500 text-sm">No hay citas.</p></Card>}
+        {!loading && items.length === 0 && (
+          <Card className="p-6">
+            <p className="text-slate-500 text-sm">No hay citas.</p>
+          </Card>
+        )}
         {items.map((c) => {
           const nombre = `${c.paciente?.nombres || ""} ${c.paciente?.apellidos || ""}`.trim();
-          const i = new Date(c.inicio), f = new Date(c.fin);
+          const i = new Date(c.inicio),
+            f = new Date(c.fin);
           const fecha = i.toLocaleDateString();
-          const hora  = `${i.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} — ${f.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`;
+          const hora = `${i.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — ${f.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
           const badge =
-            c.estado === "PROGRAMADA" ? "bg-blue-100 text-blue-700" :
-            c.estado === "ATENDIDA"   ? "bg-gray-200 text-gray-700" :
-                                        "bg-rose-100 text-rose-700";
+            c.estado === "PROGRAMADA"
+              ? "bg-blue-100 text-blue-700"
+              : c.estado === "ATENDIDA"
+              ? "bg-gray-200 text-gray-700"
+              : "bg-rose-100 text-rose-700";
           return (
             <Card key={c.id} className="p-6">
               <div className="flex items-center justify-between gap-4">
@@ -157,11 +181,21 @@ export default function Citas() {
                   <p className="text-slate-600">{c.motivo || "—"}</p>
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-500">
                     <span className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"/></svg>
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                        />
+                      </svg>
                       {fecha}
                     </span>
                     <span className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"/></svg>
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        />
+                      </svg>
                       {hora}
                     </span>
                   </div>
@@ -171,8 +205,15 @@ export default function Citas() {
                     {c.estado.charAt(0) + c.estado.slice(1).toLowerCase()}
                   </span>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(c)}>Editar</Button>
-                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(c.id)}>
+                    <Button size="sm" variant="outline" onClick={() => openEdit(c)}>
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(c.id)}
+                    >
                       Eliminar
                     </Button>
                   </div>
@@ -184,17 +225,18 @@ export default function Citas() {
       </div>
 
       {/* Modal con formulario reusable (sin scroll visual) */}
-      <Modal open={open} onClose={() => setOpen(false)} width="max-w-3xl">
+      <Modal open={open} onClose={() => { setOpen(false); setMsg(""); }} width="max-w-3xl">
         <MedicoCitaForm
           form={form}
           setForm={setForm}
           medicos={medicos}
-          locked={Boolean(editing)}             // al editar: solo Estado y Fin
-          onCancel={() => setOpen(false)}
+          locked={Boolean(editing)} // al editar: solo Estado y Fin
+          onCancel={() => { setOpen(false); setMsg(""); }}
           onSubmit={handleSubmit}
           submitLabel="Guardar"
           title={editing ? "Editar Cita" : "Nueva Cita"}
           subtitle="Agenda una nueva consulta médica"
+          msg={msg} // 👈 pasamos el mensaje para que se muestre en el banner
         />
       </Modal>
     </div>

@@ -23,11 +23,12 @@ export default function MedicoCitaForm({
   submitLabel = "Guardar",
   title = "Nueva Cita",
   subtitle = "Agenda una nueva consulta médica",
+  msg,                            // 👈 RECIBIMOS EL MENSAJE
 }) {
   return (
-    <div className="bg-white rounded-2xl p-6 max-w-3xl w-full  overflow-hidden">
+    <div className="bg-white rounded-2xl p-6 max-w-3xl w-full overflow-hidden">
       {/* Header con icono */}
-      <div className="flex items-center mb-6">
+      <div className="flex items-center mb-4">
         <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#2563eb">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zM4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9H4z"/>
@@ -38,6 +39,20 @@ export default function MedicoCitaForm({
           <p className="text-slate-600">{subtitle}</p>
         </div>
       </div>
+
+      {/* Banner de error/éxito */}
+      {msg && (
+        <div
+          className={`mb-4 rounded-lg p-3 text-sm ${
+            msg.toLowerCase().includes("exitosamente")
+              ? "bg-green-50 text-green-700 ring-1 ring-green-200"
+              : "bg-red-50 text-red-700 ring-1 ring-red-200"
+          }`}
+          aria-live="polite"
+        >
+          {msg}
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Datos del paciente */}
