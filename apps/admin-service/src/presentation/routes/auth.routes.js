@@ -5,22 +5,15 @@ const users = require('../../infrastructure/persistence/usuario.repo');
 
 const router = Router();
 
-/* POST /auth/login  { email, password, tipo } */
+/* POST /auth/login  { email, password } */
 router.post('/auth/login', async (req, res) => {
-  const { email, password, tipo } = req.body || {};
+  const { email, password } = req.body || {};
   
   // Validaciones básicas
   if (!email || !password) {
     return res.status(400).json({ 
       error: 'VALIDATION_ERROR', 
       message: 'email y password son requeridos' 
-    });
-  }
-
-  if (!tipo || !['admin', 'medico'].includes(tipo)) {
-    return res.status(400).json({ 
-      error: 'VALIDATION_ERROR', 
-      message: 'tipo debe ser "admin" o "medico"' 
     });
   }
 
@@ -34,12 +27,11 @@ router.post('/auth/login', async (req, res) => {
       });
     }
 
-    // Verificar que el tipo de usuario coincida
-    const expectedRole = tipo === 'admin' ? 'ADMIN_GLOBAL' : 'MEDICO';
-    if (user.rol !== expectedRole) {
+    // Solo permitir login de administradores
+    if (user.rol !== 'ADMIN_GLOBAL') {
       return res.status(401).json({ 
         error: 'UNAUTHORIZED', 
-        message: `Acceso denegado. Este login es para ${tipo}s` 
+        message: 'Acceso denegado. Solo administradores pueden acceder' 
       });
     }
 
@@ -52,34 +44,26 @@ router.post('/auth/login', async (req, res) => {
       });
     }
 
-    // Generar token con información específica del tipo
+    // Generar token
     const tokenPayload = { 
       id: user.id, 
       email: user.email, 
-      rol: user.rol,
-      tipo: tipo
+      rol: user.rol
     };
 
     const token = sign(tokenPayload);
     
-    // Respuesta específica según el tipo
+    // Respuesta
     const response = {
       success: true,
       token,
       user: {
         id: user.id,
         email: user.email,
-        rol: user.rol,
-        tipo: tipo
+        rol: user.rol
       },
-      message: `Login exitoso como ${tipo}`
+      message: 'Login exitoso como administrador'
     };
-
-    // Si es médico, incluir información adicional del médico
-    if (tipo === 'medico' && user.medicoId) {
-      // Aquí podrías agregar información del médico si la necesitas
-      response.user.medicoId = user.medicoId;
-    }
 
     res.json(response);
 

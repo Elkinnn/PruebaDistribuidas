@@ -14,8 +14,7 @@ Content-Type: application/json
 ```json
 {
   "email": "admin@test.com",
-  "password": "admin123",
-  "tipo": "admin"
+  "password": "admin123"
 }
 ```
 
@@ -27,47 +26,13 @@ Content-Type: application/json
   "user": {
     "id": "uuid-del-admin",
     "email": "admin@test.com",
-    "rol": "ADMIN_GLOBAL",
-    "tipo": "admin"
+    "rol": "ADMIN_GLOBAL"
   },
-  "message": "Login exitoso como admin"
+  "message": "Login exitoso como administrador"
 }
 ```
 
-### 2. Login Médico
-**POST** `http://localhost:3001/auth/login`
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Body (JSON):**
-```json
-{
-  "email": "medico@test.com",
-  "password": "medico123",
-  "tipo": "medico"
-}
-```
-
-**Respuesta exitosa:**
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "uuid-del-medico",
-    "email": "medico@test.com",
-    "rol": "MEDICO",
-    "tipo": "medico",
-    "medicoId": "uuid-del-medico"
-  },
-  "message": "Login exitoso como medico"
-}
-```
-
-### 3. Validar Token
+### 2. Validar Token
 **POST** `http://localhost:3001/auth/validate-token`
 
 **Headers:**
@@ -175,9 +140,8 @@ Content-Type: application/json
 **POST** `http://localhost:3001/auth/login`
 ```json
 {
-  "email": "admin@test.com",
-  "password": "admin123"
-  // Falta "tipo"
+  "email": "admin@test.com"
+  // Falta "password"
 }
 ```
 
@@ -185,7 +149,7 @@ Content-Type: application/json
 ```json
 {
   "error": "VALIDATION_ERROR",
-  "message": "tipo debe ser \"admin\" o \"medico\""
+  "message": "email y password son requeridos"
 }
 ```
 
@@ -194,8 +158,7 @@ Content-Type: application/json
 ```json
 {
   "email": "admin@test.com",
-  "password": "password-incorrecta",
-  "tipo": "admin"
+  "password": "password-incorrecta"
 }
 ```
 
@@ -207,13 +170,12 @@ Content-Type: application/json
 }
 ```
 
-### Error de Tipo Incorrecto
+### Error de Acceso No Autorizado
 **POST** `http://localhost:3001/auth/login`
 ```json
 {
-  "email": "medico@test.com",
-  "password": "medico123",
-  "tipo": "admin"  // Médico intentando login de admin
+  "email": "usuario@test.com",
+  "password": "password123"  // Usuario que no es administrador
 }
 ```
 
@@ -221,7 +183,7 @@ Content-Type: application/json
 ```json
 {
   "error": "UNAUTHORIZED",
-  "message": "Acceso denegado. Este login es para admins"
+  "message": "Acceso denegado. Solo administradores pueden acceder"
 }
 ```
 
@@ -241,21 +203,6 @@ Authorization: Bearer token-invalido
 }
 ```
 
-### Error de Permisos Insuficientes
-**GET** `http://localhost:3001/hospitales`
-
-**Headers:**
-```
-Authorization: Bearer [token-de-medico]  // Médico intentando acceder a ruta de admin
-```
-
-**Respuesta:**
-```json
-{
-  "error": "FORBIDDEN",
-  "message": "Permisos insuficientes"
-}
-```
 
 ## 📋 Colección de Postman
 
@@ -283,30 +230,7 @@ Puedes importar esta colección en Postman:
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"admin123\",\n  \"tipo\": \"admin\"\n}"
-            },
-            "url": {
-              "raw": "http://localhost:3001/auth/login",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "3001",
-              "path": ["auth", "login"]
-            }
-          }
-        },
-        {
-          "name": "Login Médico",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"medico@test.com\",\n  \"password\": \"medico123\",\n  \"tipo\": \"medico\"\n}"
+              "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
               "raw": "http://localhost:3001/auth/login",

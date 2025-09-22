@@ -42,7 +42,6 @@ const medicosRouter = require('./presentation/routes/medico.routes');
 const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
 
 const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
-const citaMedicoRouter = require('./presentation/routes/cita.medico.routes');
 
 /* ------------ Rutas públicas ------------ */
 // Login (no requiere token)
@@ -62,10 +61,6 @@ app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidad
 
 // Citas de admin bajo /citas
 app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
-
-/* ------------ Rutas protegidas (MÉDICO) ------------ */
-// Rutas propias del médico bajo /mis-citas
-app.use('/mis-citas',      auth, requireRole('MEDICO'),        citaMedicoRouter);
 
 /* ------------ 404 y errores ------------ */
 app.use((_req, res) => {
