@@ -1,53 +1,92 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const { createProxyMiddleware } = require('http-proxy-middleware');
 require('dotenv').config();
+const express = require('express');
+const morgan = require('morgan');
+const cors = require('cors');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const axios = require('axios');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(helmet());
+// middlewares
+app.use(morgan('dev'));
 app.use(cors());
-app.use(morgan('combined'));
 app.use(express.json());
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+// targets
+const ADMIN = process.env.ADMIN_SERVICE_URL || 'http://localhost:3001';
+
+// Ruta específica para login - usando axios en lugar de proxy
+app.post('/auth/login', async (req, res) => {
+  try {
+    console.log(`[LOGIN] Proxying to: ${ADMIN}/auth/login`);
+    const response = await axios.post(`${ADMIN}/auth/login`, req.body, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...req.headers
+      },
+      timeout: 30000
+    });
+    
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('[LOGIN ERROR]', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ 
+        error: 'CONNECTION_ERROR', 
+        message: 'Error de conexión con el servicio backend' 
+      });
+    }
+  }
 });
 
-// Proxy routes
-app.use('/api/admin', createProxyMiddleware({
-  target: process.env.ADMIN_SERVICE_URL || 'http://localhost:3001',
+// Proxy simple para el resto de rutas
+app.use('/hospitales', createProxyMiddleware({
+  target: ADMIN,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/admin': ''
-  }
+  timeout: 30000
 }));
 
-app.use('/api/medico', createProxyMiddleware({
-  target: process.env.MEDICO_SERVICE_URL || 'http://localhost:3002',
+app.use('/especialidades', createProxyMiddleware({
+  target: ADMIN,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/medico': ''
-  }
+  timeout: 30000
 }));
 
-// Serve frontend (en producción)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('../apps/frontend/build'));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../apps/frontend/build/index.html'));
+app.use('/medicos', createProxyMiddleware({
+  target: ADMIN,
+  changeOrigin: true,
+  timeout: 30000
+}));
+
+app.use('/empleados', createProxyMiddleware({
+  target: ADMIN,
+  changeOrigin: true,
+  timeout: 30000
+}));
+
+app.use('/citas', createProxyMiddleware({
+  target: ADMIN,
+  changeOrigin: true,
+  timeout: 30000
+}));
+
+// health del gateway
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    adminService: ADMIN,
+    medicoService: null
   });
-}
+});
 
+// 404 del gateway
+app.use((_req, res) => res.status(404).json({ error: 'NOT_FOUND_GATEWAY' }));
+
+// arranque
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Gateway running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Admin service: http://localhost:${PORT}/api/admin`);
-  console.log(`🔗 Medico service: http://localhost:${PORT}/api/medico`);
+  console.log(`API Gateway escuchando en :${PORT}`);
+  console.log(`→ ADMIN_SERVICE_URL: ${ADMIN}`);
 });

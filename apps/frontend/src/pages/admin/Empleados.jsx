@@ -203,10 +203,10 @@ export default function Empleados() {
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota mock */}
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {/* Nota de conexión */}
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 <AlertTriangle size={14} />
-                Datos en localStorage (mock). Luego conectamos al backend real.
+                Datos conectados al backend real a través del API Gateway.
             </div>
         </div>
     );

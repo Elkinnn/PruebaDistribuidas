@@ -12,7 +12,7 @@ import Empleados from "./pages/admin/Empleados";
 
 // Protección de rutas según rol
 function Protected({ roles, children }) {
-  const token = localStorage.getItem("clinix_token");
+  const token = localStorage.getItem("authToken");
   const user = JSON.parse(localStorage.getItem("clinix_user") || "null");
 
   if (!token || !user) return <Navigate to="/admin/login" replace />;
