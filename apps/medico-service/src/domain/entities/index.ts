@@ -1,13 +1,15 @@
-import { Color } from "./color.entity";
-import { Marca } from "./marca.entity";
-import { Modelo } from "./modelo.entity";
-import { Vehiculo } from "./vehiculo.entity";
+import { Cita } from "./cita.entity"
+import { Hospital } from "./hospital.entity"
+import { Medico } from "./medico.entity"
+import { Paciente } from "./paciente.entity"
+import { Usuario } from "./usuario.model"
 
 const Entities = [
-    Color,
-    Marca,
-    Modelo,
-    Vehiculo
+    Hospital,
+    Medico,
+    Paciente,
+    Usuario,
+    Cita    
 ]
 
 export default Entities

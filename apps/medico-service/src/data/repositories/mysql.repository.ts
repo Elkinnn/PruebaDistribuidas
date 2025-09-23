@@ -28,7 +28,12 @@ export class MySQLRepository<T extends ObjectLiteral> extends IDatabaseRepositor
             relations: relations
         })
     }
-
+    public findBy(where: Partial<T>, relations?: string[]): Promise<T[] | null> {
+        return this.datasource.find({
+            where: where,
+            relations: relations
+        })
+    }
     public async create(created: T): Promise<[boolean, CustomError?]> {
         try {
             const flag = !!await this.datasource.save(created);

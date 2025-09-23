@@ -1,11 +1,14 @@
-import { ColorModel } from "./color.model";
-import { MarcaModel } from "./marca.model";
-import { ModeloModel } from "./modelo.model";
-import { VehiculoModel } from "./vehiculo.model";
+import { CitaModel } from "./cita.model"
+import { HospitalModel } from "./hospital.model"
+import { MedicoModel } from "./medico.model"
+import { PacienteModel } from "./paciente.model"
+import { UsuarioModel } from "./usuario.model"
+
 const Models = [
-    ModeloModel,
-    ColorModel,
-    MarcaModel,
-    VehiculoModel
+    HospitalModel,
+    MedicoModel,
+    UsuarioModel,
+    PacienteModel,
+    CitaModel,
 ]
 export default Models

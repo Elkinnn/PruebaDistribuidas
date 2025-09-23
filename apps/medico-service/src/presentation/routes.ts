@@ -3,6 +3,7 @@ import { ColorRoutes } from "./routes/colores/routes";
 import { VehiculoRoutes } from "./routes/vehiculos/routes";
 import { MarcaRoutes } from "./routes/marcas/routes";
 import { ModeloRoutes } from "./routes/modelos/routes";
+import { LoginRoutes } from "./routes/login/routes";
 
 export class AppRoutes {
     constructor() { }
@@ -20,6 +21,7 @@ export class AppRoutes {
         router.use('/marca', MarcaRoutes.routes)
         router.use('/modelo', ModeloRoutes.routes)
         router.use('/vehiculo', VehiculoRoutes.routes)
+        router.use('/login', LoginRoutes.routes)
         return router;
     }
 }

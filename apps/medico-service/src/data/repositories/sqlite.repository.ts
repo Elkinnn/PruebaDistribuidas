@@ -29,6 +29,12 @@ export class SQLiteRepository<T extends ObjectLiteral> extends IDatabaseReposito
         })
     }
 
+    public findBy(where: Partial<T>, relations?: string[]): Promise<T[] | null> {
+        return this.datasource.find({
+            where: where,
+            relations: relations
+        })
+    }
 
     public async create(created: T): Promise<[boolean, CustomError?]> {
         try {

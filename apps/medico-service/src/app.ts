@@ -1,6 +1,7 @@
 import { envs } from "./config/envs"
 import Models from "./data/models"
 import { MySQLDatabase } from "./data/mysql/mysql.database"
+import { SQLiteDatabase } from "./data/sqlite/sqlite.database"
 import { GlobalDatabase } from "./infraestructure/datasource/datasource.global"
 import { AppRoutes } from "./presentation/routes"
 import { Server } from "./presentation/server"
@@ -11,11 +12,8 @@ import { Server } from "./presentation/server"
 })()
 
 async function main() {
-    const database = new MySQLDatabase({
+    const database = new SQLiteDatabase({
         database: envs.MYSQL_DB,
-        password: envs.MYSQL_PASSWORD ?? '',
-        port: envs.MYSQL_PORT,
-        username: envs.MYSQL_USER,
         entities: Models
     })
     await GlobalDatabase.getInstance(database).database.connect()

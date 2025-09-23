@@ -15,6 +15,10 @@ export class EntityRepository<Entity> {
         const model = await this.datasource.findById(id, relations)
         return model ? this.mapper.toDomain(model) : null
     }
+    public async findBy(where:Partial<Entity>, relations?: string[]) : Promise<Entity[] | null> {
+        const models = await this.datasource.findBy(where, relations)
+        return models ? models.map(this.mapper.toDomain) : null
+    }
     public async create(created: Entity): Promise<boolean | Error> {
         const entity = this.mapper.toModel(created)
         const [result, error] = await this.datasource.create(entity)
