@@ -1,18 +1,18 @@
 import { Request, Response } from "express";
-import VehiculoUseCases from "../../../domain/use-cases/vehiculos";
-import { VehiculoMapper } from "../../../infraestructure/mapper/vehiculo.mapper";
+import { CRUDCitas } from "../../../domain/use-cases/citas/crud.usecase";
 import { CustomError } from "../../../domain/errors/error.entity";
+import { CitaMapper } from "../../../infraestructure/mapper/cita.mapper";
 
-export class VehiculoController {
+export class CitaController {
     constructor(
-        private readonly usecase = new VehiculoUseCases.CRUD()
+        private readonly usecase = new CRUDCitas()
     ) {
     }
 
     getAll = async (req: Request, res: Response) => {
         try {
-            const vehiculos = await this.usecase.getAll()
-            res.json(vehiculos)
+            const Citas = await this.usecase.getAll()
+            res.json(Citas)
         } catch (error) {
             res.json(error)
         }
@@ -22,8 +22,8 @@ export class VehiculoController {
         try {
             const { id } = req.params
             const _id = parseInt(id)
-            const vehiculo = await this.usecase.get(_id)
-            res.json(vehiculo)
+            const Cita = await this.usecase.get(_id)
+            res.json(Cita)
         } catch (error) {
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error)
@@ -34,9 +34,9 @@ export class VehiculoController {
 
     create = async (req: Request, res: Response) => {
         try {
-            const entity = new VehiculoMapper().toDomain(req.body)
-            const vehiculos = await this.usecase.create(entity)
-            res.json(vehiculos)
+            const entity = new CitaMapper().toDomain(req.body)
+            const Citas = await this.usecase.create(entity)
+            res.json(Citas)
         } catch (error) {
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error)
@@ -46,20 +46,20 @@ export class VehiculoController {
         }
     }
 
-    update = async (req: Request, res: Response) => {
-        try {
-            const { id } = req.params
-            const _id = parseInt(id)
-            const updated = await this.usecase.update(_id, req.body)
-            res.json(updated)
-        } catch (error) {
-            if (error instanceof CustomError) {
-                res.status(error.statusCode).json(error)
-                return
-            }
-            res.status(500).json({ error: error })
-        }
-    }
+    // update = async (req: Request, res: Response) => {
+    //     try {
+    //         const { id } = req.params
+    //         const _id = parseInt(id)
+    //         const updated = await this.usecase.update(_id, req.body)
+    //         res.json(updated)
+    //     } catch (error) {
+    //         if (error instanceof CustomError) {
+    //             res.status(error.statusCode).json(error)
+    //             return
+    //         }
+    //         res.status(500).json({ error: error })
+    //     }
+    // }
 
     delete = async (req: Request, res: Response) => {
         try {

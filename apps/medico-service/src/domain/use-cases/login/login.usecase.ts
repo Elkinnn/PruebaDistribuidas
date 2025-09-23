@@ -25,20 +25,18 @@ export class LoginUseCase {
     this.repository = new EntityRepository<Usuario>(datasource, mapper);
   }
 
-  public async JWTlogin(email: string, password: string): Promise<LoginResponse> {
+  public async JWTlogin(email: string, password: string): Promise<LoginResponse> {     
     const usuarios = await this.repository.findBy({ email: email });
-    if (!usuarios) {
+    if (!!!usuarios) {
       throw new CustomError(401, "Credenciales inválidas", null);
     }
-    if (usuarios.length > 1) {
-      throw new CustomError(400, "Credenciales inválidas", null);
+    if (usuarios.length != 1) {
+      throw new CustomError(400, "Usuario encontrados", null);
     }
-    const usuario = usuarios[1]
-
+    const usuario = usuarios[0]
     if (usuario.password !== password) {
       throw new CustomError(401, "Credenciales inválidas", null);
     }
-
     const payload = {
       id: usuario.id,
       rol: usuario.rol,

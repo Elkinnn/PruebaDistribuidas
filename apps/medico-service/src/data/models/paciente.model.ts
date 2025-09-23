@@ -11,13 +11,13 @@ export class PacienteModel {
     @JoinColumn({ name: "hospitalId" })
     hospital!: HospitalModel;
 
-    @Column()
-    hospitalId!: string;
+    @Column({ type: "int" })
+    hospitalId!: number;
 
-    @Column()
+    @Column({ type: "varchar", length: 100 })
     nombres!: string;
 
-    @Column()
+    @Column({ type: "varchar", length: 100 })
     apellidos!: string;
 
     @Column({ type: "date", nullable: true })
@@ -30,13 +30,13 @@ export class PacienteModel {
     })
     sexo!: "MASCULINO" | "FEMENINO" | "OTRO" | null;
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", length: 20, nullable: true })
     telefono!: string | null;
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", length: 150, nullable: true })
     email!: string | null;
 
-    @Column({ default: true })
+    @Column({ type: "boolean", default: true })
     activo!: boolean;
 
     @OneToMany(() => CitaModel, (cita) => cita.paciente)

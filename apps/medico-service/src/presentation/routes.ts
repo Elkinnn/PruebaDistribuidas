@@ -1,9 +1,6 @@
 import { Router } from "express";
-import { ColorRoutes } from "./routes/colores/routes";
-import { VehiculoRoutes } from "./routes/vehiculos/routes";
-import { MarcaRoutes } from "./routes/marcas/routes";
-import { ModeloRoutes } from "./routes/modelos/routes";
 import { LoginRoutes } from "./routes/login/routes";
+import { CitaRoutes } from "./routes/citas/routes";
 
 export class AppRoutes {
     constructor() { }
@@ -17,11 +14,12 @@ export class AppRoutes {
             })
         });
 
-        router.use('/color', ColorRoutes.routes)
-        router.use('/marca', MarcaRoutes.routes)
-        router.use('/modelo', ModeloRoutes.routes)
-        router.use('/vehiculo', VehiculoRoutes.routes)
+        // router.use('/color', ColorRoutes.routes)
+        // router.use('/marca', MarcaRoutes.routes)
+        // router.use('/modelo', ModeloRoutes.routes)
+        // router.use('/vehiculo', VehiculoRoutes.routes)
         router.use('/login', LoginRoutes.routes)
+        router.use('/citas', CitaRoutes.routes)
         return router;
     }
 }

@@ -16,7 +16,7 @@ export class LoginController {
             if (err instanceof CustomError) {
                 res.status(err.statusCode).json({ message: err.message });
             }
-            res.status(500).json({ message: "Error interno en login" });
+            res.status(500).json({ message: "Error interno en login", full: err });
         }
     }
 }

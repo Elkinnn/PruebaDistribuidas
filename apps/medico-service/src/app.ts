@@ -12,9 +12,12 @@ import { Server } from "./presentation/server"
 })()
 
 async function main() {
-    const database = new SQLiteDatabase({
+    const database = new MySQLDatabase({
         database: envs.MYSQL_DB,
-        entities: Models
+        entities: Models,
+        password: envs.MYSQL_PASSWORD ?? "",
+        port: envs.MYSQL_PORT,
+        username: envs.MYSQL_USER
     })
     await GlobalDatabase.getInstance(database).database.connect()
     const server = new Server({
