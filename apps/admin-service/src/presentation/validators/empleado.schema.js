@@ -5,8 +5,8 @@ const createEmpleadoSchema = Joi.object({
   nombres: Joi.string().max(100).required(),
   apellidos: Joi.string().max(100).required(),
   tipo: Joi.string().valid('LIMPIEZA', 'SEGURIDAD', 'RECEPCION', 'ADMINISTRATIVO', 'OTRO').required(),
-  email: Joi.string().email().max(150).optional().allow(null, ''),
-  telefono: Joi.string().max(50).optional().allow(null, ''),
+  email: Joi.string().email().max(150).required(),
+  telefono: Joi.string().max(50).required(),
   activo: Joi.boolean().optional(),
 });
 
@@ -15,8 +15,8 @@ const updateEmpleadoSchema = Joi.object({
   nombres: Joi.string().max(100),
   apellidos: Joi.string().max(100),
   tipo: Joi.string().valid('LIMPIEZA', 'SEGURIDAD', 'RECEPCION', 'ADMINISTRATIVO', 'OTRO'),
-  email: Joi.string().email().max(150).allow(null, ''),
-  telefono: Joi.string().max(50).allow(null, ''),
+  email: Joi.string().email().max(150),
+  telefono: Joi.string().max(50),
   activo: Joi.boolean(),
 }).min(1);
 

@@ -55,6 +55,23 @@ async function findById(id) {
 
 async function create(dto) {
   try {
+    // Verificar si el email ya existe en Usuario o Empleado
+    if (dto.email) {
+      const [existingUser] = await pool.query(
+        `SELECT id FROM Usuario WHERE email = :email 
+         UNION
+         SELECT id FROM Empleado WHERE email = :email 
+         LIMIT 1`,
+        { email: dto.email }
+      );
+      
+      if (existingUser.length > 0) {
+        const err = new Error('El correo electrónico ya está registrado en el sistema');
+        err.status = 409; // Conflict
+        throw err;
+      }
+    }
+
     const [result] = await pool.query(
       `INSERT INTO Empleado (hospitalId, nombres, apellidos, tipo, email, telefono, activo)
        VALUES (:hospitalId, :nombres, :apellidos, :tipo, :email, :telefono, COALESCE(:activo, TRUE))`,
@@ -87,11 +104,30 @@ async function update(id, dto) {
   const fields = [];
   const params = { id: Number(id) };
 
+  // Verificar si el email ya existe en Usuario o Empleado (excluyendo el empleado actual)
+  if (dto.email !== undefined) {
+    const [existingUser] = await pool.query(
+      `SELECT id FROM Usuario WHERE email = :email 
+       UNION
+       SELECT id FROM Empleado WHERE email = :email AND id != :empleadoId
+       LIMIT 1`,
+      { email: dto.email, empleadoId: Number(id) }
+    );
+    
+    if (existingUser.length > 0) {
+      const err = new Error('El correo electrónico ya está registrado en el sistema');
+      err.status = 409; // Conflict
+      throw err;
+    }
+    
+    fields.push('email = :email');
+    params.email = dto.email;
+  }
+
   if (dto.hospitalId !== undefined) { fields.push('hospitalId = :hospitalId'); params.hospitalId = Number(dto.hospitalId); }
   if (dto.nombres !== undefined)    { fields.push('nombres = :nombres');       params.nombres = dto.nombres; }
   if (dto.apellidos !== undefined)  { fields.push('apellidos = :apellidos');   params.apellidos = dto.apellidos; }
   if (dto.tipo !== undefined)       { fields.push('tipo = :tipo');             params.tipo = dto.tipo; }
-  if (dto.email !== undefined)      { fields.push('email = :email');           params.email = dto.email; }
   if (dto.telefono !== undefined)   { fields.push('telefono = :telefono');     params.telefono = dto.telefono; }
   if (dto.activo !== undefined)     { fields.push('activo = :activo');         params.activo = dto.activo; }
 

@@ -31,7 +31,10 @@ const validateQuery = (schema) => (req, res, next) => {
 router.get('/', validateQuery(listEmpleadosSchema), async (req, res) => {
   try {
     const { page, size, q, hospitalId, tipo } = req.query;
+    console.log('🔍 [EMPLEADO LIST] Query params:', { page, size, q, hospitalId, tipo });
+    
     const result = await empleados.list({ page, size, q, hospitalId, tipo });
+    console.log('✅ [EMPLEADO LIST] Found:', result.data.length, 'empleados, total:', result.meta.total);
     
     res.json({
       success: true,
@@ -39,7 +42,7 @@ router.get('/', validateQuery(listEmpleadosSchema), async (req, res) => {
       meta: result.meta
     });
   } catch (error) {
-    console.error('Error listando empleados:', error);
+    console.error('❌ [EMPLEADO LIST] Error:', error.message);
     res.status(500).json({
       error: 'INTERNAL_ERROR',
       message: 'Error interno del servidor'
@@ -76,7 +79,9 @@ router.get('/:id', async (req, res) => {
 /* POST /empleados - Crear empleado */
 router.post('/', validate(createEmpleadoSchema), async (req, res) => {
   try {
+    console.log('🔍 [EMPLEADO CREATE] Request body:', JSON.stringify(req.body, null, 2));
     const empleado = await empleados.create(req.body);
+    console.log('✅ [EMPLEADO CREATE] Created successfully:', empleado.id);
     
     res.status(201).json({
       success: true,
@@ -84,7 +89,8 @@ router.post('/', validate(createEmpleadoSchema), async (req, res) => {
       message: 'Empleado creado exitosamente'
     });
   } catch (error) {
-    console.error('Error creando empleado:', error);
+    console.error('❌ [EMPLEADO CREATE] Error:', error.message);
+    console.error('❌ [EMPLEADO CREATE] Stack:', error.stack);
     
     if (error.status) {
       return res.status(error.status).json({

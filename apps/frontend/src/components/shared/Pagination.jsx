@@ -2,7 +2,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Pagination({ page, pageSize, total, onChange }) {
     const safePageSize = pageSize || 1;
-    const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+    const safeTotal = total || 0;
+    const totalPages = Math.max(1, Math.ceil(safeTotal / safePageSize));
 
     function go(p) {
         const next = Math.min(Math.max(1, p), totalPages);
@@ -30,7 +31,7 @@ export default function Pagination({ page, pageSize, total, onChange }) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
                 {/* Texto (oculto en móviles para ahorrar espacio) */}
                 <p className="hidden sm:block text-slate-600">
-                    Página <b>{page}</b> de <b>{totalPages}</b> — {total} registros
+                    Página <b>{page}</b> de <b>{totalPages}</b> — {safeTotal} registros
                 </p>
 
                 {/* Controles */}
