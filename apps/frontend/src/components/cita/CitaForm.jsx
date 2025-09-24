@@ -73,6 +73,23 @@ export default function CitaForm({
     if (!values.motivo?.trim()) e.motivo = "El motivo es obligatorio.";
     if (!values.fechaInicio) e.fechaInicio = "La fecha de inicio es obligatoria.";
     
+    // Validar que las fechas no sean pasadas (con margen de 1 minuto)
+    const ahora = new Date();
+    const margen = new Date(ahora.getTime() - 60000); // 1 minuto atrás para evitar problemas de precisión
+    
+    if (values.fechaInicio) {
+      const inicio = new Date(values.fechaInicio);
+      if (inicio < margen) {
+        e.fechaInicio = "La fecha de inicio no puede ser en el pasado.";
+      }
+    }
+    if (values.fechaFin) {
+      const fin = new Date(values.fechaFin);
+      if (fin < margen) {
+        e.fechaFin = "La fecha de fin no puede ser en el pasado.";
+      }
+    }
+    
     // Validar que fechaFin sea posterior a fechaInicio
     if (values.fechaInicio && values.fechaFin) {
       const inicio = new Date(values.fechaInicio);
@@ -333,6 +350,12 @@ export default function CitaForm({
               value={values.fechaInicio}
               onChange={(e) => setField("fechaInicio", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, fechaInicio: true }))}
+              min={(() => {
+                const now = new Date();
+                const offset = now.getTimezoneOffset();
+                const localTime = new Date(now.getTime() - (offset * 60000));
+                return localTime.toISOString().slice(0, 16);
+              })()}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
                 touched.fechaInicio && errors.fechaInicio
                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
@@ -353,6 +376,12 @@ export default function CitaForm({
               value={values.fechaFin}
               onChange={(e) => setField("fechaFin", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, fechaFin: true }))}
+              min={(() => {
+                const now = new Date();
+                const offset = now.getTimezoneOffset();
+                const localTime = new Date(now.getTime() - (offset * 60000));
+                return localTime.toISOString().slice(0, 16);
+              })()}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
                 touched.fechaFin && errors.fechaFin
                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"

@@ -30,6 +30,15 @@ app.get('/db/health', async (_req, res) => {
   }
 });
 
+/* ------------ Estado del servicio automático ------------ */
+app.get('/auto-cancel/status', (_req, res) => {
+  const status = autoCancelService.getStatus();
+  res.json({
+    ok: true,
+    autoCancelService: status
+  });
+});
+
 /* ------------ Importar rutas ------------ */
 const authRouter = require('./presentation/routes/auth.routes');
 const { auth, requireRole } = require('./presentation/middlewares/auth');
@@ -44,6 +53,9 @@ const medicoEspecialidadRouter = require('./presentation/routes/medico-especiali
 const empleadosRouter = require('./presentation/routes/empleado.routes');
 
 const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
+
+// Servicio automático de cancelación de citas
+const autoCancelService = require('./infrastructure/services/auto-cancel.service');
 
 /* ------------ Rutas públicas ------------ */
 // Login (no requiere token)
@@ -80,4 +92,7 @@ app.use((err, _req, res, _next) => {
 /* ------------ Arranque ------------ */
 app.listen(PORT, () => {
   console.log(`AdminService (Express) escuchando en :${PORT}`);
+  
+  // Iniciar servicio automático de cancelación de citas
+  autoCancelService.start();
 });

@@ -675,15 +675,34 @@ module.exports = {
   async cancelarCitasPasadas() {
     const conn = await pool.getConnection();
     try {
+      // Usar NOW() de MySQL que respeta la zona horaria del servidor
       const now = new Date().toISOString();
       
+      // Debug: Mostrar la hora actual y las citas que se van a cancelar
+      console.log(`🕐 Hora actual (UTC): ${now}`);
+      
+      // Primero consultar qué citas se van a cancelar para debug
+      const [citasParaCancelar] = await conn.query(
+        `SELECT id, fechaInicio, fechaFin, estado 
+         FROM Cita 
+         WHERE estado = 'PROGRAMADA' 
+           AND fechaFin < NOW()`,
+        {}
+      );
+      
+      console.log(`📋 Citas encontradas para cancelar: ${citasParaCancelar.length}`);
+      citasParaCancelar.forEach(cita => {
+        console.log(`  - Cita ${cita.id}: ${cita.fechaInicio} → ${cita.fechaFin} (${cita.estado})`);
+      });
+      
       // Actualizar citas programadas que ya pasaron su fecha de fin
+      // Usar NOW() de MySQL que respeta la zona horaria del servidor
       const [result] = await conn.query(
         `UPDATE Cita 
          SET estado = 'CANCELADA', updatedAt = NOW()
          WHERE estado = 'PROGRAMADA' 
-           AND fechaFin < :now`,
-        { now }
+           AND fechaFin < NOW()`,
+        {}
       );
 
       return {
