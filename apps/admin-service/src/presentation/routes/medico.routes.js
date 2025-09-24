@@ -66,14 +66,31 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /medicos/:id
+// DELETE /medicos/:id (DELETE físico - elimina completamente)
 router.delete('/:id', async (req, res) => {
   try {
     const ok = await repo.remove(req.params.id);
     if (!ok) return res.status(404).json({ error: 'NOT_FOUND', message: 'Médico no encontrado' });
-    res.json({ data: true });
+    res.json({ 
+      data: true, 
+      message: 'Médico eliminado exitosamente. Se ha eliminado de la base de datos.' 
+    });
   } catch (e) {
     res.status(500).json({ error: 'ERROR_DELETE', message: e.message });
+  }
+});
+
+// POST /medicos/:id/reactivate (Reactivar médico)
+router.post('/:id/reactivate', async (req, res) => {
+  try {
+    const ok = await repo.reactivate(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'NOT_FOUND', message: 'Médico no encontrado' });
+    res.json({ 
+      data: true, 
+      message: 'Médico reactivado exitosamente. El usuario puede volver a iniciar sesión.' 
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'ERROR_REACTIVATE', message: e.message });
   }
 });
 

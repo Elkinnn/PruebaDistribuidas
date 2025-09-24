@@ -25,12 +25,19 @@ export async function createMedico(data) {
       medicoData.activo = Boolean(medicoData.activo);
     }
     
-    
     const response = await apiClient.post('/medicos', medicoData);
     return response.data.data;
   } catch (error) {
     console.error('❌ Error creating medico:', error);
     console.error('❌ Error response:', error.response?.data);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
     throw error;
   }
 }
@@ -50,12 +57,19 @@ export async function updateMedico(id, data) {
       updateData.activo = Boolean(updateData.activo);
     }
     
-    
     const response = await apiClient.put(`/medicos/${id}`, updateData);
     return response.data.data;
   } catch (error) {
     console.error('❌ Error updating medico:', error);
     console.error('❌ Error response:', error.response?.data);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
     throw error;
   }
 }

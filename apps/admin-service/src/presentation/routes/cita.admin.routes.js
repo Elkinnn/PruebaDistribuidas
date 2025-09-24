@@ -39,11 +39,18 @@ router.get('/:id', async (req, res) => {
 // POST /citas
 router.post('/', async (req, res) => {
   try {
+    console.log('🔍 [CITA ADMIN] Request body:', JSON.stringify(req.body, null, 2));
     const { error, value } = createCitaAdminSchema.validate(req.body, { abortEarly: false });
-    if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
+    if (error) {
+      console.log('❌ [CITA ADMIN] Validation error:', error.details);
+      return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
+    }
+    console.log('✅ [CITA ADMIN] Validation passed, creating cita...');
     const item = await repo.createAdmin({ ...value, creadaPorId: req.user.id });
+    console.log('✅ [CITA ADMIN] Cita created successfully:', item.id);
     res.status(201).json({ data: item });
   } catch (e) {
+    console.log('❌ [CITA ADMIN] Error creating cita:', e.message);
     const status = e.status || 500;
     res.status(status).json({ error: status === 409 ? 'CONFLICT' : 'ERROR_CREATE', message: e.message });
   }

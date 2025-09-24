@@ -153,16 +153,60 @@ async function hasOverlapConn(conn, { medicoId, fechaInicio, fechaFin, excludeId
 async function findById(id) {
   const [rows] = await pool.query(
     `SELECT
-       id, hospitalId, medicoId, pacienteId,
-       pacienteNombre, pacienteTelefono, pacienteEmail,
-       motivo, fechaInicio, fechaFin, estado,
-       creadaPorId, actualizadaPorId, createdAt, updatedAt
-     FROM Cita
-     WHERE id = :id
+       c.id, c.hospitalId, c.medicoId, c.pacienteId,
+       c.pacienteNombre, c.pacienteTelefono, c.pacienteEmail,
+       c.motivo, c.fechaInicio, c.fechaFin, c.estado,
+       c.creadaPorId, c.actualizadaPorId, c.createdAt, c.updatedAt,
+       h.nombre as hospitalNombre,
+       m.nombres as medicoNombres, m.apellidos as medicoApellidos,
+       p.nombres as pacienteNombres, p.apellidos as pacienteApellidos,
+       p.documento as pacienteDocumento, p.telefono as pacienteTelefonoCompleto,
+       p.email as pacienteEmailCompleto, p.fechaNacimiento as pacienteFechaNacimiento,
+       p.sexo as pacienteSexo
+     FROM Cita c
+     LEFT JOIN Hospital h ON c.hospitalId = h.id
+     LEFT JOIN Medico m ON c.medicoId = m.id
+     LEFT JOIN Paciente p ON c.pacienteId = p.id
+     WHERE c.id = :id
      LIMIT 1`,
     { id: +id }
   );
-  return rows[0] || null;
+  
+  if (!rows[0]) return null;
+  
+  const cita = rows[0];
+  
+  // Construir objeto de respuesta con la estructura esperada por el frontend
+  return {
+    id: cita.id,
+    hospitalId: cita.hospitalId,
+    medicoId: cita.medicoId,
+    pacienteId: cita.pacienteId,
+    pacienteNombre: cita.pacienteNombre,
+    pacienteTelefono: cita.pacienteTelefono,
+    pacienteEmail: cita.pacienteEmail,
+    motivo: cita.motivo,
+    fechaInicio: cita.fechaInicio,
+    fechaFin: cita.fechaFin,
+    estado: cita.estado,
+    creadaPorId: cita.creadaPorId,
+    actualizadaPorId: cita.actualizadaPorId,
+    createdAt: cita.createdAt,
+    updatedAt: cita.updatedAt,
+    hospitalNombre: cita.hospitalNombre,
+    medicoNombres: cita.medicoNombres,
+    medicoApellidos: cita.medicoApellidos,
+    // Información completa del paciente para edición
+    pacienteInfo: cita.pacienteId ? {
+      nombres: cita.pacienteNombres,
+      apellidos: cita.pacienteApellidos,
+      documento: cita.pacienteDocumento,
+      telefono: cita.pacienteTelefonoCompleto,
+      email: cita.pacienteEmailCompleto,
+      fechaNacimiento: cita.pacienteFechaNacimiento,
+      sexo: cita.pacienteSexo
+    } : null
+  };
 }
 
 /* ============================
@@ -210,7 +254,7 @@ async function createAdmin(dto) {
         motivo, fechaInicio, fechaFin, estado, creadaPorId)
        VALUES
        (:hospitalId, :medicoId, :pacienteId, :pacienteNombre, :pacienteTelefono, :pacienteEmail,
-        :motivo, :fechaInicio, :fechaFin, 'PROGRAMADA', :creadaPorId)`,
+        :motivo, :fechaInicio, :fechaFin, :estado, :creadaPorId)`,
       {
         hospitalId: +dto.hospitalId,
         medicoId: +dto.medicoId,
@@ -219,6 +263,7 @@ async function createAdmin(dto) {
         motivo: dto.motivo,
         fechaInicio: dto.fechaInicio,
         fechaFin: dto.fechaFin,
+        estado: dto.estado || 'PROGRAMADA', // Usar el estado del DTO o PROGRAMADA por defecto
         creadaPorId: dto.creadaPorId ?? null,
       }
     );

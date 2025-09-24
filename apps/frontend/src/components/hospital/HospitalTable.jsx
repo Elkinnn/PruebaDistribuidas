@@ -5,11 +5,10 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
                 <colgroup>
-                    <col className="w-[18%]" />
-                    <col className="w-[25%]" /> 
-                    <col className="w-[12%]" /> 
+                    <col className="w-[20%]" />
+                    <col className="w-[30%]" /> 
+                    <col className="w-[15%]" /> 
                     <col className="w-[25%]" />
-                    <col className="w-[10%]" /> 
                     <col className="w-[10%]" /> 
                 </colgroup>
 
@@ -19,7 +18,6 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
                         <th className="px-4 py-3 font-semibold">Dirección</th>
                         <th className="px-4 py-3 font-semibold">Teléfono</th>
                         <th className="px-4 py-3 font-semibold">Especialidades</th>
-                        <th className="px-4 py-3 font-semibold">Estado</th>
                         <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                     </tr>
                 </thead>
@@ -27,7 +25,7 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
                 <tbody className="divide-y divide-slate-100 text-slate-800">
                     {items.length === 0 ? (
                         <tr>
-                            <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                            <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                                 No hay hospitales.
                             </td>
                         </tr>
@@ -78,16 +76,6 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
                                     </div>
                                 </td>
 
-                                <td className="px-4 py-3">
-                                    <span
-                                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${h.activo
-                                                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                                                : "bg-slate-100 text-slate-600 ring-slate-300"
-                                            }`}
-                                    >
-                                        {h.activo ? "Activo" : "Inactivo"}
-                                    </span>
-                                </td>
 
                                 <td className="px-4 py-3">
                                     <div className="flex justify-end gap-2">

@@ -12,6 +12,7 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 
+
 // targets
 const ADMIN = process.env.ADMIN_SERVICE_URL || 'http://localhost:3001';
 
@@ -159,12 +160,37 @@ app.use('/empleados', createProxyMiddleware({
   onProxyReq: passAuthHeaders
 }));
 
-app.use('/citas', createProxyMiddleware({
-  target: ADMIN,
-  changeOrigin: true,
-  timeout: 30000,
-  onProxyReq: passAuthHeaders
-}));
+// Proxy para citas usando axios directo
+app.use('/citas', async (req, res) => {
+  try {
+    const config = {
+      method: req.method,
+      url: `${ADMIN}/citas${req.url}`,
+      headers: {
+        ...req.headers
+      },
+      timeout: 30000
+    };
+    
+    // Solo agregar data si hay body
+    if (req.body && Object.keys(req.body).length > 0) {
+      config.data = req.body;
+    }
+    
+    const response = await axios(config);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('[CITAS ERROR]', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ 
+        error: 'PROXY_ERROR', 
+        message: 'Error de conexión con el servicio de citas' 
+      });
+    }
+  }
+});
 
 // health del gateway
 app.get('/health', (_req, res) => {

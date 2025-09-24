@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Modal from "../../components/ui/Modal";
-import { Check } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 
 const empty = {
     hospitalId: "",
@@ -9,6 +9,7 @@ const empty = {
     email: "",
     password: "",
     activo: true,
+    especialidades: [],
 };
 
 export default function MedicoForm({
@@ -17,10 +18,13 @@ export default function MedicoForm({
     onSubmit,
     initialData,
     hospitals = [],
+    especialidades = [],
+    onLoadEspecialidades,
     serverError = "",
 }) {
     const [values, setValues] = useState(empty);
     const [touched, setTouched] = useState({});
+    const previousHospitalId = useRef(null);
 
     const isEdit = !!initialData?.id;
 
@@ -34,11 +38,26 @@ export default function MedicoForm({
                     email: initialData.email ?? "",
                     password: "", // No mostrar password en edición por seguridad
                     activo: !!initialData.activo,
+                    especialidades: initialData.especialidades?.map(esp => esp.id) || [],
                 }
                 : empty
         );
         setTouched({});
+        // Resetear la referencia del hospital anterior
+        previousHospitalId.current = initialData?.hospitalId ?? null;
     }, [initialData, open]);
+
+    // Cargar especialidades cuando cambie el hospital
+    useEffect(() => {
+        if (values.hospitalId && onLoadEspecialidades) {
+            // Solo limpiar especialidades si realmente cambió el hospital
+            if (previousHospitalId.current !== null && previousHospitalId.current !== values.hospitalId) {
+                setValues(prev => ({ ...prev, especialidades: [] }));
+            }
+            previousHospitalId.current = values.hospitalId;
+            onLoadEspecialidades(values.hospitalId);
+        }
+    }, [values.hospitalId]); // Solo cuando cambie el hospital
 
     const errors = useMemo(() => {
         const e = {};
@@ -56,14 +75,34 @@ export default function MedicoForm({
         } else if (values.password.trim() && values.password.length < 6) {
             e.password = "La contraseña debe tener al menos 6 caracteres.";
         }
+        // Validar especialidades: deben estar disponibles en el hospital seleccionado
+        if (values.hospitalId && values.especialidades.length > 0) {
+            const especialidadesDisponibles = especialidades.map(esp => esp.id);
+            const especialidadesInvalidas = values.especialidades.filter(espId => 
+                !especialidadesDisponibles.includes(espId)
+            );
+            if (especialidadesInvalidas.length > 0) {
+                e.especialidades = "Algunas especialidades no están disponibles en el hospital seleccionado.";
+            }
+        }
         return e;
-    }, [values, isEdit]);
+    }, [values, isEdit, especialidades]);
 
     const isInvalid = Object.keys(errors).length > 0;
 
     function setField(k, v) {
         setValues((s) => ({ ...s, [k]: v }));
     }
+    
+    function toggleEspecialidad(especialidadId) {
+        setValues(prev => ({
+            ...prev,
+            especialidades: prev.especialidades.includes(especialidadId)
+                ? prev.especialidades.filter(id => id !== especialidadId)
+                : [...prev.especialidades, especialidadId]
+        }));
+    }
+    
     function markAllTouched() {
         setTouched({
             hospitalId: true,
@@ -71,6 +110,7 @@ export default function MedicoForm({
             apellidos: true,
             email: true,
             password: true,
+            especialidades: true,
         });
     }
     function handleSubmit(e) {
@@ -111,8 +151,12 @@ export default function MedicoForm({
         >
             <form id="medico-form" onSubmit={handleSubmit} className="grid gap-4">
                 {serverError ? (
-                    <div className="rounded-lg bg-rose-50 p-2 text-sm text-rose-700 ring-1 ring-rose-200">
-                        {serverError}
+                    <div className="flex items-start gap-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+                        <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-medium">Error al guardar</p>
+                            <p className="mt-1">{serverError}</p>
+                        </div>
                     </div>
                 ) : null}
 
@@ -229,16 +273,38 @@ export default function MedicoForm({
                     )}
                 </div>
 
-                {/* Activo */}
-                <label className="mt-1 flex select-none items-center gap-2">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                        checked={values.activo}
-                        onChange={(e) => setField("activo", e.target.checked)}
-                    />
-                    <span className="text-sm text-slate-700">Activo</span>
-                </label>
+                {/* Especialidades */}
+                <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Especialidades
+                    </label>
+                    <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-slate-300 p-3">
+                        {especialidades.length === 0 ? (
+                            <p className="text-sm text-slate-500">No hay especialidades disponibles</p>
+                        ) : (
+                            especialidades.map((esp) => (
+                                <label key={esp.id} className="flex select-none items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                        checked={values.especialidades.includes(esp.id)}
+                                        onChange={() => toggleEspecialidad(esp.id)}
+                                    />
+                                    <span className="text-sm text-slate-700">{esp.nombre}</span>
+                                </label>
+                            ))
+                        )}
+                    </div>
+                    {values.especialidades.length > 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                            {values.especialidades.length} especialidad{values.especialidades.length !== 1 ? 'es' : ''} seleccionada{values.especialidades.length !== 1 ? 's' : ''}
+                        </p>
+                    )}
+                    {touched.especialidades && errors.especialidades ? (
+                        <p className="mt-1 text-xs text-rose-600">{errors.especialidades}</p>
+                    ) : null}
+                </div>
+
             </form>
         </Modal>
     );

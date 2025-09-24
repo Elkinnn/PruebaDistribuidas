@@ -7,11 +7,11 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
                 <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-sm">
                     <thead className="bg-slate-50 text-slate-700">
                         <tr>
-                            <th className="w-[30%] px-4 py-3 font-semibold">Médico</th>
-                            <th className="w-[30%] px-4 py-3 font-semibold">Hospital</th>
-                            <th className="w-[25%] px-4 py-3 font-semibold">Email</th>
-                            <th className="w-[7%]  px-4 py-3 font-semibold">Estado</th>
-                            <th className="w-[8%]  px-4 py-3 text-right font-semibold">Acciones</th>
+                            <th className="w-[25%] px-4 py-3 font-semibold">Médico</th>
+                            <th className="w-[25%] px-4 py-3 font-semibold">Hospital</th>
+                            <th className="w-[20%] px-4 py-3 font-semibold">Email</th>
+                            <th className="w-[25%] px-4 py-3 font-semibold">Especialidades</th>
+                            <th className="w-[5%]  px-4 py-3 text-right font-semibold">Acciones</th>
                         </tr>
                     </thead>
 
@@ -46,16 +46,27 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
                                         </div>
                                     </td>
 
-                                    {/* Estado */}
+                                    {/* Especialidades */}
                                     <td className="px-4 py-3">
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${m.activo
-                                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                                                    : "bg-slate-100 text-slate-600 ring-slate-300"
-                                                }`}
-                                        >
-                                            {m.activo ? "Activo" : "Inactivo"}
-                                        </span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {m.especialidades && m.especialidades.length > 0 ? (
+                                                m.especialidades.slice(0, 2).map((esp, idx) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-200"
+                                                    >
+                                                        {esp.nombre}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-xs text-slate-400">Sin especialidades</span>
+                                            )}
+                                            {m.especialidades && m.especialidades.length > 2 && (
+                                                <span className="text-xs text-slate-500">
+                                                    +{m.especialidades.length - 2} más
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Acciones */}

@@ -119,11 +119,23 @@ export async function getHospitalEspecialidades(hospitalId) {
 }
 
 export async function deleteHospital(id) {
-    try {
-        const response = await apiClient.delete(`/hospitales/${id}`);
-        return response.data.data;
-    } catch (error) {
-        console.error('Error deleting hospital:', error);
-        throw error;
-    }
+  try {
+    const response = await apiClient.delete(`/hospitales/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error deleting hospital:', error);
+    throw error;
+  }
+}
+
+export async function getEspecialidadesByHospital(hospitalId) {
+  try {
+    const response = await apiClient.get(`/hospitales/${hospitalId}/especialidades`, {
+      params: { page: 1, size: 1000 } // Obtener todas las especialidades del hospital
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching hospital especialidades:', error);
+    throw error;
+  }
 }

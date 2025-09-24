@@ -165,16 +165,6 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData, esp
                     )}
                 </div>
 
-                {/* activo */}
-                <label className="flex select-none items-center gap-2">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                        checked={values.activo}
-                        onChange={(e) => setField("activo", e.target.checked)}
-                    />
-                    <span className="text-sm text-slate-700">Activo</span>
-                </label>
             </form>
         </Modal>
     );

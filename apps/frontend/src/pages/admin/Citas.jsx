@@ -10,6 +10,7 @@ import {
     createCita,
     updateCita,
     deleteCita,
+    getCita,
 } from "../../api/cita";
 
 import { listMedicos } from "../../api/medico";
@@ -38,42 +39,38 @@ export default function Citas() {
     const [medicos, setMedicos] = useState([]);
     const [hospitals, setHospitals] = useState([]);
 
-    const medicoMap = useMemo(
-        () =>
-            medicos.reduce((acc, m) => {
-                acc[m.id] = `${m.nombres} ${m.apellidos}`;
-                return acc;
-            }, {}),
-        [medicos]
-    );
-
-    const hospitalMap = useMemo(
-        () =>
-            hospitals.reduce((acc, h) => {
-                acc[h.id] = h.nombre;
-                return acc;
-            }, {}),
-        [hospitals]
-    );
 
     async function load() {
         setLoading(true);
-        const { items, total } = await listCitas({ page, pageSize, q });
-        setRows(items);
-        setTotal(total);
-        setLoading(false);
+        try {
+            const { items, total } = await listCitas({ page, pageSize, q });
+            setRows(items);
+            setTotal(total);
+        } catch (error) {
+            console.error('Error loading citas:', error);
+            setRows([]);
+            setTotal(0);
+        } finally {
+            setLoading(false);
+        }
     }
 
     // cargar catálogos una sola vez
     useEffect(() => {
         (async () => {
-            // muchos elementos para que el selector tenga todo
-            const [{ items: meds }, { items: hosps }] = await Promise.all([
-                listMedicos({ page: 1, pageSize: 5000, q: "" }),
-                listHospitals({ page: 1, pageSize: 5000, q: "" }),
-            ]);
-            setMedicos(meds);
-            setHospitals(hosps);
+            try {
+                // muchos elementos para que el selector tenga todo
+                const [{ items: meds }, { items: hosps }] = await Promise.all([
+                    listMedicos({ page: 1, pageSize: 5000, q: "" }),
+                    listHospitals({ page: 1, pageSize: 5000, q: "" }),
+                ]);
+                setMedicos(meds);
+                setHospitals(hosps);
+            } catch (error) {
+                console.error('Error loading catalogs:', error);
+                setMedicos([]);
+                setHospitals([]);
+            }
         })();
     }, []);
 
@@ -90,7 +87,9 @@ export default function Citas() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo crear la cita.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo crear la cita.";
+            setServerError(errorMessage);
         }
     }
 
@@ -102,7 +101,9 @@ export default function Citas() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo actualizar la cita.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo actualizar la cita.";
+            setServerError(errorMessage);
         }
     }
 
@@ -175,12 +176,17 @@ export default function Citas() {
             ) : (
                 <CitaTable
                     items={rows}
-                    medicoMap={medicoMap}
-                    hospitalMap={hospitalMap}
-                    onEdit={(c) => {
-                        setEditing(c);
-                        setServerError("");
-                        setModalOpen(true);
+                    onEdit={async (c) => {
+                        try {
+                            setServerError("");
+                            // Cargar información completa de la cita desde el backend
+                            const citaCompleta = await getCita(c.id);
+                            setEditing(citaCompleta);
+                            setModalOpen(true);
+                        } catch (error) {
+                            console.error('Error loading cita details:', error);
+                            setServerError("No se pudo cargar la información de la cita.");
+                        }
                     }}
                     onDelete={askDelete}
                 />

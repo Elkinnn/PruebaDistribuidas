@@ -21,9 +21,10 @@ const createCitaAdminSchema = Joi.object({
   medicoId:   Joi.number().integer().required(),
 
   pacienteId: Joi.number().integer(),
-  paciente:   pacienteInline,        // “paciente en línea”
+  paciente:   pacienteInline,        // "paciente en línea"
 
   ...baseCamposCita,
+  estado: Joi.string().valid('PROGRAMADA','CANCELADA','ATENDIDA').default('PROGRAMADA'),
 })
   .oxor('pacienteId', 'paciente')     // exactamente uno de los dos
   .prefs({ convert: true, abortEarly: false });
