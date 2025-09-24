@@ -4,6 +4,7 @@ import Pagination from "../../components/shared/Pagination";
 import CitaTable from "../../components/cita/CitaTable";
 import CitaForm from "../../components/cita/CitaForm";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 
 import {
     listCitas,
@@ -11,6 +12,7 @@ import {
     updateCita,
     deleteCita,
     getCita,
+    cancelarCitasPasadas,
 } from "../../api/cita";
 
 import { listMedicos } from "../../api/medico";
@@ -34,6 +36,14 @@ export default function Citas() {
     // confirmación de borrado
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [toDelete, setToDelete] = useState(null);
+
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
 
     // catálogos
     const [medicos, setMedicos] = useState([]);
@@ -123,6 +133,44 @@ export default function Citas() {
         else load();
     }
 
+    async function handleCancelarPasadas() {
+        try {
+            // Mostrar notificación de carga
+            setNotification({
+                open: true,
+                type: "loading",
+                title: "Procesando...",
+                message: "Cancelando citas pasadas..."
+            });
+
+            const result = await cancelarCitasPasadas();
+            console.log('Citas canceladas:', result);
+            
+            // Recargar la lista para mostrar los cambios
+            load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Citas canceladas!",
+                message: result.mensaje,
+                duration: 4000
+            });
+        } catch (e) {
+            console.error("Error cancelando citas pasadas:", e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error",
+                message: "No se pudieron cancelar las citas: " + e.message,
+                duration: 6000
+            });
+        }
+    }
+
     const subtitle = useMemo(
         () => (q ? `(${total} resultados)` : `${total} registros`),
         [q, total]
@@ -153,6 +201,14 @@ export default function Citas() {
                             className="w-52 rounded-xl border border-slate-300 pl-8 pr-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                         />
                     </div>
+
+                    <button
+                        onClick={handleCancelarPasadas}
+                        className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                    >
+                        <AlertTriangle size={16} />
+                        Cancelar Pasadas
+                    </button>
 
                     <button
                         onClick={() => {
@@ -240,6 +296,16 @@ export default function Citas() {
                 <AlertTriangle size={14} />
                 Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }

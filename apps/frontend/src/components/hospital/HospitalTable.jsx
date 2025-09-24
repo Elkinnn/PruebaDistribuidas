@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Building2, MapPin, Phone } from "lucide-react";
 
 export default function HospitalTable({ items = [], onEdit, onDelete }) {
     return (
@@ -34,22 +34,31 @@ export default function HospitalTable({ items = [], onEdit, onDelete }) {
                             <tr key={h.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
                                 {/* Nombre: 1 línea */}
                                 <td className="px-4 py-3 font-semibold">
-                                    <div className="truncate" title={h.nombre}>
-                                        {h.nombre}
+                                    <div className="flex items-center gap-2">
+                                        <Building2 size={16} className="text-slate-400" />
+                                        <div className="truncate" title={h.nombre}>
+                                            {h.nombre}
+                                        </div>
                                     </div>
                                 </td>
 
                                 {/* Dirección: 2 líneas máx + rompe palabras largas */}
                                 <td className="px-4 py-3">
-                                    <p className="line-clamp-2 break-words text-slate-700" title={h.direccion || "-"}>
-                                        {h.direccion || "-"}
-                                    </p>
+                                    <div className="flex items-start gap-2">
+                                        <MapPin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                                        <p className="line-clamp-2 break-words text-slate-700" title={h.direccion || "-"}>
+                                            {h.direccion || "-"}
+                                        </p>
+                                    </div>
                                 </td>
 
                                 {/* Teléfono: 1 línea */}
                                 <td className="px-4 py-3">
-                                    <div className="truncate" title={h.telefono || "-"}>
-                                        {h.telefono || "-"}
+                                    <div className="flex items-center gap-2">
+                                        <Phone size={16} className="text-slate-400" />
+                                        <div className="truncate" title={h.telefono || "-"}>
+                                            {h.telefono || "-"}
+                                        </div>
                                     </div>
                                 </td>
 

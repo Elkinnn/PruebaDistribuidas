@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Stethoscope, Building2, Mail } from "lucide-react";
 
 export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDelete }) {
     return (
@@ -27,22 +27,31 @@ export default function MedicoTable({ items = [], hospitalMap = {}, onEdit, onDe
                                 <tr key={m.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
                                     {/* Médico */}
                                     <td className="max-w-0 px-4 py-3 font-medium">
-                                        <div className="truncate whitespace-nowrap" title={`${m.nombres} ${m.apellidos}`}>
-                                            {m.nombres} {m.apellidos}
+                                        <div className="flex items-center gap-2">
+                                            <Stethoscope size={16} className="text-slate-400" />
+                                            <div className="truncate whitespace-nowrap" title={`${m.nombres} ${m.apellidos}`}>
+                                                {m.nombres} {m.apellidos}
+                                            </div>
                                         </div>
                                     </td>
 
                                     {/* Hospital */}
                                     <td className="max-w-0 px-4 py-3">
-                                        <div className="truncate whitespace-nowrap" title={hospitalMap[m.hospitalId] || "-"}>
-                                            {hospitalMap[m.hospitalId] || "-"}
+                                        <div className="flex items-center gap-2">
+                                            <Building2 size={16} className="text-slate-400" />
+                                            <div className="truncate whitespace-nowrap" title={hospitalMap[m.hospitalId] || "-"}>
+                                                {hospitalMap[m.hospitalId] || "-"}
+                                            </div>
                                         </div>
                                     </td>
 
                                     {/* Email */}
                                     <td className="max-w-0 px-4 py-3">
-                                        <div className="truncate whitespace-nowrap" title={m.email || "-"}>
-                                            {m.email || "-"}
+                                        <div className="flex items-center gap-2">
+                                            <Mail size={16} className="text-slate-400" />
+                                            <div className="truncate whitespace-nowrap" title={m.email || "-"}>
+                                                {m.email || "-"}
+                                            </div>
                                         </div>
                                     </td>
 

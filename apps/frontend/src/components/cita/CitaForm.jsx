@@ -116,22 +116,20 @@ export default function CitaForm({
     setValues((s) => {
       const newValues = { ...s, [k]: v };
       
-      // Si se cambia la fecha de inicio, calcular automáticamente la fecha de fin (30 minutos después)
-      if (k === 'fechaInicio' && v) {
-        const fechaInicio = new Date(v);
-        const fechaFin = new Date(fechaInicio.getTime() + 30 * 60 * 1000); // +30 minutos
-        // Formato para input datetime-local: YYYY-MM-DDTHH:mm
-        const year = fechaFin.getFullYear();
-        const month = String(fechaFin.getMonth() + 1).padStart(2, '0');
-        const day = String(fechaFin.getDate()).padStart(2, '0');
-        const hours = String(fechaFin.getHours()).padStart(2, '0');
-        const minutes = String(fechaFin.getMinutes()).padStart(2, '0');
-        newValues.fechaFin = `${year}-${month}-${day}T${hours}:${minutes}`;
+      // Si se cambia la fecha de inicio o fin, automáticamente cambiar estado a PROGRAMADA
+      if ((k === 'fechaInicio' || k === 'fechaFin') && v && isEdit) {
+        newValues.estado = 'PROGRAMADA';
       }
       
       return newValues;
     });
   }
+
+  // Verificar si se han editado las fechas Y la cita estaba CANCELADA
+  const fechasEditadas = isEdit && (
+    values.fechaInicio !== initialData?.fechaInicio || 
+    values.fechaFin !== initialData?.fechaFin
+  ) && initialData?.estado === 'CANCELADA';
 
   function setPacienteField(k, v) {
     setValues((s) => ({ 
@@ -355,11 +353,8 @@ export default function CitaForm({
               value={values.fechaFin}
               onChange={(e) => setField("fechaFin", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, fechaFin: true }))}
-              readOnly={!isEdit} // Solo editable en modo edición
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-                !isEdit 
-                  ? "cursor-not-allowed bg-slate-100 text-slate-500"
-                  : touched.fechaFin && errors.fechaFin
+                touched.fechaFin && errors.fechaFin
                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
                   : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
               }`}
@@ -367,11 +362,6 @@ export default function CitaForm({
             {touched.fechaFin && errors.fechaFin ? (
               <p className="mt-1 text-xs text-rose-600">{errors.fechaFin}</p>
             ) : null}
-            {!isEdit && (
-              <p className="mt-1 text-xs text-slate-500">
-                Duración fija de 30 minutos
-              </p>
-            )}
           </div>
         </div>
 
@@ -383,9 +373,9 @@ export default function CitaForm({
           <select
             value={values.estado}
             onChange={(e) => setField("estado", e.target.value)}
-            disabled={!isEdit} // Solo editable en modo edición
+            disabled={!isEdit || fechasEditadas} // Solo editable en modo edición y si no se editaron fechas
             className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-              !isEdit 
+              !isEdit || fechasEditadas
                 ? "cursor-not-allowed bg-slate-100 text-slate-500 border-slate-300"
                 : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
             }`}

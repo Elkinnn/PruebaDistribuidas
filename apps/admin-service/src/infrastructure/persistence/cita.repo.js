@@ -670,4 +670,30 @@ module.exports = {
 
   // eliminación
   remove,
+
+  // cancelar citas pasadas automáticamente
+  async cancelarCitasPasadas() {
+    const conn = await pool.getConnection();
+    try {
+      const now = new Date().toISOString();
+      
+      // Actualizar citas programadas que ya pasaron su fecha de fin
+      const [result] = await conn.query(
+        `UPDATE Cita 
+         SET estado = 'CANCELADA', updatedAt = NOW()
+         WHERE estado = 'PROGRAMADA' 
+           AND fechaFin < :now`,
+        { now }
+      );
+
+      return {
+        citasCanceladas: result.affectedRows,
+        mensaje: `Se cancelaron ${result.affectedRows} citas pasadas automáticamente`
+      };
+    } catch (e) {
+      throw e;
+    } finally {
+      conn.release();
+    }
+  },
 };

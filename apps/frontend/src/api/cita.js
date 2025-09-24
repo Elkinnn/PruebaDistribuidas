@@ -78,3 +78,13 @@ export async function getCita(id) {
     throw error;
   }
 }
+
+export async function cancelarCitasPasadas() {
+  try {
+    const response = await apiClient.post('/citas/cancelar-pasadas');
+    return response.data.data;
+  } catch (error) {
+    console.error('Error cancelando citas pasadas:', error);
+    throw error;
+  }
+}
