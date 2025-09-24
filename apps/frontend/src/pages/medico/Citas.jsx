@@ -16,6 +16,44 @@ function isoToLocal(dt) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+/* --- Toast (alerta bonita) ------------------------------- */
+function Toast({ open, type = "success", text, onClose }) {
+  if (!open) return null;
+  const palette =
+    type === "success"
+      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+      : "bg-rose-50 text-rose-800 ring-1 ring-rose-200";
+
+  return (
+    <div className="fixed top-4 right-4 z-[60]">
+      <div className={`max-w-sm rounded-xl shadow-lg px-4 py-3 ${palette} backdrop-blur`}>
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">
+            {type === "success" ? (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm-1.1-6.1 6.3-6.3-1.4-1.4-4.9 4.9-2.1-2.1-1.4 1.4 3.5 3.5z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11 7h2v6h-2V7zm0 8h2v2h-2v-2zm1-13C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+              </svg>
+            )}
+          </div>
+          <div className="text-sm leading-5">{text}</div>
+          <button
+            onClick={onClose}
+            className="ml-2 rounded-lg px-2 py-1 text-xs/5 hover:bg-black/5"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* -------------------------------------------------------- */
+
 export default function Citas() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);       // objeto cita o null
@@ -28,12 +66,25 @@ export default function Citas() {
   const [msg, setMsg] = useState("");                 // mensaje para el form
   const [q, setQ] = useState("");
 
+  // toast state
+  const [toast, setToast] = useState({ open: false, type: "success", text: "" });
+  const showToast = (text, type = "success") => {
+    setToast({ open: true, type, text });
+    // autocierre
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast((t) => ({ ...t, open: false })), 3200);
+  };
+
+  // confirmación eliminar
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
   // bloquear scroll del body con modal abierto
   useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
+    if (open || confirmOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
-  }, [open]);
+  }, [open, confirmOpen]);
 
   const emptyForm = useMemo(
     () => ({
@@ -117,9 +168,11 @@ export default function Citas() {
         // solo estado y fin
         await updateCita(editing.id, { estado: form.estado, fin: form.fin });
         setMsg("Cita actualizada exitosamente.");
+        showToast("Cita actualizada correctamente.", "success");
       } else {
         await createCita(form);
         setMsg("Cita creada exitosamente.");
+        showToast("Cita creada correctamente.", "success");
       }
       setOpen(false);
       setForm(emptyForm);
@@ -128,23 +181,32 @@ export default function Citas() {
       if (!editing) setPage(1);
     } catch (err) {
       setMsg(err.message || "Error al guardar.");
+      showToast(err.message || "Error al guardar.", "error");
     }
   }
 
-  async function handleDelete(id) {
+  function askDelete(id) {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
     try {
-      await deleteCita(id); // bloquea si está PROGRAMADA
-      const newTotal = total - 1;
-      const maxPage = Math.max(1, Math.ceil(newTotal / pageSize));
-      if (page > maxPage) {
-        setPage(maxPage);
-        await load(maxPage);
-      } else {
-        await load(page);
-      }
+      await deleteCita(deleteId); // bloquea si está PROGRAMADA
+      await load();
+      showToast("Cita eliminada correctamente.", "success");
     } catch (e) {
-      alert(e.message);
+      // error “No puedes eliminar una cita en estado PROGRAMADA.” u otros
+      showToast(e.message || "No se pudo eliminar la cita.", "error");
+    } finally {
+      setConfirmOpen(false);
+      setDeleteId(null);
     }
+  }
+
+  function cancelDelete() {
+    setConfirmOpen(false);
+    setDeleteId(null);
   }
 
   return (
@@ -219,7 +281,7 @@ export default function Citas() {
                       size="sm"
                       variant="outline"
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDelete(c.id)}
+                      onClick={() => askDelete(c.id)}
                     >
                       Eliminar
                     </Button>
@@ -231,19 +293,20 @@ export default function Citas() {
         })}
       </div>
 
-  {/* ⬇️ Paginación SIEMPRE abajo */}
-{!loading && total > 0 && (
-  <div className="fixed bottom-0 inset-x-0 z-20">
-   <div className="w-[calc(100%-16rem)] ml-auto px-6 py-3 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 rounded-t-lg shadow">
-      <Pagination
-        page={page}
-        pageSize={pageSize}
-        total={total}
-        onChange={setPage}
-      />
-    </div>
-  </div>
-)}
+      {/* ⬇️ Paginación SIEMPRE abajo */}
+      {!loading && total > 0 && (
+        <div className="fixed bottom-0 inset-x-0 z-20">
+          {/* ajusta 16rem si deseas mover más/menos a la izquierda */}
+          <div className="w-[calc(100%-16rem)] ml-auto px-6 py-3 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 rounded-t-lg shadow">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onChange={setPage}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modal con formulario reusable */}
       <Modal open={open} onClose={() => { setOpen(false); setMsg(""); }} width="max-w-3xl">
@@ -260,6 +323,30 @@ export default function Citas() {
           msg={msg}
         />
       </Modal>
+
+      {/* Confirmación eliminar */}
+      <Modal open={confirmOpen} onClose={cancelDelete} width="max-w-md">
+        <div className="p-4">
+          <h3 className="text-lg font-semibold text-slate-900">Eliminar cita</h3>
+          <p className="text-slate-600 mt-2">
+            ¿Deseas eliminar esta cita? Esta acción no se puede deshacer.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={cancelDelete}>Cancelar</Button>
+            <Button className="bg-rose-600 hover:bg-rose-700" onClick={confirmDelete}>
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Toast superior-derecha */}
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        text={toast.text}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+      />
     </div>
   );
 }
