@@ -734,6 +734,107 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
 }
 
 /* ============================
+   Datos para Gráficas
+   ============================ */
+async function getGraficasData({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = {};
+
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = :hospitalId');
+    params.hospitalId = +hospitalId;
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  // 1. Citas por día (gráfica de líneas)
+  const [citasPorDiaResult] = await pool.query(
+    `SELECT 
+       DATE(c.fechaInicio) as fecha,
+       COUNT(*) as cantidad
+     FROM Cita c 
+     ${whereClause}
+     GROUP BY DATE(c.fechaInicio)
+     ORDER BY fecha ASC`,
+    params
+  );
+
+  // 2. Top 10 especialidades por citas (gráfica de barras)
+  const [especialidadesResult] = await pool.query(
+    `SELECT 
+       e.nombre as especialidad,
+       COUNT(DISTINCT c.id) as cantidad
+     FROM Cita c
+     INNER JOIN Medico m ON c.medicoId = m.id
+     INNER JOIN MedicoEspecialidad me ON m.id = me.medicoId
+     INNER JOIN Especialidad e ON me.especialidadId = e.id
+     ${whereClause}
+     GROUP BY e.id, e.nombre
+     ORDER BY cantidad DESC
+     LIMIT 10`,
+    params
+  );
+
+  // 3. Pacientes por hospital (gráfica de barras apiladas)
+  const [pacientesPorHospitalResult] = await pool.query(
+    `SELECT 
+       h.nombre as hospital,
+       c.estado,
+       COUNT(*) as cantidad
+     FROM Cita c
+     INNER JOIN Hospital h ON c.hospitalId = h.id
+     ${whereClause}
+     GROUP BY h.id, h.nombre, c.estado
+     ORDER BY h.nombre, c.estado`,
+    params
+  );
+
+  // 4. Top médicos por citas atendidas (gráfica de barras horizontales)
+  const [medicosResult] = await pool.query(
+    `SELECT 
+       CONCAT(m.nombres, ' ', m.apellidos) as medico,
+       COUNT(*) as citasAtendidas
+     FROM Cita c
+     INNER JOIN Medico m ON c.medicoId = m.id
+     ${whereClause}
+     AND c.estado = 'ATENDIDA'
+     GROUP BY m.id, m.nombres, m.apellidos
+     ORDER BY citasAtendidas DESC
+     LIMIT 10`,
+    params
+  );
+
+  // 5. Distribución de estados por día (gráfica recomendada)
+  const [estadosPorDiaResult] = await pool.query(
+    `SELECT 
+       DATE(c.fechaInicio) as fecha,
+       c.estado,
+       COUNT(*) as cantidad
+     FROM Cita c
+     ${whereClause}
+     GROUP BY DATE(c.fechaInicio), c.estado
+     ORDER BY fecha ASC, c.estado`,
+    params
+  );
+
+  return {
+    citasPorDia: citasPorDiaResult,
+    especialidades: especialidadesResult,
+    pacientesPorHospital: pacientesPorHospitalResult,
+    medicosTop: medicosResult,
+    estadosPorDia: estadosPorDiaResult
+  };
+}
+
+/* ============================
    Exports
    ============================ */
 module.exports = {
@@ -755,6 +856,9 @@ module.exports = {
 
   // KPIs
   getKpisDashboard,
+  
+  // Gráficas
+  getGraficasData,
 
   // cancelar citas pasadas automáticamente
   async cancelarCitasPasadas() {

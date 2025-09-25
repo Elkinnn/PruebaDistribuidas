@@ -7,6 +7,7 @@ import {
     Calendar,
 } from "lucide-react";
 import { getKpisDashboard } from "../../api/cita";
+import Graficas from "../../components/dashboard/Graficas";
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState({
@@ -214,20 +215,23 @@ export default function AdminDashboard() {
                         </div>
                     </section>
 
-            {/* Información adicional */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex">
-                    <div className="flex-shrink-0">
-                        <Clock className="h-5 w-5 text-blue-400" />
+                    {/* Información adicional */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <Clock className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div className="ml-3">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Nota:</strong> Los datos mostrados son en tiempo real desde la base de datos. 
+                                    El tiempo medio de consulta se calcula usando fechaInicio → fechaFin para citas con estado 'ATENDIDA'.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="ml-3">
-                        <p className="text-sm text-blue-800">
-                            <strong>Nota:</strong> Los datos mostrados son en tiempo real desde la base de datos. 
-                            El tiempo medio de consulta se calcula usando fechaInicio → fechaFin para citas con estado 'ATENDIDA'.
-                        </p>
-                    </div>
+
+                    {/* Gráficas */}
+                    <Graficas filtros={filtros} />
                 </div>
-            </div>
-        </div>
-    );
-}
+            );
+        }

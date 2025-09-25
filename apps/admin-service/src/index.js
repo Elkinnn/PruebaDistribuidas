@@ -94,6 +94,22 @@ app.get('/citas/kpis', async (req, res) => {
   }
 });
 
+// Ruta específica para Gráficas (sin autenticación estricta para dashboard)
+app.get('/citas/graficas', async (req, res) => {
+  try {
+    const repo = require('./infrastructure/persistence/cita.repo');
+    const result = await repo.getGraficasData({
+      desde: req.query.desde,
+      hasta: req.query.hasta,
+      hospitalId: req.query.hospitalId
+    });
+    res.json({ data: result });
+  } catch (e) {
+    console.error('Error obteniendo datos de gráficas:', e.message);
+    res.status(500).json({ error: 'ERROR_GRAFICAS', message: e.message });
+  }
+});
+
 // Citas de admin bajo /citas (después de la ruta específica)
 app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
 

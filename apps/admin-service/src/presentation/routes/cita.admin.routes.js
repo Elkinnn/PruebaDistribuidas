@@ -108,4 +108,20 @@ router.get('/kpis', async (req, res) => {
   }
 });
 
+// GET /citas/graficas?desde=&hasta=&hospitalId=
+router.get('/graficas', async (req, res) => {
+  try {
+    const result = await repo.getGraficasData({
+      desde: req.query.desde,
+      hasta: req.query.hasta,
+      hospitalId: req.query.hospitalId
+    });
+    
+    res.json({ data: result });
+  } catch (e) {
+    console.error('Error obteniendo datos de gráficas:', e.message);
+    res.status(500).json({ error: 'ERROR_GRAFICAS', message: e.message });
+  }
+});
+
 module.exports = router;

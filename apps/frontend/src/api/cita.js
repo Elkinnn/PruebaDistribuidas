@@ -100,3 +100,15 @@ export async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
     throw error;
   }
 }
+
+export async function getGraficasData({ desde, hasta, hospitalId } = {}) {
+  try {
+    const response = await apiClient.get('/citas/graficas', {
+      params: { desde, hasta, hospitalId }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error obteniendo datos de gráficas:', error);
+    throw error;
+  }
+}
