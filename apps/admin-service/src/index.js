@@ -151,48 +151,129 @@ app.get('/citas/reportes/citas-detalladas', async (req, res) => {
       compress: true
     });
     
-    // Header
-    doc.setFontSize(16);
-    doc.text('Sistema de Citas Medicas', 20, 20);
-    doc.setFontSize(12);
-    doc.text('Reporte de Citas Detalladas', 20, 30);
-    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, 40);
+    // Header con diseño profesional
+    doc.setFillColor(41, 128, 185); // Azul profesional
+    doc.rect(0, 0, 210, 30, 'F');
     
+    // Título principal
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Sistema de Citas Médicas', 20, 20);
+    
+    // Subtitle
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text('Reporte de Citas Detalladas', 20, 27);
+    
+    // Resetear color para el contenido
+    doc.setTextColor(0, 0, 0);
+    
+    // Información del reporte
+    let y = 45;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text('Información del Reporte:', 20, y);
+    
+    y += 8;
+    doc.setFont(undefined, 'normal');
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, 20, y);
+    
+    y += 6;
     if (req.query.desde && req.query.hasta) {
-      doc.text(`Periodo: ${req.query.desde} - ${req.query.hasta}`, 20, 50);
+      doc.text(`Período: ${req.query.desde} al ${req.query.hasta}`, 20, y);
+    } else {
+      doc.text('Período: Todos los registros', 20, y);
     }
     
-    let y = 70;
-    doc.setFontSize(10);
+    y += 6;
+    doc.text(`Total de registros: ${data ? data.length : 0}`, 20, y);
     
-    // Encabezados
-    doc.text('ID', 20, y);
-    doc.text('Hospital', 40, y);
-    doc.text('Medico', 80, y);
-    doc.text('Paciente', 120, y);
-    doc.text('Estado', 160, y);
+    y += 15;
     
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, 190, y);
     y += 10;
     
-    // Datos
+    // Tabla con encabezados
     doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setFillColor(245, 245, 245);
+    
+    // Encabezados de la tabla
+    doc.rect(20, y-5, 170, 8, 'F');
+    doc.text('ID', 22, y);
+    doc.text('Hospital', 35, y);
+    doc.text('Médico', 75, y);
+    doc.text('Paciente', 115, y);
+    doc.text('Estado', 155, y);
+    doc.text('Fecha', 175, y);
+    
+    y += 8;
+    
+    // Datos de la tabla
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(8);
+    
     if (data && data.length > 0) {
-      data.slice(0, 25).forEach((item) => {
+      data.slice(0, 35).forEach((item, index) => {
         if (y > 270) {
           doc.addPage();
           y = 20;
+          
+          // Repetir encabezados en nueva página
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'bold');
+          doc.setFillColor(245, 245, 245);
+          doc.rect(20, y-5, 170, 8, 'F');
+          doc.text('ID', 22, y);
+          doc.text('Hospital', 35, y);
+          doc.text('Médico', 75, y);
+          doc.text('Paciente', 115, y);
+          doc.text('Estado', 155, y);
+          doc.text('Fecha', 175, y);
+          y += 8;
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(8);
         }
         
-        doc.text(String(item.id || 'N/A'), 20, y);
-        doc.text(String(item.hospital || 'N/A').substring(0, 15), 40, y);
-        doc.text(String(item.medico || 'N/A').substring(0, 15), 80, y);
-        doc.text(String(item.paciente || 'N/A').substring(0, 15), 120, y);
-        doc.text(String(item.estado || 'N/A'), 160, y);
+        // Alternar colores de fila
+        if (index % 2 === 0) {
+          doc.setFillColor(250, 250, 250);
+          doc.rect(20, y-3, 170, 6, 'F');
+        }
         
-        y += 8;
+        // Color del estado
+        const estado = String(item.estado || 'N/A');
+        if (estado === 'ATENDIDA') {
+          doc.setTextColor(0, 128, 0);
+        } else if (estado === 'CANCELADA') {
+          doc.setTextColor(220, 53, 69);
+        } else {
+          doc.setTextColor(255, 193, 7);
+        }
+        
+        doc.text(String(item.id || 'N/A'), 22, y);
+        doc.text(String(item.hospital || 'N/A').substring(0, 20), 35, y);
+        doc.text(String(item.medico || 'N/A').substring(0, 20), 75, y);
+        doc.text(String(item.paciente || 'N/A').substring(0, 20), 115, y);
+        doc.text(estado, 155, y);
+        
+        // Resetear color para fecha
+        doc.setTextColor(0, 0, 0);
+        if (item.fechaInicio) {
+          doc.text(String(item.fechaInicio).substring(0, 10), 175, y);
+        } else {
+          doc.text('N/A', 175, y);
+        }
+        
+        y += 6;
       });
     } else {
-      doc.text('No hay datos disponibles', 20, y);
+      doc.setTextColor(128, 128, 128);
+      doc.setFont(undefined, 'italic');
+      doc.text('No hay datos disponibles para el período seleccionado', 20, y);
     }
     
     // Footer
