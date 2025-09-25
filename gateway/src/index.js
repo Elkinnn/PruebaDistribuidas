@@ -231,6 +231,8 @@ app.use('/citas', async (req, res) => {
   }
 });
 
+
+
 // health del gateway
 app.get('/health', (_req, res) => {
   res.json({

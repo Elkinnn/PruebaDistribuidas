@@ -355,11 +355,11 @@ async function list(filters = {}) {
   let where = [];
   let params = {};
 
-  if (hospitalId) {
+  if (hospitalId && !isNaN(hospitalId)) {
     where.push('c.hospitalId = :hospitalId');
     params.hospitalId = +hospitalId;
   }
-  if (medicoId) {
+  if (medicoId && !isNaN(medicoId)) {
     where.push('c.medicoId = :medicoId');
     params.medicoId = +medicoId;
   }
@@ -652,6 +652,77 @@ async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, us
 }
 
 /* ============================
+   KPIs para Dashboard
+   ============================ */
+async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = {};
+
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = :hospitalId');
+    params.hospitalId = +hospitalId;
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  // 1. Total de citas en el rango
+  const [totalResult] = await pool.query(
+    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    params
+  );
+  const totalCitas = totalResult[0].total;
+
+  // 2. Citas canceladas
+  const canceladasWhere = whereClause ? `${whereClause} AND c.estado = 'CANCELADA'` : `WHERE c.estado = 'CANCELADA'`;
+  const [canceladasResult] = await pool.query(
+    `SELECT COUNT(*) as canceladas FROM Cita c ${canceladasWhere}`,
+    params
+  );
+  const canceladas = canceladasResult[0].canceladas;
+
+  // 3. Citas atendidas
+  const atendidasWhere = whereClause ? `${whereClause} AND c.estado = 'ATENDIDA'` : `WHERE c.estado = 'ATENDIDA'`;
+  const [atendidasResult] = await pool.query(
+    `SELECT COUNT(*) as atendidas FROM Cita c ${atendidasWhere}`,
+    params
+  );
+  const atendidas = atendidasResult[0].atendidas;
+
+  // 4. Tiempo medio de consulta (en minutos) para citas atendidas
+  const tiempoWhere = whereClause 
+    ? `${whereClause} AND c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`
+    : `WHERE c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`;
+  const [tiempoResult] = await pool.query(
+    `SELECT AVG(TIMESTAMPDIFF(MINUTE, c.fechaInicio, c.fechaFin)) as tiempoMedio 
+     FROM Cita c 
+     ${tiempoWhere}`,
+    params
+  );
+  const tiempoMedio = tiempoResult[0].tiempoMedio || 0;
+
+  // Calcular porcentajes
+  const porcentajeCanceladas = totalCitas > 0 ? (canceladas / totalCitas * 100) : 0;
+  const porcentajeAtendidas = totalCitas > 0 ? (atendidas / totalCitas * 100) : 0;
+
+  return {
+    totalCitas,
+    canceladas,
+    atendidas,
+    porcentajeCanceladas: Math.round(porcentajeCanceladas * 100) / 100,
+    porcentajeAtendidas: Math.round(porcentajeAtendidas * 100) / 100,
+    tiempoMedioConsulta: Math.round(tiempoMedio * 100) / 100
+  };
+}
+
+/* ============================
    Exports
    ============================ */
 module.exports = {
@@ -670,6 +741,9 @@ module.exports = {
 
   // eliminación
   remove,
+
+  // KPIs
+  getKpisDashboard,
 
   // cancelar citas pasadas automáticamente
   async cancelarCitasPasadas() {
@@ -715,4 +789,5 @@ module.exports = {
       conn.release();
     }
   },
+
 };

@@ -91,4 +91,21 @@ router.post('/cancelar-pasadas', async (req, res) => {
   }
 });
 
+
+// GET /citas/kpis?desde=&hasta=&hospitalId=
+router.get('/kpis', async (req, res) => {
+  try {
+    const result = await repo.getKpisDashboard({
+      desde: req.query.desde,
+      hasta: req.query.hasta,
+      hospitalId: req.query.hospitalId
+    });
+    
+    res.json({ data: result });
+  } catch (e) {
+    console.error('Error obteniendo KPIs:', e.message);
+    res.status(500).json({ error: 'ERROR_KPIS', message: e.message });
+  }
+});
+
 module.exports = router;

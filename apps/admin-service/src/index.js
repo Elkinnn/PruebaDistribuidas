@@ -61,6 +61,8 @@ const autoCancelService = require('./infrastructure/services/auto-cancel.service
 // Login (no requiere token)
 app.use(authRouter);
 
+
+
 /* ------------ Rutas protegidas (ADMIN) ------------ */
 // CRUDs de admin con prefijos claros
 app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospitalesRouter);
@@ -76,7 +78,23 @@ app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidad
 // CRUD de empleados bajo /empleados
 app.use('/empleados',      auth, requireRole('ADMIN_GLOBAL'), empleadosRouter);
 
-// Citas de admin bajo /citas
+// Ruta específica para KPIs (sin autenticación estricta para dashboard)
+app.get('/citas/kpis', async (req, res) => {
+  try {
+    const repo = require('./infrastructure/persistence/cita.repo');
+    const result = await repo.getKpisDashboard({
+      desde: req.query.desde,
+      hasta: req.query.hasta,
+      hospitalId: req.query.hospitalId
+    });
+    res.json({ data: result });
+  } catch (e) {
+    console.error('Error obteniendo KPIs:', e.message);
+    res.status(500).json({ error: 'ERROR_KPIS', message: e.message });
+  }
+});
+
+// Citas de admin bajo /citas (después de la ruta específica)
 app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
 
 /* ------------ 404 y errores ------------ */
