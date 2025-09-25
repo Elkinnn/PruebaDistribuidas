@@ -825,12 +825,25 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
     params
   );
 
+  // 6. Empleados por hospital
+  const [empleadosPorHospitalResult] = await pool.query(
+    `SELECT 
+       h.nombre as hospital,
+       COUNT(DISTINCT e.id) as cantidadEmpleados
+     FROM Hospital h
+     LEFT JOIN Empleado e ON h.id = e.hospitalId
+     GROUP BY h.id, h.nombre
+     ORDER BY cantidadEmpleados DESC`,
+    params
+  );
+
   return {
     citasPorDia: citasPorDiaResult,
     especialidades: especialidadesResult,
     pacientesPorHospital: pacientesPorHospitalResult,
     medicosTop: medicosResult,
-    estadosPorDia: estadosPorDiaResult
+    estadosPorDia: estadosPorDiaResult,
+    empleadosPorHospital: empleadosPorHospitalResult
   };
 }
 

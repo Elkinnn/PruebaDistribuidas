@@ -31,7 +31,8 @@ export default function Graficas({ filtros }) {
     especialidades: [],
     pacientesPorHospital: [],
     medicosTop: [],
-    estadosPorDia: []
+    estadosPorDia: [],
+    empleadosPorHospital: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,19 +79,69 @@ export default function Graficas({ filtros }) {
     );
   }
 
-  // Configuración común para las gráficas
+  // Configuración común para las gráficas - Diseño profesional
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: '600'
+          }
+        }
       },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
+        padding: 12
+      }
     },
     scales: {
+      x: {
+        grid: {
+          display: false
+        },
+        ticks: {
+          font: {
+            size: 11,
+            weight: '500'
+          }
+        }
+      },
       y: {
         beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false
+        },
+        ticks: {
+          font: {
+            size: 11,
+            weight: '500'
+          }
+        }
       },
     },
+    elements: {
+      point: {
+        radius: 4,
+        hoverRadius: 6
+      },
+      line: {
+        tension: 0.4,
+        borderWidth: 3
+      }
+    }
   };
 
   // 1. Gráfica de líneas: Citas por día
@@ -100,9 +151,13 @@ export default function Graficas({ filtros }) {
       {
         label: 'Citas por día',
         data: datosGraficas.citasPorDia.map(item => item.cantidad),
-        borderColor: 'rgb(99, 102, 241)',
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        pointBackgroundColor: 'rgb(59, 130, 246)',
+        pointBorderColor: 'white',
+        pointBorderWidth: 2,
         tension: 0.4,
+        fill: true,
       },
     ],
   };
@@ -115,30 +170,32 @@ export default function Graficas({ filtros }) {
         label: 'Número de citas',
         data: datosGraficas.especialidades.map(item => item.cantidad),
         backgroundColor: [
-          'rgba(239, 68, 68, 0.8)',
-          'rgba(245, 158, 11, 0.8)',
+          'rgba(99, 102, 241, 0.8)',
           'rgba(34, 197, 94, 0.8)',
-          'rgba(59, 130, 246, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
           'rgba(147, 51, 234, 0.8)',
-          'rgba(236, 72, 153, 0.8)',
           'rgba(14, 165, 233, 0.8)',
+          'rgba(236, 72, 153, 0.8)',
           'rgba(16, 185, 129, 0.8)',
-          'rgba(245, 101, 101, 0.8)',
           'rgba(168, 85, 247, 0.8)',
+          'rgba(245, 101, 101, 0.8)',
         ],
         borderColor: [
-          'rgb(239, 68, 68)',
-          'rgb(245, 158, 11)',
+          'rgb(99, 102, 241)',
           'rgb(34, 197, 94)',
-          'rgb(59, 130, 246)',
+          'rgb(245, 158, 11)',
+          'rgb(239, 68, 68)',
           'rgb(147, 51, 234)',
-          'rgb(236, 72, 153)',
           'rgb(14, 165, 233)',
+          'rgb(236, 72, 153)',
           'rgb(16, 185, 129)',
-          'rgb(245, 101, 101)',
           'rgb(168, 85, 247)',
+          'rgb(245, 101, 101)',
         ],
-        borderWidth: 1,
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false,
       },
     ],
   };
@@ -147,28 +204,35 @@ export default function Graficas({ filtros }) {
   const hospitales = [...new Set(datosGraficas.pacientesPorHospital.map(item => item.hospital))];
   const estados = [...new Set(datosGraficas.pacientesPorHospital.map(item => item.estado))];
   
+  // Función para obtener colores según el estado
+  const getEstadoColors = (estado) => {
+    const colores = {
+      'ATENDIDA': { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgb(34, 197, 94)' }, // Verde
+      'CANCELADA': { bg: 'rgba(239, 68, 68, 0.8)', border: 'rgb(239, 68, 68)' }, // Rojo
+      'PROGRAMADA': { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgb(59, 130, 246)' }, // Azul
+    };
+    return colores[estado] || { bg: 'rgba(156, 163, 175, 0.8)', border: 'rgb(156, 163, 175)' };
+  };
+  
   const datosPacientesPorHospital = {
     labels: hospitales,
-    datasets: estados.map((estado, index) => ({
-      label: estado,
-      data: hospitales.map(hospital => {
-        const item = datosGraficas.pacientesPorHospital.find(
-          p => p.hospital === hospital && p.estado === estado
-        );
-        return item ? item.cantidad : 0;
-      }),
-      backgroundColor: [
-        'rgba(239, 68, 68, 0.8)',
-        'rgba(34, 197, 94, 0.8)',
-        'rgba(59, 130, 246, 0.8)',
-      ][index % 3],
-      borderColor: [
-        'rgb(239, 68, 68)',
-        'rgb(34, 197, 94)',
-        'rgb(59, 130, 246)',
-      ][index % 3],
-      borderWidth: 1,
-    })),
+    datasets: estados.map((estado) => {
+      const colores = getEstadoColors(estado);
+      return {
+        label: estado,
+        data: hospitales.map(hospital => {
+          const item = datosGraficas.pacientesPorHospital.find(
+            p => p.hospital === hospital && p.estado === estado
+          );
+          return item ? item.cantidad : 0;
+        }),
+        backgroundColor: colores.bg,
+        borderColor: colores.border,
+        borderWidth: 2,
+        borderRadius: 4,
+        borderSkipped: false,
+      };
+    }),
   };
 
   // 4. Gráfica de barras horizontales: Top médicos
@@ -180,7 +244,9 @@ export default function Graficas({ filtros }) {
         data: datosGraficas.medicosTop.map(item => item.citasAtendidas),
         backgroundColor: 'rgba(34, 197, 94, 0.8)',
         borderColor: 'rgb(34, 197, 94)',
-        borderWidth: 1,
+        borderWidth: 2,
+        borderRadius: 4,
+        borderSkipped: false,
       },
     ],
   };
@@ -188,85 +254,200 @@ export default function Graficas({ filtros }) {
   const opcionesMedicos = {
     ...chartOptions,
     indexAxis: 'y',
+    scales: {
+      ...chartOptions.scales,
+      x: {
+        ...chartOptions.scales.x,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false
+        }
+      },
+      y: {
+        ...chartOptions.scales.y,
+        grid: {
+          display: false
+        }
+      }
+    }
   };
 
   // 5. Gráfica recomendada: Distribución de estados por día
   const fechas = [...new Set(datosGraficas.estadosPorDia.map(item => item.fecha))];
   const datosEstadosPorDia = {
     labels: fechas.map(fecha => new Date(fecha).toLocaleDateString()),
-    datasets: estados.map((estado, index) => ({
-      label: estado,
-      data: fechas.map(fecha => {
-        const item = datosGraficas.estadosPorDia.find(
-          e => e.fecha === fecha && e.estado === estado
-        );
-        return item ? item.cantidad : 0;
-      }),
-      backgroundColor: [
-        'rgba(239, 68, 68, 0.8)',
-        'rgba(34, 197, 94, 0.8)',
-        'rgba(59, 130, 246, 0.8)',
-      ][index % 3],
-      borderColor: [
-        'rgb(239, 68, 68)',
-        'rgb(34, 197, 94)',
-        'rgb(59, 130, 246)',
-      ][index % 3],
-      borderWidth: 1,
-    })),
+    datasets: estados.map((estado) => {
+      const colores = getEstadoColors(estado);
+      return {
+        label: estado,
+        data: fechas.map(fecha => {
+          const item = datosGraficas.estadosPorDia.find(
+            e => e.fecha === fecha && e.estado === estado
+          );
+          return item ? item.cantidad : 0;
+        }),
+        backgroundColor: colores.bg,
+        borderColor: colores.border,
+        borderWidth: 2,
+        borderRadius: 4,
+        borderSkipped: false,
+      };
+    }),
+  };
+
+  // 6. Gráfica de empleados por hospital
+  const datosEmpleadosPorHospital = {
+    labels: datosGraficas.empleadosPorHospital.map(item => item.hospital),
+    datasets: [
+      {
+        label: 'Empleados',
+        data: datosGraficas.empleadosPorHospital.map(item => item.cantidadEmpleados),
+        backgroundColor: [
+          'rgba(147, 51, 234, 0.8)',
+          'rgba(99, 102, 241, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(14, 165, 233, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+        ],
+        borderColor: [
+          'rgb(147, 51, 234)',
+          'rgb(99, 102, 241)',
+          'rgb(59, 130, 246)',
+          'rgb(14, 165, 233)',
+          'rgb(16, 185, 129)',
+        ],
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false,
+      },
+    ],
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight mb-2">Gráficas de Análisis</h2>
-        <p className="text-slate-600">Visualización de datos de citas médicas basados en información real.</p>
+    <div className="space-y-8">
+      {/* Header con diseño profesional */}
+      <div className="text-center">
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
+          📊 Análisis Visual de Datos
+        </h2>
+        <p className="text-slate-600 text-lg">Visualización interactiva de datos de citas médicas en tiempo real</p>
       </div>
 
-      {/* Gráficas en grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Primera fila de gráficas */}
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* 1. Citas por día */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Citas por Día</h3>
-          <div className="h-64">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">📈</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Citas por Día</h3>
+              <p className="text-sm text-slate-500">Tendencia temporal de volumen</p>
+            </div>
+          </div>
+          <div className="h-80">
             <Line data={datosCitasPorDia} options={chartOptions} />
           </div>
         </div>
 
         {/* 2. Top especialidades */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Top 10 Especialidades</h3>
-          <div className="h-64">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">🏥</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Top Especialidades</h3>
+              <p className="text-sm text-slate-500">Ranking de especialidades más solicitadas</p>
+            </div>
+          </div>
+          <div className="h-80">
             <Bar data={datosEspecialidades} options={chartOptions} />
           </div>
         </div>
+      </div>
 
+      {/* Segunda fila de gráficas */}
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* 3. Pacientes por hospital */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Citas por Hospital y Estado</h3>
-          <div className="h-64">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">🏢</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Citas por Hospital</h3>
+              <p className="text-sm text-slate-500">Distribución por estado y hospital</p>
+            </div>
+          </div>
+          <div className="h-80">
             <Bar data={datosPacientesPorHospital} options={chartOptions} />
           </div>
         </div>
 
         {/* 4. Top médicos */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Top Médicos por Citas Atendidas</h3>
-          <div className="h-64">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">👨‍⚕️</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Top Médicos</h3>
+              <p className="text-sm text-slate-500">Médicos con más citas atendidas</p>
+            </div>
+          </div>
+          <div className="h-80">
             <Bar data={datosMedicosTop} options={opcionesMedicos} />
           </div>
         </div>
       </div>
 
-      {/* Gráfica recomendada: Estados por día */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Distribución de Estados por Día</h3>
-        <p className="text-sm text-slate-600 mb-4">
-          Esta gráfica muestra cómo se distribuyen los diferentes estados de citas a lo largo del tiempo, 
-          permitiendo identificar patrones y tendencias.
-        </p>
-        <div className="h-64">
-          <Bar data={datosEstadosPorDia} options={chartOptions} />
+      {/* Tercera fila: Gráficas especiales */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* 5. Estados por día */}
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">📊</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Estados por Día</h3>
+              <p className="text-sm text-slate-500">Distribución temporal de estados</p>
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                🟢 Atendida
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                🔴 Cancelada
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                🔵 Programada
+              </span>
+            </div>
+          </div>
+          <div className="h-80">
+            <Bar data={datosEstadosPorDia} options={chartOptions} />
+          </div>
+        </div>
+
+        {/* 6. Empleados por hospital */}
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl flex items-center justify-center mr-4">
+              <span className="text-white text-xl">👥</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Empleados por Hospital</h3>
+              <p className="text-sm text-slate-500">Distribución del personal médico</p>
+            </div>
+          </div>
+          <div className="h-80">
+            <Bar data={datosEmpleadosPorHospital} options={chartOptions} />
+          </div>
         </div>
       </div>
     </div>
