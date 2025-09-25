@@ -32,10 +32,12 @@ export default function AdminDashboard() {
             setLoading(true);
             setError(null);
             
-            const kpisData = await getKpisDashboard({
-                desde: filtros.desde || undefined,
-                hasta: filtros.hasta || undefined
-            });
+            // Solo aplicar filtros si ambos campos están llenos
+            const filtrosAplicar = (filtros.desde && filtros.hasta) 
+                ? { desde: filtros.desde, hasta: filtros.hasta }
+                : {};
+            
+            const kpisData = await getKpisDashboard(filtrosAplicar);
             
             setKpis(kpisData);
         } catch (err) {
@@ -51,10 +53,23 @@ export default function AdminDashboard() {
     }, [filtros.desde, filtros.hasta]);
 
     const handleFiltroChange = (campo, valor) => {
-        setFiltros(prev => ({
-            ...prev,
-            [campo]: valor
-        }));
+        setFiltros(prev => {
+            const nuevosFiltros = {
+                ...prev,
+                [campo]: valor
+            };
+            
+            // Validación: fecha de fin no puede ser menor que fecha de inicio
+            if (campo === 'desde' && nuevosFiltros.hasta && valor > nuevosFiltros.hasta) {
+                nuevosFiltros.hasta = '';
+            }
+            if (campo === 'hasta' && nuevosFiltros.desde && valor < nuevosFiltros.desde) {
+                // Si la fecha de fin es menor que la de inicio, la ajustamos
+                return prev; // No actualizar si es inválida
+            }
+            
+            return nuevosFiltros;
+        });
     };
 
     const limpiarFiltros = () => {
@@ -84,38 +99,68 @@ export default function AdminDashboard() {
 
             {/* Filtros */}
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">Filtros de fecha</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800">Filtros de fecha</h3>
+                    {(filtros.desde && filtros.hasta) && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs text-green-600 font-medium">Filtros activos</span>
+                        </div>
+                    )}
+                    {(filtros.desde || filtros.hasta) && !(filtros.desde && filtros.hasta) && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            <span className="text-xs text-yellow-600 font-medium">Selecciona ambas fechas para filtrar</span>
+                        </div>
+                    )}
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Desde
-                        </label>
-                        <input
-                            type="date"
-                            value={filtros.desde}
-                            onChange={(e) => handleFiltroChange('desde', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Hasta
-                        </label>
-                        <input
-                            type="date"
-                            value={filtros.hasta}
-                            onChange={(e) => handleFiltroChange('hasta', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                    </div>
-                    <div className="flex items-end">
-                        <button
-                            onClick={limpiarFiltros}
-                            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                        >
-                            Limpiar filtros
-                        </button>
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Desde
+                                </label>
+                                <input
+                                    type="date"
+                                    value={filtros.desde}
+                                    onChange={(e) => handleFiltroChange('desde', e.target.value)}
+                                    max={filtros.hasta || undefined}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                />
+                                {filtros.desde && filtros.hasta && filtros.desde > filtros.hasta && (
+                                    <p className="text-xs text-red-600 mt-1">La fecha de inicio no puede ser mayor que la de fin</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Hasta
+                                </label>
+                                <input
+                                    type="date"
+                                    value={filtros.hasta}
+                                    onChange={(e) => handleFiltroChange('hasta', e.target.value)}
+                                    min={filtros.desde || undefined}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                />
+                                {filtros.desde && filtros.hasta && filtros.hasta < filtros.desde && (
+                                    <p className="text-xs text-red-600 mt-1">La fecha de fin no puede ser menor que la de inicio</p>
+                                )}
+                            </div>
+                            <div className="flex items-end">
+                                <button
+                                    onClick={limpiarFiltros}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-200"
+                                    style={{
+                                        backgroundColor: 'oklch(0.596 0.145 163.225)',
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.backgroundColor = 'oklch(0.55 0.145 163.225)'}
+                                    onMouseLeave={(e) => e.target.style.backgroundColor = 'oklch(0.596 0.145 163.225)'}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Limpiar filtros
+                                </button>
+                            </div>
                 </div>
             </div>
 

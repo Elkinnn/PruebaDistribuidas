@@ -6,11 +6,14 @@ import {
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line, Bar, Pie, Doughnut, Radar, PolarArea } from 'react-chartjs-2';
 import { getGraficasData } from "../../api/cita";
 
 // Registrar componentes de Chart.js
@@ -20,9 +23,12 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default function Graficas({ filtros }) {
@@ -42,10 +48,12 @@ export default function Graficas({ filtros }) {
       setLoading(true);
       setError(null);
       
-      const data = await getGraficasData({
-        desde: filtros.desde || undefined,
-        hasta: filtros.hasta || undefined
-      });
+      // Solo aplicar filtros si ambos campos están llenos
+      const filtrosAplicar = (filtros.desde && filtros.hasta) 
+        ? { desde: filtros.desde, hasta: filtros.hasta }
+        : {};
+      
+      const data = await getGraficasData(filtrosAplicar);
       
       setDatosGraficas(data);
     } catch (err) {
@@ -162,12 +170,11 @@ export default function Graficas({ filtros }) {
     ],
   };
 
-  // 2. Gráfica de barras: Top especialidades
+  // 2. Gráfica de pastel: Top especialidades
   const datosEspecialidades = {
     labels: datosGraficas.especialidades.map(item => item.especialidad),
     datasets: [
       {
-        label: 'Número de citas',
         data: datosGraficas.especialidades.map(item => item.cantidad),
         backgroundColor: [
           'rgba(99, 102, 241, 0.8)',
@@ -193,9 +200,8 @@ export default function Graficas({ filtros }) {
           'rgb(168, 85, 247)',
           'rgb(245, 101, 101)',
         ],
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
+        borderWidth: 3,
+        hoverOffset: 10,
       },
     ],
   };
@@ -242,10 +248,22 @@ export default function Graficas({ filtros }) {
       {
         label: 'Citas atendidas',
         data: datosGraficas.medicosTop.map(item => item.citasAtendidas),
-        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(147, 51, 234, 0.8)',
+        ],
+        borderColor: [
+          'rgb(34, 197, 94)',
+          'rgb(59, 130, 246)',
+          'rgb(245, 158, 11)',
+          'rgb(239, 68, 68)',
+          'rgb(147, 51, 234)',
+        ],
         borderWidth: 2,
-        borderRadius: 4,
+        borderRadius: 6,
         borderSkipped: false,
       },
     ],
@@ -254,8 +272,14 @@ export default function Graficas({ filtros }) {
   const opcionesMedicos = {
     ...chartOptions,
     indexAxis: 'y',
+    plugins: {
+      ...chartOptions.plugins,
+      legend: {
+        ...chartOptions.plugins.legend,
+        display: false // Ocultar leyenda para barras horizontales
+      }
+    },
     scales: {
-      ...chartOptions.scales,
       x: {
         ...chartOptions.scales.x,
         grid: {
@@ -295,12 +319,11 @@ export default function Graficas({ filtros }) {
     }),
   };
 
-  // 6. Gráfica de empleados por hospital
+  // 6. Gráfica de donut: Empleados por hospital
   const datosEmpleadosPorHospital = {
     labels: datosGraficas.empleadosPorHospital.map(item => item.hospital),
     datasets: [
       {
-        label: 'Empleados',
         data: datosGraficas.empleadosPorHospital.map(item => item.cantidadEmpleados),
         backgroundColor: [
           'rgba(147, 51, 234, 0.8)',
@@ -316,12 +339,22 @@ export default function Graficas({ filtros }) {
           'rgb(14, 165, 233)',
           'rgb(16, 185, 129)',
         ],
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
+        borderWidth: 3,
+        hoverOffset: 8,
       },
     ],
   };
+
+  // Componente para mostrar cuando no hay datos
+  const EmptyState = ({ icon, title, message, color = "blue" }) => (
+    <div className="flex flex-col items-center justify-center h-80 text-center">
+      <div className={`w-16 h-16 bg-${color}-100 rounded-full flex items-center justify-center mb-4`}>
+        <span className="text-2xl">{icon}</span>
+      </div>
+      <h3 className="text-lg font-semibold text-slate-700 mb-2">{title}</h3>
+      <p className="text-slate-500 max-w-sm">{message}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -347,7 +380,16 @@ export default function Graficas({ filtros }) {
             </div>
           </div>
           <div className="h-80">
-            <Line data={datosCitasPorDia} options={chartOptions} />
+            {datosGraficas.citasPorDia.length > 0 ? (
+              <Line data={datosCitasPorDia} options={chartOptions} />
+            ) : (
+              <EmptyState 
+                icon="📈" 
+                title="Sin datos temporales" 
+                message="No hay citas registradas en el período seleccionado para mostrar la tendencia temporal."
+                color="blue"
+              />
+            )}
           </div>
         </div>
 
@@ -355,15 +397,24 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🏥</span>
+              <span className="text-white text-xl">🥧</span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-800">Top Especialidades</h3>
-              <p className="text-sm text-slate-500">Ranking de especialidades más solicitadas</p>
+              <h3 className="text-xl font-bold text-slate-800">Distribución de Especialidades</h3>
+              <p className="text-sm text-slate-500">Proporción de citas por especialidad</p>
             </div>
           </div>
           <div className="h-80">
-            <Bar data={datosEspecialidades} options={chartOptions} />
+            {datosGraficas.especialidades.length > 0 ? (
+              <Pie data={datosEspecialidades} options={chartOptions} />
+            ) : (
+              <EmptyState 
+                icon="🥧" 
+                title="Sin especialidades" 
+                message="No hay citas registradas con especialidades para mostrar la distribución."
+                color="emerald"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -382,7 +433,16 @@ export default function Graficas({ filtros }) {
             </div>
           </div>
           <div className="h-80">
-            <Bar data={datosPacientesPorHospital} options={chartOptions} />
+            {datosGraficas.pacientesPorHospital.length > 0 ? (
+              <Bar data={datosPacientesPorHospital} options={chartOptions} />
+            ) : (
+              <EmptyState 
+                icon="🏢" 
+                title="Sin datos de hospitales" 
+                message="No hay citas registradas por hospital para mostrar la distribución por estados."
+                color="purple"
+              />
+            )}
           </div>
         </div>
 
@@ -390,15 +450,24 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">👨‍⚕️</span>
+              <span className="text-white text-xl">📊</span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-800">Top Médicos</h3>
+              <h3 className="text-xl font-bold text-slate-800">Ranking de Médicos</h3>
               <p className="text-sm text-slate-500">Médicos con más citas atendidas</p>
             </div>
           </div>
           <div className="h-80">
-            <Bar data={datosMedicosTop} options={opcionesMedicos} />
+            {datosGraficas.medicosTop.length > 0 ? (
+              <Bar data={datosMedicosTop} options={opcionesMedicos} />
+            ) : (
+              <EmptyState 
+                icon="📊" 
+                title="Sin médicos con citas" 
+                message="No hay médicos con citas atendidas para mostrar el ranking de rendimiento."
+                color="amber"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -430,7 +499,16 @@ export default function Graficas({ filtros }) {
             </div>
           </div>
           <div className="h-80">
-            <Bar data={datosEstadosPorDia} options={chartOptions} />
+            {datosGraficas.estadosPorDia.length > 0 ? (
+              <Bar data={datosEstadosPorDia} options={chartOptions} />
+            ) : (
+              <EmptyState 
+                icon="📊" 
+                title="Sin datos de estados" 
+                message="No hay datos de distribución de estados por día para mostrar las tendencias."
+                color="indigo"
+              />
+            )}
           </div>
         </div>
 
@@ -438,15 +516,24 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">👥</span>
+              <span className="text-white text-xl">🍩</span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-800">Empleados por Hospital</h3>
-              <p className="text-sm text-slate-500">Distribución del personal médico</p>
+              <h3 className="text-xl font-bold text-slate-800">Personal por Hospital</h3>
+              <p className="text-sm text-slate-500">Distribución de empleados médicos</p>
             </div>
           </div>
           <div className="h-80">
-            <Bar data={datosEmpleadosPorHospital} options={chartOptions} />
+            {datosGraficas.empleadosPorHospital.length > 0 ? (
+              <Doughnut data={datosEmpleadosPorHospital} options={chartOptions} />
+            ) : (
+              <EmptyState 
+                icon="🍩" 
+                title="Sin empleados registrados" 
+                message="No hay empleados registrados por hospital para mostrar la distribución del personal."
+                color="pink"
+              />
+            )}
           </div>
         </div>
       </div>
