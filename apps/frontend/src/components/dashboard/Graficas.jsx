@@ -485,19 +485,6 @@ export default function Graficas({ filtros }) {
               <p className="text-sm text-slate-500">Distribución temporal de estados</p>
             </div>
           </div>
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                🟢 Atendida
-              </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                🔴 Cancelada
-              </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                🔵 Programada
-              </span>
-            </div>
-          </div>
           <div className="h-80">
             {datosGraficas.estadosPorDia.length > 0 ? (
               <Bar data={datosEstadosPorDia} options={chartOptions} />

@@ -3,18 +3,17 @@
   "version": "1.0.0",
   "description": "Servicio de administración con arquitectura hexagonal",
   "main": "src/index.js",
-"scripts": {
-  "dev": "nodemon src/index.js",
-  "start:dev": "nodemon src/index.js",
-  "start": "node src/index.js",
-  "build": "echo 'No build step required for Node.js'",
-  "test": "jest",
-  "test:watch": "jest --watch",
-  "seed:admin": "node scripts/seed-admin.js",
-  "create:test-users": "node scripts/create-test-users.js",
-  "test:medico-creation": "node scripts/test-medico-creation.js"
-},
-
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start:dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "build": "echo 'No build step required for Node.js'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "seed:admin": "node scripts/seed-admin.js",
+    "create:test-users": "node scripts/create-test-users.js",
+    "test:medico-creation": "node scripts/test-medico-creation.js"
+  },
   "dependencies": {
     "@nestjs/config": "^4.0.2",
     "@nestjs/typeorm": "^11.0.0",
@@ -25,6 +24,8 @@
     "helmet": "^7.1.0",
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "morgan": "^1.10.0",
     "mysql2": "^3.15.0",
     "typeorm": "^0.3.27",

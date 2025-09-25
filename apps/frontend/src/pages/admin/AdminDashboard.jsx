@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getKpisDashboard } from "../../api/cita";
 import Graficas from "../../components/dashboard/Graficas";
+import Reportes from "../../components/dashboard/Reportes";
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState({
@@ -277,6 +278,9 @@ export default function AdminDashboard() {
 
                     {/* Gráficas */}
                     <Graficas filtros={filtros} />
+
+                    {/* Reportes */}
+                    <Reportes filtros={filtros} />
                 </div>
             );
         }

@@ -208,7 +208,8 @@ app.use('/citas', async (req, res) => {
       headers: {
         ...req.headers
       },
-      timeout: 30000
+      timeout: 30000,
+      responseType: 'arraybuffer' // Importante para PDFs
     };
     
     // Solo agregar data si hay body
@@ -217,11 +218,35 @@ app.use('/citas', async (req, res) => {
     }
     
     const response = await axios(config);
-    res.status(response.status).json(response.data);
+    
+    // Verificar si es un PDF (rutas de reportes)
+    if (req.url.includes('/reportes/')) {
+      // Para PDFs, copiar headers y enviar como buffer
+      Object.keys(response.headers).forEach(key => {
+        if (key.toLowerCase() !== 'content-encoding') {
+          res.setHeader(key, response.headers[key]);
+        }
+      });
+      res.status(response.status).send(response.data);
+    } else {
+      // Para JSON, convertir a JSON
+      const jsonData = JSON.parse(response.data.toString());
+      res.status(response.status).json(jsonData);
+    }
   } catch (error) {
     console.error('[CITAS ERROR]', error.message);
     if (error.response) {
-      res.status(error.response.status).json(error.response.data);
+      // Si es un PDF y hay error, intentar parsear como JSON
+      if (req.url.includes('/reportes/')) {
+        try {
+          const jsonData = JSON.parse(error.response.data.toString());
+          res.status(error.response.status).json(jsonData);
+        } catch {
+          res.status(error.response.status).send(error.response.data);
+        }
+      } else {
+        res.status(error.response.status).json(error.response.data);
+      }
     } else {
       res.status(500).json({ 
         error: 'PROXY_ERROR', 
