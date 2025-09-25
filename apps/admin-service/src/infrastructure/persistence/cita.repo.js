@@ -696,7 +696,15 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
   );
   const atendidas = atendidasResult[0].atendidas;
 
-  // 4. Tiempo medio de consulta (en minutos) para citas atendidas
+  // 4. Citas programadas
+  const programadasWhere = whereClause ? `${whereClause} AND c.estado = 'PROGRAMADA'` : `WHERE c.estado = 'PROGRAMADA'`;
+  const [programadasResult] = await pool.query(
+    `SELECT COUNT(*) as programadas FROM Cita c ${programadasWhere}`,
+    params
+  );
+  const programadas = programadasResult[0].programadas;
+
+  // 5. Tiempo medio de consulta (en minutos) para citas atendidas
   const tiempoWhere = whereClause 
     ? `${whereClause} AND c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`
     : `WHERE c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`;
@@ -711,13 +719,16 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
   // Calcular porcentajes
   const porcentajeCanceladas = totalCitas > 0 ? (canceladas / totalCitas * 100) : 0;
   const porcentajeAtendidas = totalCitas > 0 ? (atendidas / totalCitas * 100) : 0;
+  const porcentajeProgramadas = totalCitas > 0 ? (programadas / totalCitas * 100) : 0;
 
   return {
     totalCitas,
     canceladas,
     atendidas,
+    programadas,
     porcentajeCanceladas: Math.round(porcentajeCanceladas * 100) / 100,
     porcentajeAtendidas: Math.round(porcentajeAtendidas * 100) / 100,
+    porcentajeProgramadas: Math.round(porcentajeProgramadas * 100) / 100,
     tiempoMedioConsulta: Math.round(tiempoMedio * 100) / 100
   };
 }
