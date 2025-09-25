@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, User, Building2, Stethoscope, Mail, Phone } from "lucide-react";
 
 export default function EmpleadoTable({
     items = [],
@@ -12,80 +12,75 @@ export default function EmpleadoTable({
                 <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-sm">
                     <thead className="bg-slate-50 text-slate-700">
                         <tr>
-                            <th className="w-[20%] px-4 py-3 font-semibold">Nombres</th>
-                            <th className="w-[20%] px-4 py-3 font-semibold">Apellidos</th>
-                            <th className="w-[20%] px-4 py-3 font-semibold">Hospital</th>
-                            <th className="w-[12%] px-4 py-3 font-semibold">Tipo</th>
-                            <th className="w-[20%] px-4 py-3 font-semibold">Contacto</th>
-                            <th className="w-[4%]  px-4 py-3 font-semibold">Estado</th>
-                            <th className="w-[4%]  px-4 py-3 text-right font-semibold">Acciones</th>
+                            <th className="w-[30%] px-4 py-3 font-semibold">Empleado</th>
+                            <th className="w-[25%] px-4 py-3 font-semibold">Hospital</th>
+                            <th className="w-[15%] px-4 py-3 font-semibold">Tipo</th>
+                            <th className="w-[24%] px-4 py-3 font-semibold">Contacto</th>
+                            <th className="w-[6%]  px-4 py-3 text-right font-semibold">Acciones</th>
                         </tr>
                     </thead>
 
                     <tbody className="text-slate-800">
                         {items.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                                     No hay empleados.
                                 </td>
                             </tr>
                         ) : (
                             items.map((e, i) => (
                                 <tr key={e.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
-                                    {/* Nombres */}
+                                    {/* Empleado (Nombres + Apellidos) */}
                                     <td className="max-w-0 px-4 py-3 font-medium">
-                                        <span className="block truncate whitespace-nowrap" title={e.nombres}>
-                                            {e.nombres}
-                                        </span>
-                                    </td>
-
-                                    {/* Apellidos */}
-                                    <td className="max-w-0 px-4 py-3">
-                                        <span className="block truncate whitespace-nowrap" title={e.apellidos}>
-                                            {e.apellidos}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <User size={16} className="text-slate-500 flex-shrink-0" />
+                                            <span className="block truncate whitespace-nowrap" title={`${e.nombres} ${e.apellidos}`}>
+                                                {e.nombres} {e.apellidos}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* Hospital */}
                                     <td className="max-w-0 px-4 py-3">
-                                        <span
-                                            className="block truncate whitespace-nowrap"
-                                            title={hospitalMap[e.hospitalId] || "-"}
-                                        >
-                                            {hospitalMap[e.hospitalId] || "-"}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <Building2 size={16} className="text-slate-500 flex-shrink-0" />
+                                            <span
+                                                className="block truncate whitespace-nowrap"
+                                                title={hospitalMap[e.hospitalId] || "-"}
+                                            >
+                                                {hospitalMap[e.hospitalId] || "-"}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* Tipo */}
                                     <td className="max-w-0 px-4 py-3">
-                                        <span className="block truncate whitespace-nowrap" title={e.tipo || "-"}>
-                                            {e.tipo || "-"}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <Stethoscope size={16} className="text-slate-500 flex-shrink-0" />
+                                            <span className="block truncate whitespace-nowrap" title={e.tipo || "-"}>
+                                                {e.tipo || "-"}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* Contacto (dos líneas, cada una truncada) */}
                                     <td className="max-w-0 px-4 py-3">
                                         <div className="space-y-0.5">
-                                            <span className="block truncate text-slate-700" title={e.email || "-"}>
-                                                {e.email || "-"}
-                                            </span>
-                                            <span className="block truncate text-slate-700" title={e.telefono || "-"}>
-                                                {e.telefono || "-"}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <Mail size={14} className="text-slate-500 flex-shrink-0" />
+                                                <span className="block truncate text-slate-700" title={e.email || "-"}>
+                                                    {e.email || "-"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Phone size={14} className="text-slate-500 flex-shrink-0" />
+                                                <span className="block truncate text-slate-700" title={e.telefono || "-"}>
+                                                    {e.telefono || "-"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </td>
 
-                                    {/* Estado */}
-                                    <td className="px-4 py-3">
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${e.activo
-                                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                                                    : "bg-slate-100 text-slate-600 ring-slate-300"
-                                                }`}
-                                        >
-                                            {e.activo ? "Activo" : "Inactivo"}
-                                        </span>
-                                    </td>
 
                                     {/* Acciones */}
                                     <td className="px-4 py-3">

@@ -17,8 +17,9 @@ import { logout } from "../../api/auth";
 
 const links = [
     { to: "/admin", label: "Dashboard", Icon: LayoutDashboard, end: true },
-    { to: "/admin/hospitales", label: "Hospitales", Icon: Building2 },
     { to: "/admin/especialidades", label: "Especialidades", Icon: Stethoscope },
+    { to: "/admin/hospitales", label: "Hospitales", Icon: Building2 },
+
     { to: "/admin/medicos", label: "Médicos", Icon: UserCog },
     { to: "/admin/citas", label: "Citas", Icon: CalendarClock },
     { to: "/admin/empleados", label: "Empleados", Icon: Users },
@@ -110,7 +111,7 @@ export default function AdminLayout() {
                         <button
                             onClick={() => {
                                 logout();
-                                nav("/login", { replace: true });
+                                nav("/admin/login", { replace: true });
                             }}
                             title="Cerrar sesión"
                             className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
@@ -172,7 +173,7 @@ export default function AdminLayout() {
                                     <button
                                         onClick={() => {
                                             logout();
-                                            nav("/login", { replace: true });
+                                            nav("/admin/login", { replace: true });
                                         }}
                                         title="Cerrar sesión"
                                         className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"

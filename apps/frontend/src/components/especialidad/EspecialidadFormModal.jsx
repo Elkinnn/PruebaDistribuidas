@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "../ui/Modal";
-import { Check } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 
 const EMPTY = { nombre: "", descripcion: "" };
 
@@ -75,8 +75,12 @@ export default function EspecialidadFormModal({
         >
             <form id="especialidad-form" onSubmit={handleSubmit} className="space-y-5">
                 {serverError ? (
-                    <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
-                        {serverError}
+                    <div className="flex items-start gap-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+                        <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-medium">Error al guardar</p>
+                            <p className="mt-1">{serverError}</p>
+                        </div>
                     </div>
                 ) : null}
 

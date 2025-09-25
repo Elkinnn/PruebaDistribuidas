@@ -30,7 +30,7 @@ export default function AdminLogin() {
       setServerError("");
       const { token, user } = await loginAdminRequest({ email, password });
 
-      localStorage.setItem("clinix_token", token);
+      localStorage.setItem("authToken", token);
       localStorage.setItem("clinix_user", JSON.stringify(user));
 
       // Este login es SOLO para admins
@@ -95,7 +95,7 @@ export default function AdminLogin() {
               label="Correo electrónico"
               type="email"
               autoComplete="email"
-              placeholder="admin@clinix.ec"
+              placeholder="tu-email@ejemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setTouched(true)}

@@ -1,14 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, CalendarCheck2, Search, AlertTriangle } from "lucide-react";
+import { Plus, CalendarDays, Search, AlertTriangle } from "lucide-react";
 import Pagination from "../../components/shared/Pagination";
 import CitaTable from "../../components/cita/CitaTable";
 import CitaForm from "../../components/cita/CitaForm";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 
-import { listCitas, createCita, updateCita, deleteCita } from "../../api/cita";
+import {
+    listCitas,
+    createCita,
+    updateCita,
+    deleteCita,
+    getCita,
+    cancelarCitasPasadas,
+} from "../../api/cita";
+
 import { listMedicos } from "../../api/medico";
+import { listHospitals } from "../../api/hospital";
 
 export default function Citas() {
+    // tabla
     const [rows, setRows] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -17,43 +28,64 @@ export default function Citas() {
     const [q, setQ] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // modal crear/editar
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [serverError, setServerError] = useState("");
 
+    // confirmación de borrado
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [toDelete, setToDelete] = useState(null);
 
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
+
+    // catálogos
     const [medicos, setMedicos] = useState([]);
-    const medicoMap = useMemo(
-        () =>
-            medicos.reduce((acc, m) => {
-                acc[m.id] = `${m.nombres} ${m.apellidos}`;
-                return acc;
-            }, {}),
-        [medicos]
-    );
+    const [hospitals, setHospitals] = useState([]);
+
 
     async function load() {
         setLoading(true);
-        const { items, total } = await listCitas({ page, pageSize, q });
-        setRows(items);
-        setTotal(total);
-        setLoading(false);
+        try {
+            const { items, total } = await listCitas({ page, pageSize, q });
+            setRows(items);
+            setTotal(total);
+        } catch (error) {
+            console.error('Error loading citas:', error);
+            setRows([]);
+            setTotal(0);
+        } finally {
+            setLoading(false);
+        }
     }
 
-    async function loadMedicosAll() {
-        const { items } = await listMedicos({ page: 1, pageSize: 5000, q: "" });
-        setMedicos(items);
-    }
-
+    // cargar catálogos una sola vez
     useEffect(() => {
-        loadMedicosAll();
+        (async () => {
+            try {
+                // muchos elementos para que el selector tenga todo
+                const [{ items: meds }, { items: hosps }] = await Promise.all([
+                    listMedicos({ page: 1, pageSize: 5000, q: "" }),
+                    listHospitals({ page: 1, pageSize: 5000, q: "" }),
+                ]);
+                setMedicos(meds);
+                setHospitals(hosps);
+            } catch (error) {
+                console.error('Error loading catalogs:', error);
+                setMedicos([]);
+                setHospitals([]);
+            }
+        })();
     }, []);
 
     useEffect(() => {
         load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, q]);
 
     async function handleCreate(values) {
@@ -65,7 +97,9 @@ export default function Citas() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo crear la cita.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo crear la cita.";
+            setServerError(errorMessage);
         }
     }
 
@@ -77,12 +111,14 @@ export default function Citas() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo actualizar la cita.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo actualizar la cita.";
+            setServerError(errorMessage);
         }
     }
 
-    function askDelete(item) {
-        setToDelete(item);
+    function askDelete(c) {
+        setToDelete(c);
         setConfirmOpen(true);
     }
 
@@ -90,31 +126,66 @@ export default function Citas() {
         if (!toDelete) return;
         await deleteCita(toDelete.id);
 
-        const newTotal = total - 1;
-        const maxPage = Math.max(1, Math.ceil(newTotal / pageSize));
-
+        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
         setConfirmOpen(false);
         setToDelete(null);
-
         if (page > maxPage) setPage(maxPage);
         else load();
     }
 
-    const headerSubtitle = useMemo(
+    async function handleCancelarPasadas() {
+        try {
+            // Mostrar notificación de carga
+            setNotification({
+                open: true,
+                type: "loading",
+                title: "Procesando...",
+                message: "Cancelando citas pasadas..."
+            });
+
+            const result = await cancelarCitasPasadas();
+            console.log('Citas canceladas:', result);
+            
+            // Recargar la lista para mostrar los cambios
+            load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Citas canceladas!",
+                message: result.mensaje,
+                duration: 4000
+            });
+        } catch (e) {
+            console.error("Error cancelando citas pasadas:", e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error",
+                message: "No se pudieron cancelar las citas: " + e.message,
+                duration: 6000
+            });
+        }
+    }
+
+    const subtitle = useMemo(
         () => (q ? `(${total} resultados)` : `${total} registros`),
         [q, total]
     );
 
     return (
         <div className="space-y-4">
-            {/* Header con acción a la derecha */}
+            {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-                        <CalendarCheck2 size={22} className="text-emerald-600" />
+                        <CalendarDays size={22} className="text-emerald-600" />
                         Citas
                     </h1>
-                    <p className="text-slate-600">{headerSubtitle}</p>
+                    <p className="text-slate-600">{subtitle}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -130,6 +201,14 @@ export default function Citas() {
                             className="w-52 rounded-xl border border-slate-300 pl-8 pr-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                         />
                     </div>
+
+                    <button
+                        onClick={handleCancelarPasadas}
+                        className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                    >
+                        <AlertTriangle size={16} />
+                        Cancelar Pasadas
+                    </button>
 
                     <button
                         onClick={() => {
@@ -153,20 +232,25 @@ export default function Citas() {
             ) : (
                 <CitaTable
                     items={rows}
-                    medicoMap={medicoMap}
-                    onEdit={(c) => {
-                        setEditing(c);
-                        setServerError("");
-                        setModalOpen(true);
+                    onEdit={async (c) => {
+                        try {
+                            setServerError("");
+                            // Cargar información completa de la cita desde el backend
+                            const citaCompleta = await getCita(c.id);
+                            setEditing(citaCompleta);
+                            setModalOpen(true);
+                        } catch (error) {
+                            console.error('Error loading cita details:', error);
+                            setServerError("No se pudo cargar la información de la cita.");
+                        }
                     }}
                     onDelete={askDelete}
                 />
             )}
 
-            {/* Paginación */}
             <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
 
-            {/* Form modal */}
+            {/* Form */}
             <CitaForm
                 open={modalOpen}
                 onClose={() => {
@@ -174,27 +258,28 @@ export default function Citas() {
                     setEditing(null);
                 }}
                 initialData={editing}
-                onSubmit={editing ? handleEdit : handleCreate}
                 medicos={medicos}
+                hospitals={hospitals}
+                onSubmit={editing ? handleEdit : handleCreate}
                 serverError={serverError}
             />
 
-            {/* Confirmación de borrado */}
+            {/* Confirmación eliminar */}
             <ConfirmModal
                 open={confirmOpen}
                 onClose={() => {
                     setConfirmOpen(false);
                     setToDelete(null);
                 }}
-                tone="danger"
                 title="Eliminar cita"
                 message={
                     toDelete ? (
                         <>
-                            ¿Seguro que deseas eliminar la cita de{" "}
-                            <span className="font-semibold">“{toDelete.paciente}”</span>?
-                            <br />
-                            Esta acción no se puede deshacer.
+                            ¿Confirmas eliminar la cita de{" "}
+                            <span className="font-semibold">
+                                “{toDelete.paciente || toDelete.pacienteInfo?.nombres}”
+                            </span>
+                            ?
                         </>
                     ) : (
                         ""
@@ -203,13 +288,24 @@ export default function Citas() {
                 confirmText="Eliminar"
                 cancelText="Cancelar"
                 onConfirm={confirmDelete}
+                tone="danger"
             />
 
-            {/* Nota mock */}
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {/* Nota de conexión */}
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 <AlertTriangle size={14} />
-                Datos en localStorage (mock). Luego conectamos al backend real.
+                Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }

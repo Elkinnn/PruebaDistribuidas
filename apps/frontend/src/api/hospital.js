@@ -1,66 +1,141 @@
-const KEY = "clinix_hospitales";
-
-function seed() {
-    const exists = localStorage.getItem(KEY);
-    if (!exists) {
-        const demo = [
-            { id: 1, nombre: "Clínica Centro", direccion: "Av. Principal 123", telefono: "099-999-111", activo: true },
-            { id: 2, nombre: "Hospital Norte", direccion: "Calle 10 y F.", telefono: "02-222-333", activo: true },
-            { id: 3, nombre: "Clínica Sur", direccion: "Km 4.5 Vía Sur", telefono: "07-123-456", activo: false },
-            { id: 4, nombre: "San José", direccion: "Av. Libertad 500", telefono: "098-000-444", activo: true },
-            { id: 5, nombre: "Metropolitano", direccion: "Av. Colón 777", telefono: "02-600-700", activo: true },
-            { id: 6, nombre: "La Floresta", direccion: "Calle Larga 22-10", telefono: "04-555-666", activo: true },
-        ];
-        localStorage.setItem(KEY, JSON.stringify(demo));
-    }
-}
-seed();
-
-function readAll() {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-}
-function writeAll(list) {
-    localStorage.setItem(KEY, JSON.stringify(list));
-}
+import apiClient from './client'
 
 export async function listHospitals({ page = 1, pageSize = 8, q = "" } = {}) {
-    const all = readAll();
-    const term = q.trim().toLowerCase();
-    const filtered = term
-        ? all.filter(h =>
-            [h.nombre, h.direccion, h.telefono].some(v =>
-                String(v || "").toLowerCase().includes(term)
-            )
-        )
-        : all;
-
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-    const items = filtered.slice(start, start + pageSize);
-    return { items, total, page, pageSize };
+    try {
+        const response = await apiClient.get('/hospitales', {
+            params: { page, size: pageSize, q }
+        });
+        
+        // Transformar respuesta del backend: { data, meta: { total } } -> { items, total }
+        return {
+            items: response.data.data || [],
+            total: response.data.meta?.total || 0
+        };
+    } catch (error) {
+        console.error('Error fetching hospitals:', error);
+        throw error;
+    }
 }
 
 export async function createHospital(data) {
-    const all = readAll();
-    const id = all.length ? Math.max(...all.map(h => h.id)) + 1 : 1;
-    const nuevo = { id, activo: true, ...data };
-    all.push(nuevo);
-    writeAll(all);
-    return nuevo;
+    try {
+        // Separar especialidades del resto de datos del hospital
+        const { especialidades, ...hospitalData } = data;
+        
+        // Convertir activo de número a boolean si es necesario
+        if (hospitalData.activo !== undefined) {
+            hospitalData.activo = Boolean(hospitalData.activo);
+        }
+        
+        const response = await apiClient.post('/hospitales', hospitalData);
+        
+        // Si hay especialidades seleccionadas, asignarlas al hospital
+        if (especialidades && especialidades.length > 0) {
+            const hospitalId = response.data.data.id;
+            await assignEspecialidadesToHospital(hospitalId, especialidades);
+        }
+        
+        return response.data.data;
+    } catch (error) {
+        console.error('Error creating hospital:', error);
+        throw error;
+    }
+}
+
+async function assignEspecialidadesToHospital(hospitalId, especialidadIds) {
+    try {
+        // Asignar cada especialidad al hospital
+        for (const especialidadId of especialidadIds) {
+            await apiClient.post(`/hospitales/${hospitalId}/especialidades/${especialidadId}`);
+        }
+    } catch (error) {
+        console.error('Error assigning especialidades to hospital:', error);
+        throw error;
+    }
+}
+
+async function updateEspecialidadesForHospital(hospitalId, especialidadIds) {
+    try {
+        // Primero obtener las especialidades actuales del hospital
+        const currentResponse = await apiClient.get(`/hospitales/${hospitalId}/especialidades`);
+        const currentEspecialidades = currentResponse.data.data || [];
+        const currentIds = currentEspecialidades.map(esp => esp.id);
+        
+        // Calcular qué especialidades agregar y cuáles remover
+        const toAdd = especialidadIds.filter(id => !currentIds.includes(id));
+        const toRemove = currentIds.filter(id => !especialidadIds.includes(id));
+        
+        // Remover especialidades que ya no están seleccionadas
+        for (const especialidadId of toRemove) {
+            await apiClient.delete(`/hospitales/${hospitalId}/especialidades/${especialidadId}`);
+        }
+        
+        // Agregar nuevas especialidades
+        for (const especialidadId of toAdd) {
+            await apiClient.post(`/hospitales/${hospitalId}/especialidades/${especialidadId}`);
+        }
+    } catch (error) {
+        console.error('Error updating especialidades for hospital:', error);
+        throw error;
+    }
 }
 
 export async function updateHospital(id, data) {
-    const all = readAll();
-    const idx = all.findIndex(h => h.id === id);
-    if (idx === -1) throw new Error("Hospital no encontrado");
-    all[idx] = { ...all[idx], ...data };
-    writeAll(all);
-    return all[idx];
+    try {
+        // Separar especialidades del resto de datos del hospital
+        const { especialidades, ...updateData } = data;
+        
+        // Remover el id del data para evitar conflictos con la validación del backend
+        const { id: _, ...finalUpdateData } = updateData;
+        
+        // Convertir activo de número a boolean si es necesario
+        if (finalUpdateData.activo !== undefined) {
+            finalUpdateData.activo = Boolean(finalUpdateData.activo);
+        }
+        
+        const response = await apiClient.put(`/hospitales/${id}`, finalUpdateData);
+        
+        // Si hay especialidades seleccionadas, actualizar las asignaciones
+        if (especialidades !== undefined) {
+            await updateEspecialidadesForHospital(id, especialidades);
+        }
+        
+        return response.data.data;
+    } catch (error) {
+        console.error('❌ Error updating hospital:', error);
+        console.error('❌ Error response:', error.response?.data);
+        throw error;
+    }
+}
+
+export async function getHospitalEspecialidades(hospitalId) {
+    try {
+        const response = await apiClient.get(`/hospitales/${hospitalId}/especialidades`);
+        return response.data.data || [];
+    } catch (error) {
+        console.error('Error fetching hospital especialidades:', error);
+        throw error;
+    }
 }
 
 export async function deleteHospital(id) {
-    const all = readAll();
-    const next = all.filter(h => h.id !== id);
-    writeAll(next);
-    return true;
+  try {
+    const response = await apiClient.delete(`/hospitales/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error deleting hospital:', error);
+    throw error;
+  }
+}
+
+export async function getEspecialidadesByHospital(hospitalId) {
+  try {
+    const response = await apiClient.get(`/hospitales/${hospitalId}/especialidades`, {
+      params: { page: 1, size: 1000 } // Obtener todas las especialidades del hospital
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching hospital especialidades:', error);
+    throw error;
+  }
 }

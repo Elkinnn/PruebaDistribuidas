@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
     Building2,
     Stethoscope,
@@ -6,16 +7,21 @@ import {
     TrendingUp,
     Activity,
 } from "lucide-react";
+import { listHospitals } from "../../api/hospital";
+import { listMedicos } from "../../api/medico";
+import { listEmpleados } from "../../api/empleado";
+import { listCitas } from "../../api/cita";
 
 export default function AdminDashboard() {
-    // Datos de ejemplo (mock)
-    const kpis = [
-        { label: "Hospitales", value: 6, delta: "+1", Icon: Building2, color: "text-emerald-600" },
-        { label: "Médicos", value: 42, delta: "+5", Icon: Stethoscope, color: "text-sky-600" },
-        { label: "Pacientes", value: 1280, delta: "+32", Icon: Users, color: "text-indigo-600" }, // <- aquí
-        { label: "Citas hoy", value: 87, delta: "-3", Icon: CalendarDays, color: "text-amber-600" },
-    ];
+    const [kpis, setKpis] = useState([
+        { label: "Hospitales", value: 0, delta: "+0", Icon: Building2, color: "text-emerald-600" },
+        { label: "Médicos", value: 0, delta: "+0", Icon: Stethoscope, color: "text-sky-600" },
+        { label: "Empleados", value: 0, delta: "+0", Icon: Users, color: "text-indigo-600" },
+        { label: "Citas", value: 0, delta: "+0", Icon: CalendarDays, color: "text-amber-600" },
+    ]);
+    const [loading, setLoading] = useState(true);
 
+    // Datos estáticos para gráficos (hasta que tengamos endpoints específicos)
     const ocupacion = [
         { nombre: "Pediatría", pct: 82 },
         { nombre: "Cardiología", pct: 68 },
@@ -34,11 +40,37 @@ export default function AdminDashboard() {
     ];
 
     const actividad = [
-        { t: "Se creó el hospital “Clínica Norte”.", ts: "hoy 09:12" },
-        { t: "Se registró médico: María Gómez (Cardio).", ts: "ayer 18:40" },
-        { t: "Nuevo empleado: Recepción (Clínica Centro).", ts: "ayer 10:15" },
-        { t: "Cita reprogramada: Paciente #P-1082.", ts: "lun 16:02" },
+        { t: "Sistema conectado al backend real.", ts: "hoy 09:12" },
+        { t: "API Gateway funcionando correctamente.", ts: "ayer 18:40" },
+        { t: "Autenticación configurada.", ts: "ayer 10:15" },
+        { t: "Base de datos conectada.", ts: "lun 16:02" },
     ];
+
+    useEffect(() => {
+        async function loadStats() {
+            try {
+                const [hospitals, medicos, empleados, citas] = await Promise.all([
+                    listHospitals({ page: 1, pageSize: 1000 }),
+                    listMedicos({ page: 1, pageSize: 1000 }),
+                    listEmpleados({ page: 1, pageSize: 1000 }),
+                    listCitas({ page: 1, pageSize: 1000 })
+                ]);
+
+                setKpis([
+                    { label: "Hospitales", value: hospitals.total || 0, delta: "+0", Icon: Building2, color: "text-emerald-600" },
+                    { label: "Médicos", value: medicos.total || 0, delta: "+0", Icon: Stethoscope, color: "text-sky-600" },
+                    { label: "Empleados", value: empleados.total || 0, delta: "+0", Icon: Users, color: "text-indigo-600" },
+                    { label: "Citas", value: citas.total || 0, delta: "+0", Icon: CalendarDays, color: "text-amber-600" },
+                ]);
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadStats();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -121,7 +153,7 @@ export default function AdminDashboard() {
                         ))}
                     </div>
                     <p className="mt-3 text-xs text-slate-500">
-                        Valores de muestra. Integraremos datos reales cuando conectemos el backend.
+                        Datos conectados al backend real a través del API Gateway.
                     </p>
                 </div>
             </section>

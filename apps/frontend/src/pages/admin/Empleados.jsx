@@ -36,9 +36,10 @@ export default function Empleados() {
 
     async function load() {
         setLoading(true);
-        const { items, total } = await listEmpleados({ page, pageSize, q });
-        setRows(items);
-        setTotal(total);
+        const response = await listEmpleados({ page, pageSize, q });
+        console.log('🔍 [EMPLEADOS PAGE] Response:', response);
+        setRows(response.data || []);
+        setTotal(response.meta?.total || 0);
         setLoading(false);
     }
 
@@ -65,7 +66,18 @@ export default function Empleados() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo crear el empleado.");
+            console.error('Error creating empleado:', e);
+            
+            // Manejar errores específicos
+            if (e.response?.status === 409) {
+                setServerError("El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.");
+            } else if (e.response?.status === 400) {
+                setServerError("Los datos proporcionados no son válidos. Por favor, revisa la información.");
+            } else if (e.response?.data?.message) {
+                setServerError(e.response.data.message);
+            } else {
+                setServerError("No se pudo crear el empleado. Por favor, intenta nuevamente.");
+            }
         }
     }
 
@@ -77,7 +89,18 @@ export default function Empleados() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e?.message || "No se pudo actualizar el empleado.");
+            console.error('Error updating empleado:', e);
+            
+            // Manejar errores específicos
+            if (e.response?.status === 409) {
+                setServerError("El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.");
+            } else if (e.response?.status === 400) {
+                setServerError("Los datos proporcionados no son válidos. Por favor, revisa la información.");
+            } else if (e.response?.data?.message) {
+                setServerError(e.response.data.message);
+            } else {
+                setServerError("No se pudo actualizar el empleado. Por favor, intenta nuevamente.");
+            }
         }
     }
 
@@ -203,10 +226,10 @@ export default function Empleados() {
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota mock */}
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {/* Nota de conexión */}
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 <AlertTriangle size={14} />
-                Datos en localStorage (mock). Luego conectamos al backend real.
+                Datos conectados al backend real a través del API Gateway.
             </div>
         </div>
     );

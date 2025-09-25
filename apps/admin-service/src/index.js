@@ -1,48 +1,98 @@
-const express = require('express')
-const cors = require('cors')
-const helmet = require('helmet')
-const morgan = require('morgan')
-require('dotenv').config()
+// apps/admin-service/src/index.js
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const mysql = require('mysql2/promise');
 
-const app = express()
-const PORT = process.env.PORT || 3001
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(morgan('dev'));
 
-// Middleware
-app.use(helmet())
-app.use(cors())
-app.use(morgan('combined'))
-app.use(express.json())
+const PORT = process.env.ADMIN_SERVICE_PORT || 3001;
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    service: 'admin-service',
-    timestamp: new Date().toISOString() 
-  })
-})
+/* ------------ Health de BD (ping) ------------ */
+app.get('/db/health', async (_req, res) => {
+  try {
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'hospitalservice',
+    });
+    await conn.query('SELECT 1');
+    await conn.end();
+    res.json({ ok: true, db: 'up' });
+  } catch (e) {
+    res.status(500).json({ ok: false, db: 'down', error: e.message });
+  }
+});
 
-// Routes
-app.use('/users', require('./presentation/routes/userRoutes'))
-app.use('/config', require('./presentation/routes/configRoutes'))
-app.use('/reports', require('./presentation/routes/reportRoutes'))
-app.use('/dashboard', require('./presentation/routes/dashboardRoutes'))
+/* ------------ Estado del servicio automático ------------ */
+app.get('/auto-cancel/status', (_req, res) => {
+  const status = autoCancelService.getStatus();
+  res.json({
+    ok: true,
+    autoCancelService: status
+  });
+});
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  })
-})
+/* ------------ Importar rutas ------------ */
+const authRouter = require('./presentation/routes/auth.routes');
+const { auth, requireRole } = require('./presentation/middlewares/auth');
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' })
-})
+const hospitalesRouter = require('./presentation/routes/hospital.routes');
+const especialidadesRouter = require('./presentation/routes/especialidad.routes');
+const hospEspRouter = require('./presentation/routes/hospital-especialidad.routes');
 
+const medicosRouter = require('./presentation/routes/medico.routes');
+const medicoEspecialidadRouter = require('./presentation/routes/medico-especialidad.routes');
+
+const empleadosRouter = require('./presentation/routes/empleado.routes');
+
+const citaAdminRouter  = require('./presentation/routes/cita.admin.routes');
+
+// Servicio automático de cancelación de citas
+const autoCancelService = require('./infrastructure/services/auto-cancel.service');
+
+/* ------------ Rutas públicas ------------ */
+// Login (no requiere token)
+app.use(authRouter);
+
+/* ------------ Rutas protegidas (ADMIN) ------------ */
+// CRUDs de admin con prefijos claros
+app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospitalesRouter);
+app.use('/especialidades', auth, requireRole('ADMIN_GLOBAL'), especialidadesRouter);
+
+// asignación hospital-Especialidad bajo /hospitales
+app.use('/hospitales',     auth, requireRole('ADMIN_GLOBAL'), hospEspRouter);
+
+// CRUD de médicos y asignación médico-especialidad bajo /medicos
+app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicosRouter);
+app.use('/medicos',        auth, requireRole('ADMIN_GLOBAL'), medicoEspecialidadRouter);
+
+// CRUD de empleados bajo /empleados
+app.use('/empleados',      auth, requireRole('ADMIN_GLOBAL'), empleadosRouter);
+
+// Citas de admin bajo /citas
+app.use('/citas',          auth, requireRole('ADMIN_GLOBAL'), citaAdminRouter);
+
+/* ------------ 404 y errores ------------ */
+app.use((_req, res) => {
+  res.status(404).json({ error: 'NOT_FOUND', message: 'Recurso no encontrado' });
+});
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message || 'Error del servidor' });
+});
+
+/* ------------ Arranque ------------ */
 app.listen(PORT, () => {
-  console.log(`🔧 Admin Service running on port ${PORT}`)
-  console.log(`📊 Health check: http://localhost:${PORT}/health`)
-})
+  console.log(`AdminService (Express) escuchando en :${PORT}`);
+  
+  // Iniciar servicio automático de cancelación de citas
+  autoCancelService.start();
+});

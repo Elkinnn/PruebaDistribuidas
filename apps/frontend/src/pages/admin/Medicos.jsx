@@ -6,7 +6,7 @@ import MedicoForm from "../../components/medico/MedicoForm";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 
 import { listMedicos, createMedico, updateMedico, deleteMedico } from "../../api/medico";
-import { listHospitals } from "../../api/hospital";
+import { listHospitals, getEspecialidadesByHospital } from "../../api/hospital";
 
 export default function Medicos() {
     const [rows, setRows] = useState([]);
@@ -25,6 +25,7 @@ export default function Medicos() {
     const [delTarget, setDelTarget] = useState(null);
 
     const [hospitals, setHospitals] = useState([]);
+    const [especialidades, setEspecialidades] = useState([]);
     const hospitalMap = useMemo(
         () =>
             hospitals.reduce((acc, h) => {
@@ -48,6 +49,16 @@ export default function Medicos() {
         setHospitals(items);
     }
 
+    async function loadEspecialidadesByHospital(hospitalId) {
+        try {
+            const especialidades = await getEspecialidadesByHospital(hospitalId);
+            setEspecialidades(especialidades);
+        } catch (error) {
+            console.error('Error loading especialidades:', error);
+            setEspecialidades([]);
+        }
+    }
+
     useEffect(() => {
         loadHospitalsAll();
     }, []);
@@ -66,7 +77,9 @@ export default function Medicos() {
             setPage(1);
             load();
         } catch (e) {
-            setServerError(e.message || "No se pudo crear el médico.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo crear el médico.";
+            setServerError(errorMessage);
         }
     }
 
@@ -78,7 +91,9 @@ export default function Medicos() {
             setEditing(null);
             load();
         } catch (e) {
-            setServerError(e.message || "No se pudo actualizar el médico.");
+            // Mostrar mensaje de error específico del backend
+            const errorMessage = e?.message || "No se pudo actualizar el médico.";
+            setServerError(errorMessage);
         }
     }
 
@@ -151,10 +166,14 @@ export default function Medicos() {
                 <MedicoTable
                     items={rows}
                     hospitalMap={hospitalMap}
-                    onEdit={(m) => {
+                    onEdit={async (m) => {
                         setEditing(m);
                         setServerError("");
                         setModalOpen(true);
+                        // Cargar especialidades del hospital del médico
+                        if (m.hospitalId) {
+                            await loadEspecialidadesByHospital(m.hospitalId);
+                        }
                     }}
                     onDelete={askDelete}
                 />
@@ -169,10 +188,13 @@ export default function Medicos() {
                 onClose={() => {
                     setModalOpen(false);
                     setEditing(null);
+                    setEspecialidades([]); // Limpiar especialidades al cerrar
                 }}
                 initialData={editing}
                 onSubmit={editing ? handleEdit : handleCreate}
                 hospitals={hospitals}
+                especialidades={especialidades}
+                onLoadEspecialidades={loadEspecialidadesByHospital}
                 serverError={serverError}
             />
 
@@ -188,7 +210,7 @@ export default function Medicos() {
                 title="Eliminar médico"
                 message={
                     delTarget
-                        ? `¿Seguro que deseas eliminar a “${delTarget.nombres} ${delTarget.apellidos}”? Esta acción no se puede deshacer.`
+                        ? `¿Seguro que deseas eliminar a "${delTarget.nombres} ${delTarget.apellidos}"? Esta acción eliminará completamente el médico y su usuario de la base de datos. No se puede deshacer.`
                         : ""
                 }
                 confirmText="Eliminar"
@@ -196,10 +218,10 @@ export default function Medicos() {
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota mock */}
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {/* Nota de conexión */}
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 <AlertTriangle size={14} />
-                Datos en localStorage (mock). Luego conectamos al backend real.
+                Datos conectados al backend real a través del API Gateway.
             </div>
         </div>
     );

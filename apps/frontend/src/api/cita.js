@@ -1,142 +1,90 @@
-const STORAGE_KEY = "clinix:citas";
+import apiClient from './client'
 
-// Pequeño delay para simular API
-const sleep = (res) => new Promise((r) => setTimeout(() => r(res), 120));
-
-function readAll() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
-}
-
-function writeAll(items) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function genId() {
-    return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function toISO(value) {
-    // Acepta datetime-local o ISO; devuelve ISO o cadena vacía
-    if (!value) return "";
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? "" : d.toISOString();
-}
-
-function validate(payload) {
-    if (!payload.paciente || !payload.paciente.trim()) {
-        throw new Error("El nombre del paciente es obligatorio.");
-    }
-    if (payload.medicoId === undefined || payload.medicoId === null || payload.medicoId === "") {
-        throw new Error("El médico es obligatorio.");
-    }
-    if (!payload.fechaHora) {
-        throw new Error("La fecha y hora son obligatorias.");
-    }
-}
-
-/**
- * Lista con filtro y paginación.
- * q busca en: paciente, motivo, estado (case-insensitive).
- */
-export async function listCitas({ page = 1, pageSize = 8, q = "" } = {}) {
-    const all = readAll();
-
-    const qq = (q || "").trim().toLowerCase();
-    let filtered = qq
-        ? all.filter((c) => {
-            const paciente = (c.paciente || "").toLowerCase();
-            const motivo = (c.motivo || "").toLowerCase();
-            const estado = (c.estado || "").toLowerCase();
-            return (
-                paciente.includes(qq) ||
-                motivo.includes(qq) ||
-                estado.includes(qq)
-            );
-        })
-        : all;
-
-    // Orden por fecha (desc)
-    filtered = filtered.sort((a, b) => {
-        const fa = a.fechaHora || "";
-        const fb = b.fechaHora || "";
-        return fb.localeCompare(fa);
+export async function listCitas({ page = 1, pageSize = 8, q = "", hospitalId, medicoId, estado, desde, hasta } = {}) {
+  try {
+    const response = await apiClient.get('/citas', {
+      params: { page, size: pageSize, q, hospitalId, medicoId, estado, desde, hasta }
     });
-
-    const total = filtered.length;
-    const start = Math.max(0, (page - 1) * pageSize);
-    const end = start + pageSize;
-    const items = filtered.slice(start, end);
-
-    return sleep({ items, total });
-}
-
-/**
- * Crea una cita.
- * values esperado: { paciente, medicoId, fechaHora, motivo?, estado? }
- * estado: "pendiente" | "confirmada" | "cancelada"
- */
-export async function createCita(values) {
-    const all = readAll();
-
-    const payload = {
-        id: genId(),
-        paciente: (values.paciente || "").trim(),
-        medicoId: Number(values.medicoId),
-        fechaHora: toISO(values.fechaHora),
-        motivo: values.motivo || "",
-        estado: values.estado || "pendiente",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    
+    // Transformar respuesta del backend: { data, pagination: { total } } -> { items, total }
+    return {
+      items: response.data.data || [],
+      total: response.data.pagination?.total || 0
     };
-
-    validate(payload);
-
-    all.push(payload);
-    writeAll(all);
-    return sleep(payload);
+  } catch (error) {
+    console.error('Error fetching citas:', error);
+    throw error;
+  }
 }
 
-/**
- * Actualiza una cita por id.
- */
-export async function updateCita(id, values) {
-    const all = readAll();
-    const idx = all.findIndex((c) => c.id === id);
-    if (idx === -1) throw new Error("Cita no encontrada.");
-
-    const merged = {
-        ...all[idx],
-        paciente: values.paciente !== undefined ? String(values.paciente).trim() : all[idx].paciente,
-        medicoId:
-            values.medicoId !== undefined ? Number(values.medicoId) : all[idx].medicoId,
-        fechaHora:
-            values.fechaHora !== undefined ? toISO(values.fechaHora) : all[idx].fechaHora,
-        motivo: values.motivo !== undefined ? values.motivo : all[idx].motivo,
-        estado: values.estado !== undefined ? values.estado : all[idx].estado,
-        updatedAt: new Date().toISOString(),
-    };
-
-    validate(merged);
-
-    all[idx] = merged;
-    writeAll(all);
-    return sleep(merged);
+export async function createCita(data) {
+  try {
+    console.log('🔍 [DEBUG] createCita - Data being sent:', data);
+    const response = await apiClient.post('/citas', data);
+    console.log('✅ [DEBUG] createCita - Response received:', response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error('❌ Error creating cita:', error);
+    console.error('❌ Error response:', error.response?.data);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
+    throw error;
+  }
 }
 
-/**
- * Elimina una cita por id.
- */
+export async function updateCita(id, data) {
+  try {
+    // Remover el id del data para evitar conflictos con la validación del backend
+    const { id: _, ...updateData } = data;
+    
+    const response = await apiClient.put(`/citas/${id}`, updateData);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error updating cita:', error);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
+    throw error;
+  }
+}
+
 export async function deleteCita(id) {
-    const all = readAll();
-    const idx = all.findIndex((c) => c.id === id);
-    if (idx === -1) throw new Error("Cita no encontrada.");
+  try {
+    const response = await apiClient.delete(`/citas/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error deleting cita:', error);
+    throw error;
+  }
+}
 
-    all.splice(idx, 1);
-    writeAll(all);
-    return sleep({ ok: true });
+export async function getCita(id) {
+  try {
+    const response = await apiClient.get(`/citas/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching cita:', error);
+    throw error;
+  }
+}
+
+export async function cancelarCitasPasadas() {
+  try {
+    const response = await apiClient.post('/citas/cancelar-pasadas');
+    return response.data.data;
+  } catch (error) {
+    console.error('Error cancelando citas pasadas:', error);
+    throw error;
+  }
 }

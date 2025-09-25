@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Stethoscope, FileText } from "lucide-react";
 
 export default function EspecialidadTable({ items, rows, onEdit, onDelete }) {
     const data = Array.isArray(items) ? items : Array.isArray(rows) ? rows : [];
@@ -32,16 +32,22 @@ export default function EspecialidadTable({ items, rows, onEdit, onDelete }) {
                             <tr key={e.id ?? i} className={i % 2 ? "bg-white" : "bg-slate-50/40"}>
                                 {/* Nombre: 1 línea */}
                                 <td className="px-4 py-3 font-medium text-slate-900">
-                                    <div className="truncate" title={e.nombre}>
-                                        {e.nombre}
+                                    <div className="flex items-center gap-2">
+                                        <Stethoscope size={16} className="text-slate-400" />
+                                        <div className="truncate" title={e.nombre}>
+                                            {e.nombre}
+                                        </div>
                                     </div>
                                 </td>
 
                                 {/* Descripción: 2 líneas máx */}
                                 <td className="px-4 py-3">
-                                    <p className="line-clamp-2 break-words text-slate-700" title={e.descripcion || "-"}>
-                                        {e.descripcion || "-"}
-                                    </p>
+                                    <div className="flex items-start gap-2">
+                                        <FileText size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                                        <p className="line-clamp-2 break-words text-slate-700" title={e.descripcion || "-"}>
+                                            {e.descripcion || "-"}
+                                        </p>
+                                    </div>
                                 </td>
 
                                 <td className="px-4 py-3">

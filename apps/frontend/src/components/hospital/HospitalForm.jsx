@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "../ui/Modal";
 import { Check } from "lucide-react";
 
-const empty = { nombre: "", direccion: "", telefono: "", activo: true };
+const empty = { nombre: "", direccion: "", telefono: "", activo: true, especialidades: [] };
 
-export default function HospitalForm({ open, onClose, onSubmit, initialData }) {
+export default function HospitalForm({ open, onClose, onSubmit, initialData, especialidades = [] }) {
     const [values, setValues] = useState(empty);
     const [touched, setTouched] = useState({});
     const isEdit = !!initialData?.id;
 
     useEffect(() => {
-        setValues(initialData ? { ...initialData } : empty);
+        setValues(initialData ? { 
+            ...initialData, 
+            especialidades: initialData.especialidades || [] 
+        } : empty);
         setTouched({});
     }, [initialData, open]);
 
@@ -30,8 +33,17 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData }) {
         setValues((s) => ({ ...s, [k]: v }));
     }
 
+    function toggleEspecialidad(especialidadId) {
+        setValues(prev => ({
+            ...prev,
+            especialidades: prev.especialidades.includes(especialidadId)
+                ? prev.especialidades.filter(id => id !== especialidadId)
+                : [...prev.especialidades, especialidadId]
+        }));
+    }
+
     function markAllTouched() {
-        setTouched({ nombre: true, direccion: true, telefono: true });
+        setTouched({ nombre: true, direccion: true, telefono: true, especialidades: true });
     }
 
     function handleSubmit(e) {
@@ -124,16 +136,35 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData }) {
                     ) : null}
                 </div>
 
-                {/* activo */}
-                <label className="flex select-none items-center gap-2">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                        checked={values.activo}
-                        onChange={(e) => setField("activo", e.target.checked)}
-                    />
-                    <span className="text-sm text-slate-700">Activo</span>
-                </label>
+                {/* especialidades */}
+                <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Especialidades
+                    </label>
+                    <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-slate-300 p-3">
+                        {especialidades.length === 0 ? (
+                            <p className="text-sm text-slate-500">No hay especialidades disponibles</p>
+                        ) : (
+                            especialidades.map((esp) => (
+                                <label key={esp.id} className="flex select-none items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                        checked={values.especialidades.includes(esp.id)}
+                                        onChange={() => toggleEspecialidad(esp.id)}
+                                    />
+                                    <span className="text-sm text-slate-700">{esp.nombre}</span>
+                                </label>
+                            ))
+                        )}
+                    </div>
+                    {values.especialidades.length > 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                            {values.especialidades.length} especialidad{values.especialidades.length !== 1 ? 'es' : ''} seleccionada{values.especialidades.length !== 1 ? 's' : ''}
+                        </p>
+                    )}
+                </div>
+
             </form>
         </Modal>
     );

@@ -38,6 +38,10 @@ export default function EmpleadoForm({
         if (!values.nombres?.trim()) e.nombres = "Nombres es obligatorio.";
         if (!values.apellidos?.trim()) e.apellidos = "Apellidos es obligatorio.";
         if (!values.tipo) e.tipo = "Selecciona un tipo.";
+        if (!values.email?.trim()) e.email = "Email es obligatorio.";
+        if (!values.telefono?.trim()) e.telefono = "Teléfono es obligatorio.";
+        
+        // Validaciones de formato solo si hay contenido
         if (values.email?.trim()) {
             const ok = /^\S+@\S+\.\S+$/.test(values.email.trim());
             if (!ok) e.email = "Correo inválido.";
@@ -49,12 +53,7 @@ export default function EmpleadoForm({
         return e;
     }, [values]);
 
-    const isInvalid =
-        Object.keys(errors).length > 0 ||
-        !values.hospitalId ||
-        !values.nombres?.trim() ||
-        !values.apellidos?.trim() ||
-        !values.tipo;
+    const isInvalid = Object.keys(errors).length > 0;
 
     function setField(k, v) {
         setValues((s) => ({ ...s, [k]: v }));
@@ -208,7 +207,7 @@ export default function EmpleadoForm({
                 {/* Email */}
                 <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Email
+                        Email <span className="text-rose-600">*</span>
                     </label>
                     <input
                         value={values.email}
@@ -228,7 +227,7 @@ export default function EmpleadoForm({
                 {/* Teléfono */}
                 <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Teléfono
+                        Teléfono <span className="text-rose-600">*</span>
                     </label>
                     <input
                         value={values.telefono}
@@ -245,16 +244,6 @@ export default function EmpleadoForm({
                     ) : null}
                 </div>
 
-                {/* Activo */}
-                <label className="flex select-none items-center gap-2">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                        checked={values.activo}
-                        onChange={(e) => setField("activo", e.target.checked)}
-                    />
-                    <span className="text-sm text-slate-700">Activo</span>
-                </label>
             </form>
         </Modal>
     );

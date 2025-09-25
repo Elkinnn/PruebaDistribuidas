@@ -26,93 +26,88 @@ export const medicoApi = {
   stats: () => api.get("/dashboard/stats"),
 };
 const LS_KEY = "clinix_medicos";
+import apiClient from './client'
 
-function read() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
-  catch { return []; }
-}
-function write(list) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
-}
-
-export async function listMedicos({ page = 1, pageSize = 8, q = "" } = {}) {
-  const list = read();
-  const term = q.trim().toLowerCase();
-  const filtered = term
-    ? list.filter((m) => {
-      const hay = `${m.nombres} ${m.apellidos} ${m.email}`.toLowerCase();
-      return hay.includes(term);
-    })
-    : list;
-
-  const total = filtered.length;
-  const start = (page - 1) * pageSize;
-  const items = filtered.slice(start, start + pageSize);
-  return { items, total };
+export async function listMedicos({ page = 1, pageSize = 8, q = "", hospitalId } = {}) {
+  try {
+    const response = await apiClient.get('/medicos', {
+      params: { page, size: pageSize, q, hospitalId }
+    });
+    
+    // Transformar respuesta del backend: { data, meta: { total } } -> { items, total }
+    return {
+      items: response.data.data || [],
+      total: response.data.meta?.total || 0
+    };
+  } catch (error) {
+    console.error('Error fetching medicos:', error);
+    throw error;
+  }
 }
 
 export async function createMedico(data) {
-  const list = read();
-
-  // Regla: email único por hospital
-  const dup = list.some(
-    (m) =>
-      Number(m.hospitalId) === Number(data.hospitalId) &&
-      m.email.trim().toLowerCase() === data.email.trim().toLowerCase()
-  );
-  if (dup) {
-    const err = new Error("Ya existe un médico con ese email en ese hospital.");
-    err.code = "DUP_EMAIL_HOSPITAL";
-    throw err;
+  try {
+    // Convertir activo de número a boolean si es necesario
+    const medicoData = { ...data };
+    if (medicoData.activo !== undefined) {
+      medicoData.activo = Boolean(medicoData.activo);
+    }
+    
+    const response = await apiClient.post('/medicos', medicoData);
+    return response.data.data;
+  } catch (error) {
+    console.error('❌ Error creating medico:', error);
+    console.error('❌ Error response:', error.response?.data);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
+    throw error;
   }
-
-  const id = Date.now();
-  const nuevo = {
-    id,
-    hospitalId: Number(data.hospitalId),
-    nombres: data.nombres?.trim() || "",
-    apellidos: data.apellidos?.trim() || "",
-    email: data.email?.trim() || "",
-    activo: Boolean(data.activo),
-  };
-  list.unshift(nuevo);
-  write(list);
-  return nuevo;
 }
 
 export async function updateMedico(id, data) {
-  const list = read();
-  const idx = list.findIndex((m) => m.id === id);
-  if (idx === -1) throw new Error("Médico no encontrado.");
-
-  // Validar duplicado (excluyendo el mismo id)
-  const dup = list.some(
-    (m) =>
-      m.id !== id &&
-      Number(m.hospitalId) === Number(data.hospitalId) &&
-      m.email.trim().toLowerCase() === data.email.trim().toLowerCase()
-  );
-  if (dup) {
-    const err = new Error("Ya existe un médico con ese email en ese hospital.");
-    err.code = "DUP_EMAIL_HOSPITAL";
-    throw err;
+  try {
+    // Remover el id del data para evitar conflictos con la validación del backend
+    const { id: _, ...updateData } = data;
+    
+    // Remover password vacío en edición (por seguridad)
+    if (updateData.password === "") {
+      delete updateData.password;
+    }
+    
+    // Convertir activo de número a boolean si es necesario
+    if (updateData.activo !== undefined) {
+      updateData.activo = Boolean(updateData.activo);
+    }
+    
+    const response = await apiClient.put(`/medicos/${id}`, updateData);
+    return response.data.data;
+  } catch (error) {
+    console.error('❌ Error updating medico:', error);
+    console.error('❌ Error response:', error.response?.data);
+    
+    // Extraer mensaje de error más específico
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.status = error.response.status;
+      throw customError;
+    }
+    
+    throw error;
   }
-
-  list[idx] = {
-    ...list[idx],
-    hospitalId: Number(data.hospitalId),
-    nombres: data.nombres?.trim() || "",
-    apellidos: data.apellidos?.trim() || "",
-    email: data.email?.trim() || "",
-    activo: Boolean(data.activo),
-  };
-  write(list);
-  return list[idx];
 }
 
 export async function deleteMedico(id) {
-  const list = read();
-  const next = list.filter((m) => m.id !== id);
-  write(next);
-  return { ok: true };
+  try {
+    const response = await apiClient.delete(`/medicos/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error deleting medico:', error);
+    throw error;
+  }
 }
