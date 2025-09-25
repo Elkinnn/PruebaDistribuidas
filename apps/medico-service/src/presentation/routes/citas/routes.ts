@@ -12,6 +12,7 @@ export class CitaRoutes {
         router.use(authMiddleware)
         router.get('/', controller.getAll)
         router.get('/:id', controller.getOne)
+        router.put('/', controller.update)
         return router;
     }
 }

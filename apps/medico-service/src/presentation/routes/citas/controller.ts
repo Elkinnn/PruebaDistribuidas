@@ -5,38 +5,47 @@ import { CitaMapper } from "../../../infraestructure/mapper/cita.mapper";
 
 export class CitaController {
     constructor(
-        private readonly usecase = new CRUDCitas()
     ) {
     }
 
     getAll = async (req: Request, res: Response) => {
         try {
-            const Citas = await this.usecase.getAll()
-            res.json(Citas)
+            const medico = (req as any).medico;  // viene del middleware
+            const usecase = new CRUDCitas(medico);
+
+            const citas = await usecase.getAll();
+            res.json(citas);
         } catch (error) {
-            res.json(error)
+            res.status(500).json(error);
         }
     }
 
     getOne = async (req: Request, res: Response) => {
         try {
-            const { id } = req.params
-            const _id = parseInt(id)
-            const Cita = await this.usecase.get(_id)
-            res.json(Cita)
+            const medico = (req as any).medico;
+            const usecase = new CRUDCitas(medico);
+
+            const { id } = req.params;
+            const cita = await usecase.get(parseInt(id));
+            res.json(cita);
         } catch (error) {
             if (error instanceof CustomError) {
-                res.status(error.statusCode).json(error)
+                res.status(error.statusCode).json(error);
+                return;
             }
-            res.status(500).json(error)
+            res.status(500).json(error);
         }
     }
 
-    create = async (req: Request, res: Response) => {
+
+    update = async (req: Request, res: Response) => {
         try {
-            const entity = new CitaMapper().toDomain(req.body)
-            const Citas = await this.usecase.create(entity)
-            res.json(Citas)
+            const medico = (req as any).medico
+            const usecase = new CRUDCitas(medico)
+            const { id } = req.params
+            const _id = parseInt(id)
+            const updated = await usecase.update(_id, req.body)
+            res.json(updated)
         } catch (error) {
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error)
@@ -46,26 +55,13 @@ export class CitaController {
         }
     }
 
-    // update = async (req: Request, res: Response) => {
-    //     try {
-    //         const { id } = req.params
-    //         const _id = parseInt(id)
-    //         const updated = await this.usecase.update(_id, req.body)
-    //         res.json(updated)
-    //     } catch (error) {
-    //         if (error instanceof CustomError) {
-    //             res.status(error.statusCode).json(error)
-    //             return
-    //         }
-    //         res.status(500).json({ error: error })
-    //     }
-    // }
-
     delete = async (req: Request, res: Response) => {
         try {
+            const medico = (req as any).medico
+            const usecase = new CRUDCitas(medico)
             const { id } = req.params
             const _id = parseInt(id)
-            const result = await this.usecase.delete(_id)
+            const result = await usecase.delete(_id)
             res.json(result)
         } catch (error) {
             if (error instanceof CustomError) {

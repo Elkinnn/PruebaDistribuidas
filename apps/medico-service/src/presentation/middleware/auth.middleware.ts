@@ -1,21 +1,30 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { GlobalDatabase } from "../../infraestructure/datasource/datasource.global";
+import { DatasourceFactory } from "../../infraestructure/datasource/datasource.factory";
+import { UsuarioModel } from "../../data/models/usuario.model";
+import { UsuarioMapper } from "../../infraestructure/mapper/usuario.mapper";
+import { EntityRepository } from "../../domain/repository/repository.entity";
 import { CustomError } from "../../domain/errors/error.entity";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Token requerido" });
-  }
-
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const secret = process.env.JWT_SECRET || "secretKey123";
-    const payload = jwt.verify(token, secret);
-    (req as any).user = payload;
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) throw new CustomError(401, "No hay token", null);
+
+    const payload: any = jwt.verify(token, process.env.JWT_SECRET || "secretKey123");
+
+    const database = GlobalDatabase.getInstance().database;
+    const datasource = DatasourceFactory.generateRepository(database, UsuarioModel);
+    const repository = new EntityRepository(datasource!, new UsuarioMapper());
+
+    const usuario = await repository.findById(payload.id);
+    if (!usuario) throw new CustomError(404, "Médico no encontrado", null);
+
+    (req as any).medico = usuario;
+
     next();
   } catch (err) {
-    return res.status(403).json({ message: "Token inválido o expirado" });
+    res.status(401).json({ message: "Token inválido o expirado", error: err });
   }
 };

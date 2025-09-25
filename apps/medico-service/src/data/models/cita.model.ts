@@ -4,7 +4,7 @@ import { MedicoModel } from "./medico.model";
 import { PacienteModel } from "./paciente.model";
 import { UsuarioModel } from "./usuario.model";
 
-@Entity("citas")
+@Entity("cita")
 export class CitaModel {
     @PrimaryGeneratedColumn()
     id!: number;

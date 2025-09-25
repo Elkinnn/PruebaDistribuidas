@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import { DatasourceFactory } from "../../../infraestructure/datasource/datasource.factory";
 import { GlobalDatabase } from "../../../infraestructure/datasource/datasource.global";
 import { EntityRepository } from "../../repository/repository.entity";
@@ -6,11 +5,6 @@ import { CustomError } from "../../errors/error.entity";
 import { Usuario } from "../../entities/usuario.model";
 import { UsuarioModel } from "../../../data/models/usuario.model";
 import { UsuarioMapper } from "../../../infraestructure/mapper/usuario.mapper";
-
-interface LoginResponse {
-  token: string;
-  usuario: Usuario;
-}
 
 export class LoginUseCase {
   private readonly repository: EntityRepository<Usuario>;
@@ -25,28 +19,36 @@ export class LoginUseCase {
     this.repository = new EntityRepository<Usuario>(datasource, mapper);
   }
 
-  public async JWTlogin(email: string, password: string): Promise<LoginResponse> {     
+  public async JWTlogin(email: string, password: string): Promise<Usuario> {
     const usuarios = await this.repository.findBy({ email: email });
-    if (!!!usuarios) {
-      throw new CustomError(401, "Credenciales inválidas", null);
-    }
-    if (usuarios.length != 1) {
-      throw new CustomError(400, "Usuario encontrados", null);
+    if (!usuarios || usuarios.length != 1) {
+      throw new CustomError(400, "Usuario no encontrado", null);
     }
     const usuario = usuarios[0]
     if (usuario.password !== password) {
       throw new CustomError(401, "Credenciales inválidas", null);
     }
-    const payload = {
-      id: usuario.id,
-      rol: usuario.rol,
-      email: usuario.email,
-    };
+    return usuario
+  }
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET || "secretKey123", {
-      expiresIn: "2h",
-    });
+  public async me(id: number): Promise<Usuario> {
+    try {
+      const usuario = await this.repository.findById(id);
+      if (!usuario) {
+        throw new CustomError(404, "Usuario no encontrado", null);
+      }
+      return usuario
+    } catch (err) {
+      throw new CustomError(401, "Token inválido o expirado", err);
+    }
+  }
 
-    return { token, usuario };
+  public async updateProfile(id: number, updateData: Partial<Usuario>): Promise<Usuario> {
+    const usuario = await this.repository.findById(id);
+    if (!usuario) throw new CustomError(404, "Usuario no encontrado", null);
+    const updated = { ...usuario, ...updateData };
+
+    await this.repository.update(updated);
+    return updated;
   }
 }

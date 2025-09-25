@@ -8,5 +8,6 @@ export const envs = {
     MYSQL_DB: get('MYSQL_DB').required().asString(),
     MYSQL_PORT: get('MYSQL_PORT').required().asPortNumber(), 
     MYSQL_USER: get('MYSQL_USER').required().asString(), 
-    MYSQL_PASSWORD: get('MYSQL_PASSWORD').asString()
+    MYSQL_PASSWORD: get('MYSQL_PASSWORD').asString(),
+    JWT_SECRET: get('JWT_SECRET').required().asString(),
 }
