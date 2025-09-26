@@ -110,17 +110,20 @@ export default function Citas() {
 
   // Obtener médico autenticado
   const { user } = useAuthMedico();
+  const [medicoInfo, setMedicoInfo] = useState(null);
   
   // Crear lista con solo el médico autenticado
   const medicos = useMemo(() => {
     if (user && user.medicoId) {
+      const nombreCompleto = medicoInfo?.nombre || `${user.nombre} ${user.apellidos}`;
+      console.log('[CITAS] Nombre del médico:', nombreCompleto, 'medicoInfo:', medicoInfo);
       return [{
         id: user.medicoId,
-        nombre: `${user.nombre} ${user.apellidos}`
+        nombre: nombreCompleto
       }];
     }
     return [];
-  }, [user]);
+  }, [user, medicoInfo]);
 
   async function load(p = page) {
     setLoading(true);
@@ -138,6 +141,43 @@ export default function Citas() {
 
   // cargar cada vez que cambie page o q
   useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page, q]);
+
+  // Cargar información inicial del médico
+  useEffect(() => {
+    const loadMedicoInfo = async () => {
+      try {
+        const { getMedicoInfo } = await import("../../api/medico_info");
+        const res = await getMedicoInfo();
+        if (res?.success) {
+          setMedicoInfo(res.data);
+        }
+      } catch (error) {
+        console.error("Error cargando información del médico:", error);
+      }
+    };
+
+    loadMedicoInfo();
+  }, []);
+
+  // Escuchar eventos de actualización del perfil
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      const { nombre } = event.detail;
+      console.log('[CITAS] Evento de actualización recibido:', nombre);
+      if (nombre) {
+        setMedicoInfo(prev => ({
+          ...prev,
+          nombre: nombre
+        }));
+      }
+    };
+
+    window.addEventListener('medicoProfileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('medicoProfileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   function openCreate() {
     const newForm = { ...emptyForm };
