@@ -1187,6 +1187,91 @@ app.put('/medico/perfil', async (req, res) => {
   }
 });
 
+// Endpoint para obtener información básica del médico
+app.get('/medico/info', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    console.log('[MEDICO INFO] Obteniendo información del médico:', decoded.medicoId);
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Obtener información básica del médico
+      const [medicoResult] = await connection.execute(`
+        SELECT 
+          m.id,
+          m.nombres,
+          m.apellidos,
+          m.email,
+          h.nombre as hospital_nombre
+        FROM Medico m 
+        LEFT JOIN Hospital h ON m.hospitalId = h.id
+        WHERE m.id = ?
+      `, [decoded.medicoId]);
+
+      // Obtener especialidades del médico
+      const [especialidadesResult] = await connection.execute(`
+        SELECT e.nombre 
+        FROM MedicoEspecialidad me
+        LEFT JOIN Especialidad e ON me.especialidadId = e.id
+        WHERE me.medicoId = ?
+        ORDER BY e.nombre ASC
+      `, [decoded.medicoId]);
+
+      await connection.end();
+
+      if (medicoResult.length === 0) {
+        return res.status(404).json({
+          error: 'MEDICO_NOT_FOUND',
+          message: 'Médico no encontrado'
+        });
+      }
+
+      const medico = medicoResult[0];
+      const especialidades = especialidadesResult.map(esp => esp.nombre);
+      
+      const info = {
+        id: medico.id,
+        nombre: `${medico.nombres} ${medico.apellidos}`.trim(),
+        email: medico.email,
+        hospital: medico.hospital_nombre || 'Hospital Central',
+        especialidades: especialidades
+      };
+
+      console.log('[MEDICO INFO] Información obtenida:', info);
+
+      res.json(info);
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[MEDICO INFO DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'MEDICO_INFO_ERROR',
+        message: 'Error al obtener información del médico: ' + dbError.message
+      });
+    }
+    
+  } catch (error) {
+    console.error('[MEDICO INFO ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'MEDICO_INFO_ERROR', 
+      message: 'Error interno del servidor: ' + error.message 
+    });
+  }
+});
+
 // Endpoint para obtener estadísticas del médico
 app.get('/medico/stats', async (req, res) => {
   try {

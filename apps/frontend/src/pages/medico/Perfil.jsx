@@ -58,6 +58,18 @@ export default function Perfil() {
           ...prev,
           ...backendData
         }));
+
+        // Actualizar localStorage con el nuevo nombre
+        if (backendData.nombre) {
+          const userData = JSON.parse(localStorage.getItem("clinix_user_medico") || "{}");
+          userData.nombre = backendData.nombre;
+          localStorage.setItem("clinix_user_medico", JSON.stringify(userData));
+          
+          // Disparar evento personalizado para actualizar el layout
+          window.dispatchEvent(new CustomEvent('medicoProfileUpdated', { 
+            detail: { nombre: backendData.nombre } 
+          }));
+        }
       }
       
       // Actualizar días de trabajo solo en el frontend

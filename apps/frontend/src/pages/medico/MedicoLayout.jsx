@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Logo from "../../components/ui/Logo";         // mismo Logo que usas en Admin
 import { logoutMedico } from "../../api/auth.medico";
+import { getMedicoInfo } from "../../api/medico_info";
 
 const links = [
   { to: "/medico", label: "Dashboard", Icon: LayoutDashboard, end: true },
@@ -26,6 +27,7 @@ export default function MedicoLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [medicoInfo, setMedicoInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Anchos sincronizados con AdminLayout
@@ -44,6 +46,18 @@ export default function MedicoLayout() {
 
     try {
       setUser(JSON.parse(userData));
+      
+      // Cargar información actualizada del médico desde la base de datos
+      (async () => {
+        try {
+          const res = await getMedicoInfo();
+          if (res?.success) {
+            setMedicoInfo(res.data);
+          }
+        } catch (error) {
+          console.error("Error cargando información del médico:", error);
+        }
+      })();
     } catch {
       logoutMedico();
       nav("/medico/login", { replace: true });
@@ -52,6 +66,25 @@ export default function MedicoLayout() {
       setLoading(false);
     }
   }, [nav]);
+
+  // Escuchar eventos de actualización del perfil
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      const { nombre } = event.detail;
+      if (nombre) {
+        setMedicoInfo(prev => ({
+          ...prev,
+          nombre: nombre
+        }));
+      }
+    };
+
+    window.addEventListener('medicoProfileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('medicoProfileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -103,8 +136,18 @@ export default function MedicoLayout() {
 
             <div className="ml-auto flex items-center gap-3 text-sm text-slate-600">
               <span className="hidden sm:flex items-center gap-2">
-                <span className="font-medium text-slate-800">{user?.nombre}</span>
-                {user?.especialidad && (
+                <span className="font-medium text-slate-800">
+                  {medicoInfo?.nombre || user?.nombre || "Médico"}
+                </span>
+                {medicoInfo?.especialidades && medicoInfo.especialidades.length > 0 && (
+                  <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs">
+                    {medicoInfo.especialidades.length === 1 
+                      ? medicoInfo.especialidades[0]
+                      : `${medicoInfo.especialidades[0]} +${medicoInfo.especialidades.length - 1}`
+                    }
+                  </span>
+                )}
+                {!medicoInfo?.especialidades && user?.especialidad && (
                   <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs">
                     {user.especialidad}
                   </span>
@@ -124,8 +167,18 @@ export default function MedicoLayout() {
             <div className="px-3 pt-3">
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="text-sm">
-                  <div className="font-semibold text-slate-900 truncate">{user?.nombre}</div>
-                  {user?.especialidad && (
+                  <div className="font-semibold text-slate-900 truncate">
+                    {medicoInfo?.nombre || user?.nombre || "Médico"}
+                  </div>
+                  {medicoInfo?.especialidades && medicoInfo.especialidades.length > 0 && (
+                    <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                      {medicoInfo.especialidades.length === 1 
+                        ? medicoInfo.especialidades[0]
+                        : `${medicoInfo.especialidades[0]} +${medicoInfo.especialidades.length - 1}`
+                      }
+                    </div>
+                  )}
+                  {!medicoInfo?.especialidades && user?.especialidad && (
                     <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                       {user.especialidad}
                     </div>
@@ -200,8 +253,18 @@ export default function MedicoLayout() {
                 <div className="px-3 pb-2">
                   <div className="rounded-xl border border-slate-200 bg-white p-3">
                     <div className="text-sm">
-                      <div className="font-semibold text-slate-900 truncate">{user?.nombre}</div>
-                      {user?.especialidad && (
+                      <div className="font-semibold text-slate-900 truncate">
+                        {medicoInfo?.nombre || user?.nombre || "Médico"}
+                      </div>
+                      {medicoInfo?.especialidades && medicoInfo.especialidades.length > 0 && (
+                        <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          {medicoInfo.especialidades.length === 1 
+                            ? medicoInfo.especialidades[0]
+                            : `${medicoInfo.especialidades[0]} +${medicoInfo.especialidades.length - 1}`
+                          }
+                        </div>
+                      )}
+                      {!medicoInfo?.especialidades && user?.especialidad && (
                         <div className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                           {user.especialidad}
                         </div>
