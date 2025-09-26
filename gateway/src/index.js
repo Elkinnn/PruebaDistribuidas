@@ -884,6 +884,309 @@ app.delete('/medico/citas/:id', async (req, res) => {
   }
 });
 
+// Endpoint para obtener especialidades del hospital del médico
+app.get('/medico/especialidades', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    console.log('[MEDICO ESPECIALIDADES] Obteniendo especialidades para médico:', decoded.medicoId);
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Obtener el hospital del médico
+      const [medicoResult] = await connection.execute(
+        'SELECT hospitalId FROM Medico WHERE id = ?',
+        [decoded.medicoId]
+      );
+      
+      if (!medicoResult.length) {
+        await connection.end();
+        return res.status(404).json({
+          error: 'MEDICO_NOT_FOUND',
+          message: 'Médico no encontrado'
+        });
+      }
+
+      const hospitalId = medicoResult[0].hospitalId;
+
+      // Obtener especialidades del hospital con conteo de médicos
+      const [especialidadesResult] = await connection.execute(`
+        SELECT 
+          e.id,
+          e.nombre,
+          e.descripcion,
+          COUNT(me.medicoId) as medicos
+        FROM Especialidad e
+        LEFT JOIN MedicoEspecialidad me ON e.id = me.especialidadId
+        LEFT JOIN Medico m ON me.medicoId = m.id AND m.hospitalId = ?
+        GROUP BY e.id, e.nombre, e.descripcion
+        ORDER BY e.nombre
+      `, [hospitalId]);
+
+      await connection.end();
+
+      console.log('[MEDICO ESPECIALIDADES] Especialidades encontradas:', especialidadesResult.length);
+
+      // Mapeo de iconos para especialidades
+      const iconosMap = {
+        'Cardiología': '❤️',
+        'Cardiologia': '❤️',
+        'Neurología': '🧠',
+        'Neurologia': '🧠',
+        'Oftalmología': '👁️',
+        'Oftalmologia': '👁️',
+        'Traumatología': '🦴',
+        'Traumatologia': '🦴',
+        'Pediatría': '👶',
+        'Pediatria': '👶',
+        'Medicina General': '🩺',
+        'Dermatología': '🧴',
+        'Dermatologia': '🧴',
+        'Ginecología': '🌸',
+        'Ginecologia': '🌸',
+        'Psiquiatría': '🧠',
+        'Psiquiatria': '🧠',
+        'Urología': '🔬',
+        'Urologia': '🔬',
+        'Endocrinología': '⚕️',
+        'Endocrinologia': '⚕️',
+        'Gastroenterología': '🫀',
+        'Gastroenterologia': '🫀',
+        'Neumología': '🫁',
+        'Neumologia': '🫁',
+        'Oncología': '🎗️',
+        'Oncologia': '🎗️',
+        'Radiología': '📷',
+        'Radiologia': '📷',
+        'Anestesiología': '💉',
+        'Anestesiologia': '💉',
+        'Cirugía General': '🔪',
+        'Cirugia General': '🔪',
+        'Ortopedia': '🦴',
+        'Otorrinolaringología': '👂',
+        'Otorrinolaringologia': '👂',
+        'Reumatología': '🦵',
+        'Reumatologia': '🦵'
+      };
+
+      // Formatear especialidades con iconos
+      const especialidades = especialidadesResult.map(esp => ({
+        id: esp.id,
+        nombre: esp.nombre,
+        descripcion: esp.descripcion || 'Especialidad médica disponible en nuestro centro.',
+        medicos: parseInt(esp.medicos) || 0,
+        icono: iconosMap[esp.nombre] || '🏥',
+        activa: true // Todas las especialidades se consideran activas
+      }));
+
+      // Calcular estadísticas
+      const totalEspecialidades = especialidades.length;
+      const totalMedicos = especialidades.reduce((sum, esp) => sum + esp.medicos, 0);
+      const masPopular = especialidades.reduce((prev, current) =>
+        prev.medicos > current.medicos ? prev : current
+      );
+
+      res.json({
+        data: especialidades,
+        total: totalEspecialidades,
+        estadisticas: {
+          totalEspecialidades,
+          totalMedicos,
+          masPopular: masPopular.nombre,
+          medicosMasPopular: masPopular.medicos
+        }
+      });
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[MEDICO ESPECIALIDADES DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'ESPECIALIDADES_ERROR',
+        message: 'Error al obtener especialidades: ' + dbError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[MEDICO ESPECIALIDADES ERROR]', error.message);
+    res.status(500).json({
+      error: 'ESPECIALIDADES_ERROR',
+      message: 'Error interno al obtener especialidades'
+    });
+  }
+});
+
+// Endpoint para obtener perfil completo del médico
+app.get('/medico/perfil', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    console.log('[MEDICO PERFIL] Obteniendo perfil para médico:', decoded.medicoId);
+
+    // Usar el endpoint existente de /medico/auth/me y obtener hospital real
+    try {
+      const response = await fetch('http://localhost:3000/medico/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener datos del médico');
+      }
+      
+      const medicoData = await response.json();
+      
+      // Obtener hospital real y especialidades desde la base de datos
+      const connection = await getConnection();
+      const [hospitalResult] = await connection.execute(`
+        SELECT h.nombre as hospital_nombre
+        FROM Medico m
+        LEFT JOIN Hospital h ON m.hospitalId = h.id
+        WHERE m.id = ?
+      `, [decoded.medicoId]);
+      
+      // Obtener especialidades del médico desde la base de datos
+      const [especialidadesResult] = await connection.execute(`
+        SELECT e.nombre
+        FROM MedicoEspecialidad me
+        LEFT JOIN Especialidad e ON me.especialidadId = e.id
+        WHERE me.medicoId = ?
+      `, [decoded.medicoId]);
+      
+      await connection.end();
+      
+      // Formatear datos para el frontend - Solo información esencial
+      const perfil = {
+        nombre: `${medicoData.nombre} ${medicoData.apellidos}`,
+        especialidades: especialidadesResult.map(esp => esp.nombre),
+        hospital: hospitalResult.length > 0 ? hospitalResult[0].hospital_nombre : medicoData.hospital || 'Hospital Central',
+        email: medicoData.email,
+        horario: medicoData.horario || '08:00 - 17:00',
+        diasTrabajo: Array.isArray(medicoData.diasTrabajo) 
+          ? medicoData.diasTrabajo 
+          : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
+      };
+
+      console.log('[MEDICO PERFIL] Perfil obtenido:', perfil.nombre);
+
+      res.json(perfil);
+
+    } catch (fetchError) {
+      console.error('[MEDICO PERFIL FETCH ERROR]', fetchError.message);
+      res.status(500).json({
+        error: 'PERFIL_ERROR',
+        message: 'Error al obtener perfil: ' + fetchError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[MEDICO PERFIL ERROR]', error.message);
+    res.status(500).json({
+      error: 'PERFIL_ERROR',
+      message: 'Error interno al obtener perfil'
+    });
+  }
+});
+
+// Endpoint para actualizar perfil del médico (solo horario)
+app.put('/medico/perfil', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    const { nombre, email } = req.body;
+
+    console.log('[MEDICO PERFIL UPDATE] Actualizando perfil para médico:', decoded.medicoId);
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Actualizar nombre y email
+      const updates = [];
+      const values = [];
+      
+      if (nombre) {
+        const [nombrePart, apellidoPart] = nombre.split(' ');
+        updates.push('nombres = ?, apellidos = ?');
+        values.push(nombrePart || '', apellidoPart || '');
+      }
+      
+      if (email) {
+        updates.push('email = ?');
+        values.push(email);
+      }
+      
+      if (updates.length > 0) {
+        values.push(decoded.medicoId);
+        await connection.execute(`
+          UPDATE Medico 
+          SET ${updates.join(', ')}
+          WHERE id = ?
+        `, values);
+      }
+      
+      // Los días de trabajo solo se actualizan en el frontend (no en la base de datos)
+
+      await connection.end();
+
+      console.log('[MEDICO PERFIL UPDATE] Perfil actualizado exitosamente');
+
+      res.json({
+        success: true,
+        message: 'Perfil actualizado exitosamente'
+      });
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[MEDICO PERFIL UPDATE DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'UPDATE_ERROR',
+        message: 'Error al actualizar perfil: ' + dbError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[MEDICO PERFIL UPDATE ERROR]', error.message);
+    res.status(500).json({
+      error: 'UPDATE_ERROR',
+      message: 'Error interno al actualizar perfil'
+    });
+  }
+});
+
 // Endpoint para obtener citas de hoy del médico autenticado
 app.get('/medico/citas/hoy', async (req, res) => {
   try {

@@ -1,91 +1,49 @@
-// src/pages/admin/Especialidades.jsx
-import { useMemo, useState } from "react";
+// src/pages/medico/Especialidades.jsx
+import { useMemo, useState, useEffect } from "react";
 import Card from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import Pagination from "../../components/shared/Pagination";
+import { getEspecialidadesMedico } from "../../api/especialidad.medico";
 
 export default function Especialidades() {
-  // Datos de prueba de especialidades
-  const especialidades = [
-    {
-      id: 1,
-      nombre: "Cardiología",
-      medicos: 12,
-      descripcion:
-        "Especialidad médica que se encarga del estudio, diagnóstico y tratamiento de las enfermedades del corazón y del aparato circulatorio.",
-      icono: "❤️",
-      activa: true,
-    },
-    {
-      id: 2,
-      nombre: "Neurología",
-      medicos: 8,
-      descripcion:
-        "Especialidad médica que trata los trastornos del sistema nervioso central, periférico y autónomo.",
-      icono: "🧠",
-      activa: true,
-    },
-    {
-      id: 3,
-      nombre: "Oftalmología",
-      medicos: 6,
-      descripcion:
-        "Especialidad médica que estudia las enfermedades de los ojos y su tratamiento, incluyendo el globo ocular y sus anexos.",
-      icono: "👁️",
-      activa: true,
-    },
-    {
-      id: 4,
-      nombre: "Traumatología",
-      medicos: 15,
-      descripcion:
-        "Especialidad médica que se dedica al estudio de las lesiones del aparato locomotor.",
-      icono: "🦴",
-      activa: true,
-    },
-    {
-      id: 5,
-      nombre: "Pediatría",
-      medicos: 10,
-      descripcion:
-        "Especialidad médica que estudia al niño y sus enfermedades desde el nacimiento hasta la adolescencia.",
-      icono: "👶",
-      activa: true,
-    },
-    {
-      id: 6,
-      nombre: "Medicina General",
-      medicos: 20,
-      descripcion:
-        "Atención médica integral y continua para individuos, familias y comunidades.",
-      icono: "🩺",
-      activa: true,
-    },
-    {
-      id: 7,
-      nombre: "Dermatología",
-      medicos: 9,
-      descripcion:
-        "Especialidad médica que se ocupa del estudio de la piel, su estructura, función y enfermedades.",
-      icono: "🧴",
-      activa: true,
-    },
-    {
-      id: 8,
-      nombre: "Ginecología",
-      medicos: 11,
-      descripcion:
-        "Especialidad médica dedicada al cuidado del sistema reproductor femenino y sus patologías.",
-      icono: "🌸",
-      activa: true,
-    },
-  ];
+  const [especialidades, setEspecialidades] = useState([]);
+  const [estadisticas, setEstadisticas] = useState({
+    totalEspecialidades: 0,
+    totalMedicos: 0,
+    masPopular: '',
+    medicosMasPopular: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const totalEspecialidades = especialidades.length;
-  const totalMedicos = especialidades.reduce((sum, esp) => sum + esp.medicos, 0);
-  const masPopular = especialidades.reduce((prev, current) =>
-    prev.medicos > current.medicos ? prev : current
-  );
+  // Cargar especialidades al montar el componente
+  useEffect(() => {
+    loadEspecialidades();
+  }, []);
+
+  async function loadEspecialidades() {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await getEspecialidadesMedico();
+      
+      if (result.success) {
+        setEspecialidades(result.data);
+        setEstadisticas(result.estadisticas);
+      } else {
+        setError('Error al cargar especialidades');
+      }
+    } catch (err) {
+      console.error('Error loading especialidades:', err);
+      setError('Error al cargar especialidades');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const totalEspecialidades = estadisticas.totalEspecialidades;
+  const totalMedicos = estadisticas.totalMedicos;
+  const masPopular = estadisticas.masPopular;
 
   /* ---------- Paginación (6 por página fijo) ---------- */
   const [page, setPage] = useState(1);
@@ -96,6 +54,46 @@ export default function Especialidades() {
     const start = (page - 1) * pageSize;
     return especialidades.slice(start, start + pageSize);
   }, [page, pageSize, especialidades]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 relative">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Especialidades Médicas</h1>
+          <p className="text-slate-600">
+            Cargando especialidades disponibles en nuestro centro médico...
+          </p>
+        </div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 relative">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Especialidades Médicas</h1>
+          <p className="text-slate-600">
+            Error al cargar especialidades
+          </p>
+        </div>
+        <Card className="p-6">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={loadEspecialidades}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Reintentar
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 relative">
@@ -157,10 +155,10 @@ export default function Especialidades() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-lg font-bold text-slate-900">
-                {masPopular.nombre}
+                {masPopular || 'N/A'}
               </div>
               <div className="text-sm text-slate-600">
-                {masPopular.medicos} médicos
+                {estadisticas.medicosMasPopular} médicos
               </div>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
