@@ -355,11 +355,11 @@ async function list(filters = {}) {
   let where = [];
   let params = {};
 
-  if (hospitalId) {
+  if (hospitalId && !isNaN(hospitalId)) {
     where.push('c.hospitalId = :hospitalId');
     params.hospitalId = +hospitalId;
   }
-  if (medicoId) {
+  if (medicoId && !isNaN(medicoId)) {
     where.push('c.medicoId = :medicoId');
     params.medicoId = +medicoId;
   }
@@ -652,6 +652,342 @@ async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, us
 }
 
 /* ============================
+   KPIs para Dashboard
+   ============================ */
+async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = {};
+
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = :hospitalId');
+    params.hospitalId = +hospitalId;
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  // 1. Total de citas en el rango
+  const [totalResult] = await pool.query(
+    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    params
+  );
+  const totalCitas = totalResult[0].total;
+
+  // 2. Citas canceladas
+  const canceladasWhere = whereClause ? `${whereClause} AND c.estado = 'CANCELADA'` : `WHERE c.estado = 'CANCELADA'`;
+  const [canceladasResult] = await pool.query(
+    `SELECT COUNT(*) as canceladas FROM Cita c ${canceladasWhere}`,
+    params
+  );
+  const canceladas = canceladasResult[0].canceladas;
+
+  // 3. Citas atendidas
+  const atendidasWhere = whereClause ? `${whereClause} AND c.estado = 'ATENDIDA'` : `WHERE c.estado = 'ATENDIDA'`;
+  const [atendidasResult] = await pool.query(
+    `SELECT COUNT(*) as atendidas FROM Cita c ${atendidasWhere}`,
+    params
+  );
+  const atendidas = atendidasResult[0].atendidas;
+
+  // 4. Citas programadas
+  const programadasWhere = whereClause ? `${whereClause} AND c.estado = 'PROGRAMADA'` : `WHERE c.estado = 'PROGRAMADA'`;
+  const [programadasResult] = await pool.query(
+    `SELECT COUNT(*) as programadas FROM Cita c ${programadasWhere}`,
+    params
+  );
+  const programadas = programadasResult[0].programadas;
+
+  // 5. Tiempo medio de consulta (en minutos) para citas atendidas
+  const tiempoWhere = whereClause 
+    ? `${whereClause} AND c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`
+    : `WHERE c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`;
+  const [tiempoResult] = await pool.query(
+    `SELECT AVG(TIMESTAMPDIFF(MINUTE, c.fechaInicio, c.fechaFin)) as tiempoMedio 
+     FROM Cita c 
+     ${tiempoWhere}`,
+    params
+  );
+  const tiempoMedio = tiempoResult[0].tiempoMedio || 0;
+
+  // Calcular porcentajes
+  const porcentajeCanceladas = totalCitas > 0 ? (canceladas / totalCitas * 100) : 0;
+  const porcentajeAtendidas = totalCitas > 0 ? (atendidas / totalCitas * 100) : 0;
+  const porcentajeProgramadas = totalCitas > 0 ? (programadas / totalCitas * 100) : 0;
+
+  return {
+    totalCitas,
+    canceladas,
+    atendidas,
+    programadas,
+    porcentajeCanceladas: Math.round(porcentajeCanceladas * 100) / 100,
+    porcentajeAtendidas: Math.round(porcentajeAtendidas * 100) / 100,
+    porcentajeProgramadas: Math.round(porcentajeProgramadas * 100) / 100,
+    tiempoMedioConsulta: Math.round(tiempoMedio * 100) / 100
+  };
+}
+
+/* ============================
+   Datos para Gráficas
+   ============================ */
+async function getGraficasData({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = {};
+
+  if (desde) {
+    where.push('c.fechaInicio >= :desde');
+    params.desde = desde;
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= :hasta');
+    params.hasta = hasta;
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = :hospitalId');
+    params.hospitalId = +hospitalId;
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  // 1. Citas por día (gráfica de líneas)
+  const [citasPorDiaResult] = await pool.query(
+    `SELECT 
+       DATE(c.fechaInicio) as fecha,
+       COUNT(*) as cantidad
+     FROM Cita c 
+     ${whereClause}
+     GROUP BY DATE(c.fechaInicio)
+     ORDER BY fecha ASC`,
+    params
+  );
+
+  // 2. Top 10 especialidades por citas (gráfica de barras)
+  const [especialidadesResult] = await pool.query(
+    `SELECT 
+       e.nombre as especialidad,
+       COUNT(DISTINCT c.id) as cantidad
+     FROM Cita c
+     INNER JOIN Medico m ON c.medicoId = m.id
+     INNER JOIN MedicoEspecialidad me ON m.id = me.medicoId
+     INNER JOIN Especialidad e ON me.especialidadId = e.id
+     ${whereClause}
+     GROUP BY e.id, e.nombre
+     ORDER BY cantidad DESC
+     LIMIT 10`,
+    params
+  );
+
+  // 3. Pacientes por hospital (gráfica de barras apiladas)
+  const [pacientesPorHospitalResult] = await pool.query(
+    `SELECT 
+       h.nombre as hospital,
+       c.estado,
+       COUNT(*) as cantidad
+     FROM Cita c
+     INNER JOIN Hospital h ON c.hospitalId = h.id
+     ${whereClause}
+     GROUP BY h.id, h.nombre, c.estado
+     ORDER BY h.nombre, c.estado`,
+    params
+  );
+
+  // 4. Top médicos por citas atendidas (gráfica de barras horizontales)
+  const [medicosResult] = await pool.query(
+    `SELECT 
+       CONCAT(m.nombres, ' ', m.apellidos) as medico,
+       COUNT(*) as citasAtendidas
+     FROM Cita c
+     INNER JOIN Medico m ON c.medicoId = m.id
+     ${whereClause}
+     AND c.estado = 'ATENDIDA'
+     GROUP BY m.id, m.nombres, m.apellidos
+     ORDER BY citasAtendidas DESC
+     LIMIT 10`,
+    params
+  );
+
+  // 5. Distribución de estados por día (gráfica recomendada)
+  const [estadosPorDiaResult] = await pool.query(
+    `SELECT 
+       DATE(c.fechaInicio) as fecha,
+       c.estado,
+       COUNT(*) as cantidad
+     FROM Cita c
+     ${whereClause}
+     GROUP BY DATE(c.fechaInicio), c.estado
+     ORDER BY fecha ASC, c.estado`,
+    params
+  );
+
+  // 6. Empleados por hospital
+  const [empleadosPorHospitalResult] = await pool.query(
+    `SELECT 
+       h.nombre as hospital,
+       COUNT(DISTINCT e.id) as cantidadEmpleados
+     FROM Hospital h
+     LEFT JOIN Empleado e ON h.id = e.hospitalId
+     GROUP BY h.id, h.nombre
+     ORDER BY cantidadEmpleados DESC`,
+    params
+  );
+
+  return {
+    citasPorDia: citasPorDiaResult,
+    especialidades: especialidadesResult,
+    pacientesPorHospital: pacientesPorHospitalResult,
+    medicosTop: medicosResult,
+    estadosPorDia: estadosPorDiaResult,
+    empleadosPorHospital: empleadosPorHospitalResult
+  };
+}
+
+/* ============================
+   Reportes PDF
+   ============================ */
+async function getReporteCitasDetalladas({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = [];
+
+  if (desde) {
+    where.push('c.fechaInicio >= ?');
+    params.push(desde);
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= ?');
+    params.push(hasta);
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = ?');
+    params.push(+hospitalId);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const [result] = await pool.query(
+    `SELECT 
+       c.id,
+       h.nombre as hospital,
+       CONCAT(m.nombres, ' ', m.apellidos) as medico,
+       CONCAT(p.nombres, ' ', p.apellidos) as paciente,
+       e.nombre as especialidad,
+       c.fechaInicio,
+       c.fechaFin,
+       c.estado,
+       c.createdAt,
+       'Sistema' as creadoPor
+     FROM Cita c
+     INNER JOIN Hospital h ON c.hospitalId = h.id
+     INNER JOIN Medico m ON c.medicoId = m.id
+     INNER JOIN Paciente p ON c.pacienteId = p.id
+     INNER JOIN MedicoEspecialidad me ON m.id = me.medicoId
+     INNER JOIN Especialidad e ON me.especialidadId = e.id
+     ${whereClause}
+     ORDER BY c.fechaInicio DESC`,
+    params
+  );
+
+  return result;
+}
+
+async function getReporteResumenEspecialidad({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = [];
+
+  if (desde) {
+    where.push('c.fechaInicio >= ?');
+    params.push(desde);
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= ?');
+    params.push(hasta);
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = ?');
+    params.push(+hospitalId);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const [result] = await pool.query(
+    `SELECT 
+       e.nombre as especialidad,
+       COUNT(DISTINCT c.id) as totalCitas,
+       SUM(CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END) as atendidas,
+       SUM(CASE WHEN c.estado = 'CANCELADA' THEN 1 ELSE 0 END) as canceladas,
+       SUM(CASE WHEN c.estado = 'PROGRAMADA' THEN 1 ELSE 0 END) as programadas,
+       ROUND(
+         (SUM(CASE WHEN c.estado = 'CANCELADA' THEN 1 ELSE 0 END) / COUNT(DISTINCT c.id)) * 100, 2
+       ) as porcentajeCancelacion,
+       ROUND(
+         (SUM(CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END) / COUNT(DISTINCT c.id)) * 100, 2
+       ) as porcentajeAtencion
+     FROM Especialidad e
+     INNER JOIN MedicoEspecialidad me ON e.id = me.especialidadId
+     INNER JOIN Medico m ON me.medicoId = m.id
+     INNER JOIN Cita c ON m.id = c.medicoId
+     ${whereClause}
+     GROUP BY e.id, e.nombre
+     ORDER BY totalCitas DESC`,
+    params
+  );
+
+  return result;
+}
+
+async function getReporteProductividadMedico({ desde, hasta, hospitalId } = {}) {
+  let where = [];
+  let params = [];
+
+  if (desde) {
+    where.push('c.fechaInicio >= ?');
+    params.push(desde);
+  }
+  if (hasta) {
+    where.push('c.fechaInicio <= ?');
+    params.push(hasta);
+  }
+  if (hospitalId && !isNaN(hospitalId)) {
+    where.push('c.hospitalId = ?');
+    params.push(+hospitalId);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const [result] = await pool.query(
+    `SELECT 
+       CONCAT(m.nombres, ' ', m.apellidos) as medico,
+       GROUP_CONCAT(DISTINCT e.nombre SEPARATOR ', ') as especialidades,
+       COUNT(c.id) as totalCitas,
+       SUM(CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END) as atendidas,
+       SUM(CASE WHEN c.estado = 'CANCELADA' THEN 1 ELSE 0 END) as canceladas,
+       SUM(CASE WHEN c.estado = 'PROGRAMADA' THEN 1 ELSE 0 END) as programadas,
+       ROUND(
+         (SUM(CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 2
+       ) as porcentajeAtendidas,
+       ROUND(
+         (SUM(CASE WHEN c.estado = 'CANCELADA' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 2
+       ) as porcentajeCanceladas,
+       ROUND(AVG(TIMESTAMPDIFF(MINUTE, c.fechaInicio, c.fechaFin)), 2) as promedioDuracion
+     FROM Medico m
+     INNER JOIN Cita c ON m.id = c.medicoId
+     LEFT JOIN MedicoEspecialidad me ON m.id = me.medicoId
+     LEFT JOIN Especialidad e ON me.especialidadId = e.id
+     ${whereClause}
+     GROUP BY m.id, m.nombres, m.apellidos
+     ORDER BY totalCitas DESC`,
+    params
+  );
+
+  return result;
+}
+
+/* ============================
    Exports
    ============================ */
 module.exports = {
@@ -670,6 +1006,17 @@ module.exports = {
 
   // eliminación
   remove,
+
+  // KPIs
+  getKpisDashboard,
+  
+  // Gráficas
+  getGraficasData,
+  
+  // Reportes
+  getReporteCitasDetalladas,
+  getReporteResumenEspecialidad,
+  getReporteProductividadMedico,
 
   // cancelar citas pasadas automáticamente
   async cancelarCitasPasadas() {
@@ -715,4 +1062,5 @@ module.exports = {
       conn.release();
     }
   },
+
 };

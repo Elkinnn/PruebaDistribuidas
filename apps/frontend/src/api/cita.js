@@ -88,3 +88,27 @@ export async function cancelarCitasPasadas() {
     throw error;
   }
 }
+
+export async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
+  try {
+    const response = await apiClient.get('/citas/kpis', {
+      params: { desde, hasta, hospitalId }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error obteniendo KPIs del dashboard:', error);
+    throw error;
+  }
+}
+
+export async function getGraficasData({ desde, hasta, hospitalId } = {}) {
+  try {
+    const response = await apiClient.get('/citas/graficas', {
+      params: { desde, hasta, hospitalId }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error obteniendo datos de gráficas:', error);
+    throw error;
+  }
+}

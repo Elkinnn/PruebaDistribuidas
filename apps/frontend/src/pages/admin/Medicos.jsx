@@ -4,6 +4,7 @@ import Pagination from "../../components/shared/Pagination";
 import MedicoTable from "../../components/medico/MedicoTable";
 import MedicoForm from "../../components/medico/MedicoForm";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 
 import { listMedicos, createMedico, updateMedico, deleteMedico } from "../../api/medico";
 import { listHospitals, getEspecialidadesByHospital } from "../../api/hospital";
@@ -34,6 +35,14 @@ export default function Medicos() {
             }, {}),
         [hospitals]
     );
+
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
 
     async function load() {
         setLoading(true);
@@ -76,10 +85,28 @@ export default function Medicos() {
             setEditing(null);
             setPage(1);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Médico creado!",
+                message: "El médico se ha creado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
             // Mostrar mensaje de error específico del backend
             const errorMessage = e?.message || "No se pudo crear el médico.";
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al crear",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -90,10 +117,28 @@ export default function Medicos() {
             setModalOpen(false);
             setEditing(null);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Médico actualizado!",
+                message: "El médico se ha actualizado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
             // Mostrar mensaje de error específico del backend
             const errorMessage = e?.message || "No se pudo actualizar el médico.";
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al actualizar",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -104,12 +149,35 @@ export default function Medicos() {
 
     async function confirmDelete() {
         if (!delTarget) return;
-        await deleteMedico(delTarget.id);
-        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
-        setConfirmOpen(false);
-        setDelTarget(null);
-        if (page > maxPage) setPage(maxPage);
-        else load();
+        
+        try {
+            await deleteMedico(delTarget.id);
+            const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
+            setConfirmOpen(false);
+            setDelTarget(null);
+            if (page > maxPage) setPage(maxPage);
+            else load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Médico eliminado!",
+                message: "El médico se ha eliminado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error deleting medico:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar el médico. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     const headerSubtitle = useMemo(
@@ -223,6 +291,16 @@ export default function Medicos() {
                 <AlertTriangle size={14} />
                 Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }

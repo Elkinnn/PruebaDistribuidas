@@ -4,6 +4,7 @@ import HospitalTable from "../../components/hospital/HospitalTable";
 import HospitalFormModal from "../../components/hospital/HospitalForm";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 import {
     listHospitals,
     createHospital,
@@ -31,6 +32,14 @@ export default function Hospitales() {
 
     // especialidades disponibles
     const [especialidades, setEspecialidades] = useState([]);
+
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
 
     async function load() {
         setLoading(true);
@@ -70,18 +79,62 @@ export default function Hospitales() {
     }, [page, q]);
 
     async function handleCreate(values) {
-        await createHospital(values);
-        setModalOpen(false);
-        setEditing(null);
-        setPage(1); // ir al inicio para ver el nuevo
-        load();
+        try {
+            await createHospital(values);
+            setModalOpen(false);
+            setEditing(null);
+            setPage(1); // ir al inicio para ver el nuevo
+            load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Hospital creado!",
+                message: "El hospital se ha creado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error creating hospital:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al crear",
+                message: "No se pudo crear el hospital. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     async function handleEdit(values) {
-        await updateHospital(editing.id, values);
-        setModalOpen(false);
-        setEditing(null);
-        load();
+        try {
+            await updateHospital(editing.id, values);
+            setModalOpen(false);
+            setEditing(null);
+            load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Hospital actualizado!",
+                message: "El hospital se ha actualizado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error updating hospital:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al actualizar",
+                message: "No se pudo actualizar el hospital. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     async function handleEditClick(hospital) {
@@ -112,17 +165,40 @@ export default function Hospitales() {
     // Confirmar borrado
     async function confirmDelete() {
         if (!toDelete) return;
-        await deleteHospital(toDelete.id);
+        
+        try {
+            await deleteHospital(toDelete.id);
 
-        // ajustar paginación si se borra el último de la página
-        const newTotal = total - 1;
-        const maxPage = Math.max(1, Math.ceil(newTotal / pageSize));
+            // ajustar paginación si se borra el último de la página
+            const newTotal = total - 1;
+            const maxPage = Math.max(1, Math.ceil(newTotal / pageSize));
 
-        setConfirmOpen(false);
-        setToDelete(null);
+            setConfirmOpen(false);
+            setToDelete(null);
 
-        if (page > maxPage) setPage(maxPage);
-        else load();
+            if (page > maxPage) setPage(maxPage);
+            else load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Hospital eliminado!",
+                message: "El hospital se ha eliminado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error deleting hospital:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar el hospital. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     const filteredTitle = useMemo(
@@ -227,6 +303,16 @@ export default function Hospitales() {
                 <AlertTriangle size={14} />
                 Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }

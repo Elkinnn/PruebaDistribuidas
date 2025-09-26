@@ -4,6 +4,7 @@ import Pagination from "../../components/shared/Pagination";
 import EspecialidadTable from "../../components/especialidad/EspecialidadTable";
 import EspecialidadFormModal from "../../components/especialidad/EspecialidadFormModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 
 import {
     listEspecialidades,
@@ -27,6 +28,14 @@ export default function Especialidades() {
 
     const [confirm, setConfirm] = useState({ open: false, item: null });
 
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
+
     async function load() {
         setLoading(true);
         const { items, total } = await listEspecialidades({ page, pageSize, q });
@@ -48,10 +57,28 @@ export default function Especialidades() {
             setEditing(null);
             setPage(1);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Especialidad creada!",
+                message: "La especialidad se ha creado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
             // Mostrar mensaje de error específico del backend
             const errorMessage = e?.message || "No se pudo crear la especialidad.";
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al crear",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -62,10 +89,28 @@ export default function Especialidades() {
             setModalOpen(false);
             setEditing(null);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Especialidad actualizada!",
+                message: "La especialidad se ha actualizado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
             // Mostrar mensaje de error específico del backend
             const errorMessage = e?.message || "No se pudo actualizar la especialidad.";
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al actualizar",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -76,12 +121,35 @@ export default function Especialidades() {
     async function onConfirmDelete() {
         const item = confirm.item;
         if (!item) return;
-        await deleteEspecialidad(item.id);
-        setConfirm({ open: false, item: null });
+        
+        try {
+            await deleteEspecialidad(item.id);
+            setConfirm({ open: false, item: null });
 
-        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
-        if (page > maxPage) setPage(maxPage);
-        else load();
+            const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
+            if (page > maxPage) setPage(maxPage);
+            else load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Especialidad eliminada!",
+                message: "La especialidad se ha eliminado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error deleting especialidad:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar la especialidad. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     const headerSubtitle = useMemo(
@@ -185,6 +253,16 @@ export default function Especialidades() {
                 <AlertTriangle size={14} />
                 Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }
