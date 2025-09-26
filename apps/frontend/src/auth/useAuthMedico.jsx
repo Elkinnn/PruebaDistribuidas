@@ -42,9 +42,9 @@ export const AuthMedicoProvider = ({ children }) => {
           
           console.log('Token validation response:', response)
           
-          if (response && response.data) {
-            setUser(response.data)
-            console.log('Usuario autenticado:', response.data.nombre)
+          if (response && response.id) {
+            setUser(response)
+            console.log('Usuario autenticado:', response.nombre)
           } else {
             console.log('Token inválido, limpiando localStorage')
             // Token inválido, limpiar
@@ -54,7 +54,7 @@ export const AuthMedicoProvider = ({ children }) => {
         } catch (error) {
           console.log('Error validando token:', error)
           // Si es error 401 (no autorizado), limpiar tokens
-          if (error.response?.status === 401) {
+          if (error.message === 'Token inválido' || error.message === 'Token requerido') {
             localStorage.removeItem('clinix_medico_token')
             localStorage.removeItem('clinix_medico_user')
           }

@@ -12,7 +12,7 @@ async function handle(res) {
 
 export const apiMedico = {
   async get(path) {
-    const t = localStorage.getItem("clinix_token_medico");
+    const t = localStorage.getItem("clinix_medico_token");
     const res = await fetch(BASE + path, {
       headers: t ? { Authorization: `Bearer ${t}` } : {},
     });
@@ -20,7 +20,7 @@ export const apiMedico = {
   },
 
   async post(path, body) {
-    const t = localStorage.getItem("clinix_token_medico");
+    const t = localStorage.getItem("clinix_medico_token");
     const res = await fetch(BASE + path, {
       method: "POST",
       headers: {
@@ -33,7 +33,7 @@ export const apiMedico = {
   },
 
   async patch(path, body = {}) {
-    const t = localStorage.getItem("clinix_token_medico");
+    const t = localStorage.getItem("clinix_medico_token");
     const res = await fetch(BASE + path, {
       method: "PATCH",
       headers: {
