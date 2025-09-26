@@ -227,6 +227,49 @@ export default function Citas() {
     setOpen(true);
   }
 
+  // Función para convertir errores técnicos en mensajes amigables
+  function getFriendlyErrorMessage(errorMessage) {
+    if (!errorMessage) return "Error al procesar la solicitud.";
+    
+    // Error de email duplicado
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("uk_paciente_hosp_email")) {
+      return "Ya existe un paciente con este email en el hospital. Por favor, usa un email diferente.";
+    }
+    
+    // Error de cédula duplicada
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("documento")) {
+      return "Ya existe un paciente con esta cédula. Por favor, verifica el número de cédula.";
+    }
+    
+    // Error de teléfono duplicado
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("telefono")) {
+      return "Ya existe un paciente con este teléfono. Por favor, usa un número diferente.";
+    }
+    
+    // Error de solapamiento de horarios
+    if (errorMessage.includes("solapamiento") || errorMessage.includes("overlap")) {
+      return "Ya existe una cita programada en este horario. Por favor, selecciona otro horario.";
+    }
+    
+    // Error de conexión a base de datos
+    if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("connection")) {
+      return "Error de conexión. Por favor, intenta nuevamente en unos momentos.";
+    }
+    
+    // Error de validación de datos
+    if (errorMessage.includes("validation") || errorMessage.includes("required")) {
+      return "Por favor, completa todos los campos obligatorios correctamente.";
+    }
+    
+    // Error genérico de base de datos
+    if (errorMessage.includes("database") || errorMessage.includes("SQL")) {
+      return "Error en el sistema. Por favor, intenta nuevamente.";
+    }
+    
+    // Si no coincide con ningún patrón conocido, devolver mensaje genérico
+    return "Error al procesar la solicitud. Por favor, intenta nuevamente.";
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg("");
@@ -247,8 +290,9 @@ export default function Citas() {
       await load(editing ? page : 1);
       if (!editing) setPage(1);
     } catch (err) {
-      setMsg(err.message || "Error al guardar.");
-      showToast(err.message || "Error al guardar.", "error");
+      const friendlyMessage = getFriendlyErrorMessage(err.message);
+      setMsg(friendlyMessage);
+      showToast(friendlyMessage, "error");
     }
   }
 
@@ -263,8 +307,8 @@ export default function Citas() {
       await load();
       showToast("Cita eliminada correctamente.", "success");
     } catch (e) {
-      // error “No puedes eliminar una cita en estado PROGRAMADA.” u otros
-      showToast(e.message || "No se pudo eliminar la cita.", "error");
+      const friendlyMessage = getFriendlyErrorMessage(e.message);
+      showToast(friendlyMessage, "error");
     } finally {
       setConfirmOpen(false);
       setDeleteId(null);
