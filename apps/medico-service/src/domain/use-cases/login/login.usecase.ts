@@ -5,6 +5,7 @@ import { CustomError } from "../../errors/error.entity";
 import { Usuario } from "../../entities/usuario.model";
 import { UsuarioModel } from "../../../data/models/usuario.model";
 import { UsuarioMapper } from "../../../infraestructure/mapper/usuario.mapper";
+import bcrypt from "bcrypt";
 
 export class LoginUseCase {
   private readonly repository: EntityRepository<Usuario>;
@@ -25,9 +26,23 @@ export class LoginUseCase {
       throw new CustomError(400, "Usuario no encontrado", null);
     }
     const usuario = usuarios[0]
-    if (usuario.password !== password) {
+    
+    // Verificar que el usuario esté activo
+    if (!usuario.activo) {
+      throw new CustomError(401, "Usuario inactivo", null);
+    }
+    
+    // Verificar que sea un médico
+    if (usuario.rol !== "MEDICO") {
+      throw new CustomError(401, "Acceso denegado. Solo médicos pueden acceder", null);
+    }
+    
+    // Comparar password hasheado
+    const isValidPassword = await bcrypt.compare(password, usuario.password);
+    if (!isValidPassword) {
       throw new CustomError(401, "Credenciales inválidas", null);
     }
+    
     return usuario
   }
 

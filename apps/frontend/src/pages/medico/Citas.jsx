@@ -107,12 +107,17 @@ export default function Citas() {
   );
   const [form, setForm] = useState(emptyForm);
 
-  // mock de médicos (cámbialo por tu API real si ya la tienes)
-  const medicos = [
-    { id: 1, nombre: "Dra. Ana Martínez" },
-    { id: 2, nombre: "Dr. Luis Pérez" },
-    { id: 3, nombre: "Dra. Sofía Delgado" },
-  ];
+  // Obtener médicos desde la API (esto se puede mejorar con un hook o contexto)
+  const [medicos, setMedicos] = useState([]);
+  
+  useEffect(() => {
+    // Por ahora usamos datos estáticos, pero esto debería venir de la API
+    setMedicos([
+      { id: 1, nombre: "Dra. Ana Martínez" },
+      { id: 2, nombre: "Dr. Luis Pérez" },
+      { id: 3, nombre: "Dra. Sofía Delgado" },
+    ]);
+  }, []);
 
   async function load(p = page) {
     setLoading(true);

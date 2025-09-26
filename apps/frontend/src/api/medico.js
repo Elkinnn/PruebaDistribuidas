@@ -3,14 +3,14 @@ import { apiMedico as api } from "./client.medico";
 
 export const medicoApi = {
   // Autenticación
-  me: () => api.get("/auth/me"),
+  me: () => api.get("/medico/auth/me"),
   
   // Citas
-  citas: () => api.get("/citas"),
-  citasHoy: () => api.get("/citas/hoy"),
-  crearCita: (dto) => api.post("/citas", dto),
-  terminarCita: (id) => api.patch(`/citas/${id}/terminar`),
-  cancelarCita: (id) => api.patch(`/citas/${id}/cancelar`),
+  citas: () => api.get("/medico/citas"),
+  citasHoy: () => api.get("/medico/citas/hoy"),
+  crearCita: (dto) => api.post("/medico/citas", dto),
+  terminarCita: (id) => api.patch(`/medico/citas/${id}/terminar`),
+  cancelarCita: (id) => api.patch(`/medico/citas/${id}/cancelar`),
 
   // Pacientes
   pacientes: () => api.get("/pacientes"),

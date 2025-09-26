@@ -4,15 +4,14 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Logo from "../../components/ui/Logo";
-import { loginMedicoRequest } from "../../api/auth.medico";
+import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
 
 export default function MedicoLogin() {
-  const nav = useNavigate();
+  const { login, loading } = useAuthMedico();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
 
   const emailError = touched && !/^\S+@\S+\.\S+$/.test(email) ? "Correo inválido" : "";
@@ -24,20 +23,10 @@ export default function MedicoLogin() {
     setTouched(true);
     if (formInvalid) return;
 
-    try {
-      setLoading(true);
-      setServerError("");
-      const { token, user } = await loginMedicoRequest({ email, password });
-
-      localStorage.setItem("clinix_token_medico", token);
-      localStorage.setItem("clinix_user_medico", JSON.stringify(user));
-
-      if (user?.rol === "MEDICO") nav("/medico", { replace: true });
-      else setServerError("Este usuario no tiene rol MÉDICO.");
-    } catch (err) {
-      setServerError(err?.message || "No se pudo iniciar sesión.");
-    } finally {
-      setLoading(false);
+    setServerError("");
+    const success = await login(email, password);
+    if (!success) {
+      setServerError("Credenciales inválidas o usuario no autorizado.");
     }
   }
 

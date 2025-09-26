@@ -36,8 +36,8 @@ export class MySQLDatabase extends IDatabase {
                 username: this.username,
                 password: this.password,
                 entities: this.entities,
-                synchronize: true, //dev
-                logging: true, //dev
+                synchronize: false, // No sincronizar automáticamente
+                logging: false, // Deshabilitar logs para evitar spam
             })
             await this.dataSource.initialize()
             return true

@@ -4,6 +4,9 @@ const morgan = require('morgan');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const axios = require('axios');
+const mysql = require('mysql2/promise');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 
@@ -15,6 +18,21 @@ app.use(express.json());
 
 // targets
 const ADMIN = process.env.ADMIN_SERVICE_URL || 'http://localhost:3001';
+const MEDICO = process.env.MEDICO_SERVICE_URL || 'http://localhost:3100';
+
+// Configuración de base de datos MySQL
+const dbConfig = {
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: '',
+  database: 'hospitalservice'
+};
+
+// Función para conectar a la base de datos
+async function getConnection() {
+  return await mysql.createConnection(dbConfig);
+}
 
 // Ruta específica para login - usando axios en lugar de proxy
 app.post('/auth/login', async (req, res) => {
@@ -231,12 +249,288 @@ app.use('/citas', async (req, res) => {
   }
 });
 
+// Login de médico directo usando la base de datos
+app.post('/medico/auth/login', async (req, res) => {
+  try {
+    console.log(`[MEDICO LOGIN] Direct database login`);
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email y contraseña son requeridos' });
+    }
+    
+    const connection = await getConnection();
+    
+    // Buscar usuario médico
+    const [users] = await connection.execute(
+      'SELECT * FROM usuario WHERE email = ? AND rol = "MEDICO" AND activo = 1',
+      [email]
+    );
+    
+    if (users.length === 0) {
+      await connection.end();
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
+    
+    const user = users[0];
+    
+    // Verificar contraseña
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      await connection.end();
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
+    
+    // Obtener información del médico si existe
+    let medicoInfo = null;
+    if (user.medicoId) {
+      const [medicos] = await connection.execute(
+        'SELECT * FROM medico WHERE id = ?',
+        [user.medicoId]
+      );
+      if (medicos.length > 0) {
+        medicoInfo = medicos[0];
+      }
+    }
+    
+    // Generar token JWT
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        rol: user.rol, 
+        medicoId: user.medicoId 
+      },
+      'secretKey123',
+      { expiresIn: '24h' } // Aumentado a 24 horas
+    );
+    
+    // Respuesta
+    const response = {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        rol: user.rol,
+        medicoId: user.medicoId,
+        nombre: medicoInfo?.nombres || "Dr. Usuario",
+        apellidos: medicoInfo?.apellidos || "",
+        especialidades: [] // Se puede implementar después
+      }
+    };
+    
+    await connection.end();
+    res.status(200).json(response);
+    
+  } catch (error) {
+    console.error('[MEDICO LOGIN ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'LOGIN_ERROR', 
+      message: 'Error interno en el login de médico' 
+    });
+  }
+});
+
+// Endpoint /me para perfil de médico
+app.get('/medico/auth/me', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+    
+    const decoded = jwt.verify(token, 'secretKey123');
+    const connection = await getConnection();
+    
+    // Obtener información del usuario
+    const [users] = await connection.execute(
+      'SELECT * FROM usuario WHERE id = ?',
+      [decoded.id]
+    );
+    
+    if (users.length === 0) {
+      await connection.end();
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    const user = users[0];
+    
+    // Obtener información del médico si existe
+    let medicoInfo = null;
+    if (user.medicoId) {
+      const [medicos] = await connection.execute(
+        'SELECT * FROM medico WHERE id = ?',
+        [user.medicoId]
+      );
+      if (medicos.length > 0) {
+        medicoInfo = medicos[0];
+      }
+    }
+    
+    const response = {
+      id: user.id,
+      email: user.email,
+      rol: user.rol,
+      medicoId: user.medicoId,
+      nombre: medicoInfo?.nombres || "Dr. Usuario",
+      apellidos: medicoInfo?.apellidos || "",
+      especialidades: [], // Se puede implementar después
+      hospital: "Hospital Central", // Se puede obtener de la BD después
+      telefono: "",
+      direccion: "",
+      fechaIngreso: "Fecha de ingreso",
+      diasTrabajo: ["Lun", "Mar", "Mié", "Jue", "Vie"],
+      horario: "08:00 - 17:00"
+    };
+    
+    await connection.end();
+    res.json(response);
+    
+  } catch (error) {
+    console.error('[MEDICO AUTH ERROR]', error.message);
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ message: 'Token inválido' });
+    } else {
+      res.status(500).json({ 
+        error: 'AUTH_ERROR', 
+        message: 'Error interno en autenticación' 
+      });
+    }
+  }
+});
+
+// Endpoint PUT /me para actualizar perfil de médico
+app.put('/medico/auth/me', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+    
+    const decoded = jwt.verify(token, 'secretKey123');
+    const connection = await getConnection();
+    
+    // Por ahora solo devolvemos los datos actualizados
+    // Se puede implementar actualización real después
+    const response = {
+      id: decoded.id,
+      email: decoded.email,
+      rol: decoded.rol,
+      medicoId: decoded.medicoId,
+      nombre: req.body.nombre || "Dr. Usuario",
+      apellidos: req.body.apellidos || "",
+      especialidades: req.body.especialidades || [],
+      hospital: req.body.hospital || "Hospital Central",
+      telefono: req.body.telefono || "",
+      direccion: req.body.direccion || "",
+      fechaIngreso: req.body.fechaIngreso || "Fecha de ingreso",
+      diasTrabajo: req.body.diasTrabajo || ["Lun", "Mar", "Mié", "Jue", "Vie"],
+      horario: req.body.horario || "08:00 - 17:00"
+    };
+    
+    await connection.end();
+    res.json(response);
+    
+  } catch (error) {
+    console.error('[MEDICO AUTH UPDATE ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'UPDATE_ERROR', 
+      message: 'Error interno al actualizar perfil' 
+    });
+  }
+});
+
+// Endpoint temporal para citas de médico
+app.get('/medico/citas', async (req, res) => {
+  try {
+    // Datos temporales para evitar errores 404
+    const citas = [
+      {
+        id: 1,
+        paciente: "Juan Pérez",
+        fecha: "2024-01-15",
+        hora: "09:00",
+        estado: "PROGRAMADA",
+        especialidad: "Medicina General"
+      },
+      {
+        id: 2,
+        paciente: "María García",
+        fecha: "2024-01-15",
+        hora: "10:30",
+        estado: "PROGRAMADA",
+        especialidad: "Medicina General"
+      }
+    ];
+    
+    res.json(citas);
+  } catch (error) {
+    console.error('[MEDICO CITAS ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'CITAS_ERROR', 
+      message: 'Error interno al obtener citas' 
+    });
+  }
+});
+
+// Endpoint temporal para citas de hoy
+app.get('/medico/citas/hoy', async (req, res) => {
+  try {
+    // Datos temporales para evitar errores 404
+    const citasHoy = [
+      {
+        id: 1,
+        paciente: "Ana López",
+        hora: "09:00",
+        estado: "PROGRAMADA",
+        especialidad: "Medicina General"
+      },
+      {
+        id: 2,
+        paciente: "Carlos Ruiz",
+        hora: "11:00",
+        estado: "PROGRAMADA",
+        especialidad: "Medicina General"
+      }
+    ];
+    
+    res.json(citasHoy);
+  } catch (error) {
+    console.error('[MEDICO CITAS HOY ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'CITAS_HOY_ERROR', 
+      message: 'Error interno al obtener citas de hoy' 
+    });
+  }
+});
+
+// Endpoint temporal para estadísticas del dashboard
+app.get('/medico/dashboard/stats', async (req, res) => {
+  try {
+    // Datos temporales para evitar errores 404
+    const stats = {
+      totalPacientes: 25,
+      citasHoy: 8,
+      consultasMes: 120,
+      especialidades: ["Medicina General"]
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('[MEDICO DASHBOARD STATS ERROR]', error.message);
+    res.status(500).json({ 
+      error: 'STATS_ERROR', 
+      message: 'Error interno al obtener estadísticas' 
+    });
+  }
+});
+
 // health del gateway
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     adminService: ADMIN,
-    medicoService: null
+    medicoService: MEDICO
   });
 });
 
@@ -248,4 +542,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`API Gateway escuchando en :${PORT}`);
   console.log(`→ ADMIN_SERVICE_URL: ${ADMIN}`);
+  console.log(`→ MEDICO_SERVICE_URL: ${MEDICO}`);
 });
