@@ -1187,6 +1187,81 @@ app.put('/medico/perfil', async (req, res) => {
   }
 });
 
+// Endpoint para obtener estadísticas del médico
+app.get('/medico/stats', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    console.log('[MEDICO STATS] Obteniendo estadísticas para médico:', decoded.medicoId);
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Obtener estadísticas del médico
+      const [statsResult] = await connection.execute(`
+        SELECT 
+          (SELECT COUNT(DISTINCT c.pacienteId) 
+           FROM Cita c 
+           WHERE c.medicoId = ? AND c.estado != 'CANCELADA') as totalPacientes,
+          (SELECT COUNT(*) 
+           FROM Cita c 
+           WHERE c.medicoId = ? AND DATE(c.fechaInicio) = CURDATE() AND c.estado != 'CANCELADA') as citasHoy,
+          (SELECT COUNT(*) 
+           FROM Cita c 
+           WHERE c.medicoId = ? AND MONTH(c.fechaInicio) = MONTH(CURDATE()) AND YEAR(c.fechaInicio) = YEAR(CURDATE()) AND c.estado != 'CANCELADA') as consultasMes
+      `, [decoded.medicoId, decoded.medicoId, decoded.medicoId]);
+
+      await connection.end();
+
+      if (!statsResult.length) {
+        return res.status(404).json({
+          error: 'STATS_NOT_FOUND',
+          message: 'No se encontraron estadísticas'
+        });
+      }
+
+      const stats = statsResult[0];
+      
+      // Formatear datos para el frontend
+      const estadisticas = {
+        totalPacientes: stats.totalPacientes || 0,
+        citasHoy: stats.citasHoy || 0,
+        consultasMes: stats.consultasMes || 0
+      };
+
+      console.log('[MEDICO STATS] Estadísticas obtenidas:', estadisticas);
+
+      res.json(estadisticas);
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[MEDICO STATS DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'STATS_ERROR',
+        message: 'Error al obtener estadísticas: ' + dbError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[MEDICO STATS ERROR]', error.message);
+    res.status(500).json({
+      error: 'STATS_ERROR',
+      message: 'Error interno al obtener estadísticas'
+    });
+  }
+});
+
 // Endpoint para obtener citas de hoy del médico autenticado
 app.get('/medico/citas/hoy', async (req, res) => {
   try {
@@ -1202,32 +1277,63 @@ app.get('/medico/citas/hoy', async (req, res) => {
       return res.status(401).json({ message: 'Token inválido' });
     }
     
-    // Por ahora, devolver datos de prueba para citas de hoy
-    const today = new Date().toISOString().split('T')[0];
-    const citasHoy = [
-      {
-        id: 1,
-        fecha: today,
-        hora: '09:00:00',
-        estado: 'PROGRAMADA',
-        motivo: 'Consulta de control',
-        paciente_nombres: 'Ana',
-        paciente_apellidos: 'Martínez',
-        paciente_telefono: '555123456'
-      },
-      {
-        id: 2,
-        fecha: today,
-        hora: '11:30:00',
-        estado: 'PROGRAMADA',
-        motivo: 'Revisión de resultados',
-        paciente_nombres: 'Carlos',
-        paciente_apellidos: 'López',
-        paciente_telefono: '555789012'
-      }
-    ];
-    
-    res.json(citasHoy);
+     console.log('[MEDICO CITAS HOY] Obteniendo citas de hoy para médico:', decoded.medicoId);
+
+     // Conectar a la base de datos
+     const connection = await getConnection();
+     
+     try {
+       // Obtener citas de hoy del médico (máximo 3)
+       const [citasResult] = await connection.execute(`
+         SELECT 
+           c.id,
+           c.fechaInicio,
+           c.fechaFin,
+           c.estado,
+           c.motivo,
+           c.pacienteNombre,
+           c.pacienteTelefono,
+           c.pacienteEmail
+         FROM Cita c
+         WHERE c.medicoId = ? 
+         AND DATE(c.fechaInicio) = CURDATE()
+         AND c.estado = 'PROGRAMADA'
+         ORDER BY c.fechaInicio ASC
+         LIMIT 3
+       `, [decoded.medicoId]);
+
+       await connection.end();
+
+       // Formatear datos para el frontend
+       const citasHoy = citasResult.map(cita => {
+         const fechaInicio = new Date(cita.fechaInicio);
+         const fechaFin = new Date(cita.fechaFin);
+         
+         return {
+           id: cita.id,
+           fecha: fechaInicio.toISOString().split('T')[0],
+           hora: fechaInicio.toTimeString().split(' ')[0].substring(0, 5),
+           estado: cita.estado,
+           motivo: cita.motivo || 'Consulta médica',
+           paciente_nombres: cita.pacienteNombre ? cita.pacienteNombre.split(' ')[0] : 'Paciente',
+           paciente_apellidos: cita.pacienteNombre ? cita.pacienteNombre.split(' ').slice(1).join(' ') : '',
+           paciente_telefono: cita.pacienteTelefono || '',
+           paciente_email: cita.pacienteEmail || ''
+         };
+       });
+
+       console.log('[MEDICO CITAS HOY] Citas obtenidas:', citasHoy.length);
+
+       res.json(citasHoy);
+
+     } catch (dbError) {
+       await connection.end();
+       console.error('[MEDICO CITAS HOY DB ERROR]', dbError.message);
+       res.status(500).json({
+         error: 'CITAS_HOY_ERROR',
+         message: 'Error al obtener citas de hoy: ' + dbError.message
+       });
+     }
     
   } catch (error) {
     console.error('[MEDICO CITAS HOY ERROR]', error.message);

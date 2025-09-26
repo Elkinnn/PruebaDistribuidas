@@ -1,7 +1,13 @@
 // Item compacto para una cita
 export default function CitaMiniItem({ cita }) {
-  const nombre = `${cita?.paciente?.nombre ?? ""} ${cita?.paciente?.apellido ?? ""}`.trim();
-  const motivo = cita?.motivo ?? "";
+  // Manejar diferentes estructuras de datos
+  const nombre = cita?.paciente_nombres && cita?.paciente_apellidos 
+    ? `${cita.paciente_nombres} ${cita.paciente_apellidos}`.trim()
+    : cita?.paciente?.nombre && cita?.paciente?.apellido
+    ? `${cita.paciente.nombre} ${cita.paciente.apellido}`.trim()
+    : cita?.pacienteNombre || "Paciente";
+    
+  const motivo = cita?.motivo ?? "Consulta médica";
   const hora = cita?.hora ?? "";
 
   const colorByEstado = {
@@ -14,8 +20,8 @@ export default function CitaMiniItem({ cita }) {
   return (
     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
       <div className="min-w-0">
-        <p className="font-medium text-slate-900 truncate">{nombre || "Paciente"}</p>
-        <p className="text-sm text-slate-600 truncate">{motivo || "Consulta"}</p>
+        <p className="font-medium text-slate-900 truncate">{nombre}</p>
+        <p className="text-sm text-slate-600 truncate">{motivo}</p>
       </div>
       <div className="text-right shrink-0 ml-3">
         <p className="text-sm font-medium text-slate-900">{hora}</p>

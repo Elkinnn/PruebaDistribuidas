@@ -13,24 +13,39 @@ export default function CitasHoyPanel({
   estado = "PROGRAMADA", // muestra las programadas por defecto
   medicoId,              // opcional si quieres filtrar por médico concreto
   className = "",
+  citas = [],            // citas pasadas como prop
+  loading = false,       // estado de carga pasado como prop
 }) {
-  const [citas, setCitas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Si se pasan citas como prop, usarlas directamente
+  const [internalCitas, setInternalCitas] = useState([]);
+  const [internalLoading, setInternalLoading] = useState(true);
 
   useEffect(() => {
+    // Si se pasan citas como prop, usarlas directamente
+    if (citas.length >= 0) {
+      setInternalCitas(citas);
+      setInternalLoading(loading);
+      return;
+    }
+
+    // Si no se pasan citas, cargar desde API
     let off = false;
     (async () => {
       try {
         const res = await medicoApi.citasHoy({ limit, estado, medicoId });
-        if (!off && res?.success) setCitas(res.data ?? []);
+        if (!off && res?.success) setInternalCitas(res.data ?? []);
       } catch (e) {
         console.error("Error cargando citas de hoy:", e);
       } finally {
-        if (!off) setLoading(false);
+        if (!off) setInternalLoading(false);
       }
     })();
     return () => { off = true; };
-  }, [limit, estado, medicoId]);
+  }, [limit, estado, medicoId, citas, loading]);
+
+  // Usar citas internas o las pasadas como prop
+  const currentCitas = citas.length >= 0 ? citas : internalCitas;
+  const currentLoading = citas.length >= 0 ? loading : internalLoading;
 
   return (
     <Card className={`p-6 ${className}`}>
@@ -41,15 +56,15 @@ export default function CitasHoyPanel({
         </Link>
       </div>
 
-      {loading ? (
+      {currentLoading ? (
         <div className="space-y-3">
           {[...Array(limit)].map((_, i) => (
             <div key={i} className="h-14 rounded-lg bg-slate-100 animate-pulse" />
           ))}
         </div>
-      ) : citas.length > 0 ? (
+      ) : currentCitas.length > 0 ? (
         <div className="space-y-3">
-          {citas.slice(0, limit).map((c) => (
+          {currentCitas.slice(0, limit).map((c) => (
             <CitaMiniItem key={c.id} cita={c} />
           ))}
         </div>

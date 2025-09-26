@@ -1,20 +1,49 @@
 import { useState, useEffect } from "react";
 import Card from "../../components/ui/Card";
 import CitasHoyPanel from "../../components/medico_home/CitasHoyPanel";
-import { medicoCitaApi as medicoApi } from "../../api/medico_cita"; 
-// cambia a "../../api/cita" si ahí dejaste medicoCitaApi
+import { getMedicoStats } from "../../api/medico_stats";
+import { getCitasHoy } from "../../api/medico_citas_hoy";
 
 export default function MedicoHome() {
   const [stats, setStats] = useState(null);
+  const [citasHoy, setCitasHoy] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await medicoApi.stats(/* { medicoId } */);
-        if (res?.success) setStats(res.data);
+        // Cargar estadísticas y citas de hoy en paralelo
+        const [statsRes, citasRes] = await Promise.all([
+          getMedicoStats(),
+          getCitasHoy()
+        ]);
+
+        // Procesar estadísticas
+        if (statsRes?.success) {
+          setStats(statsRes.data);
+        } else {
+          setStats({
+            totalPacientes: 0,
+            citasHoy: 0,
+            consultasMes: 0
+          });
+        }
+
+        // Procesar citas de hoy
+        if (citasRes?.success) {
+          setCitasHoy(citasRes.data);
+        } else {
+          setCitasHoy([]);
+        }
       } catch (e) {
-        console.error("Error cargando stats:", e);
+        console.error("Error cargando datos:", e);
+        // Fallback con datos por defecto
+        setStats({
+          totalPacientes: 0,
+          citasHoy: 0,
+          consultasMes: 0
+        });
+        setCitasHoy([]);
       } finally {
         setLoading(false);
       }
@@ -93,9 +122,9 @@ export default function MedicoHome() {
       {/* Citas de hoy como componente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CitasHoyPanel
+          citas={citasHoy}
           limit={3}
           estado="PROGRAMADA"
-          // medicoId={medicoId} // si quieres filtrar por el médico logueado
         />
 
         {/* Tu panel de Acciones Rápidas se queda como está, o también lo puedes componentizar */}
