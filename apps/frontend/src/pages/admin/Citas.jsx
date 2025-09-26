@@ -360,7 +360,7 @@ export default function Citas() {
                         <>
                             ¿Confirmas eliminar la cita de{" "}
                             <span className="font-semibold">
-                                “{toDelete.paciente || toDelete.pacienteInfo?.nombres}”
+                                "{toDelete.pacienteNombre || 'Sin nombre'}"
                             </span>
                             ?
                         </>
