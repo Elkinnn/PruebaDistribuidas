@@ -44,4 +44,29 @@ export const apiMedico = {
     });
     return handle(res);
   },
+
+  async put(path, body = {}) {
+    const t = localStorage.getItem("clinix_medico_token");
+    const res = await fetch(BASE + path, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    return handle(res);
+  },
+
+  async delete(path) {
+    const t = localStorage.getItem("clinix_medico_token");
+    const res = await fetch(BASE + path, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+      },
+    });
+    return handle(res);
+  },
 };

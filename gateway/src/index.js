@@ -553,7 +553,7 @@ app.get('/medico/citas', async (req, res) => {
       
       const total = countResult[0].total;
 
-      // Obtener citas paginadas
+      // Obtener citas paginadas con datos del paciente
       const [citasResult] = await connection.execute(`
         SELECT 
           c.id,
@@ -561,14 +561,19 @@ app.get('/medico/citas', async (req, res) => {
           c.fechaFin,
           c.motivo,
           c.estado,
+          c.pacienteId,
           c.pacienteNombre,
           c.pacienteTelefono,
           c.pacienteEmail,
+          p.documento as paciente_documento,
+          p.fechaNacimiento as paciente_fechaNacimiento,
+          p.sexo as paciente_sexo,
           h.nombre as hospital_nombre,
           c.createdAt,
           c.updatedAt
         FROM Cita c
         LEFT JOIN Hospital h ON c.hospitalId = h.id
+        LEFT JOIN Paciente p ON c.pacienteId = p.id
         ${whereClause}
         ORDER BY c.fechaInicio DESC
         LIMIT ? OFFSET ?
@@ -610,8 +615,11 @@ app.get('/medico/citas', async (req, res) => {
           paciente: {
             nombres: cita.pacienteNombre ? cita.pacienteNombre.split(' ')[0] : '',
             apellidos: cita.pacienteNombre ? cita.pacienteNombre.split(' ').slice(1).join(' ') : '',
+            documento: cita.paciente_documento || '',
             telefono: cita.pacienteTelefono || '',
-            email: cita.pacienteEmail || ''
+            email: cita.pacienteEmail || '',
+            fechaNacimiento: cita.paciente_fechaNacimiento || '',
+            sexo: cita.paciente_sexo || 'masculino'
           },
           hospital_nombre: cita.hospital_nombre || 'Hospital Central',
           createdAt: cita.createdAt,
@@ -647,6 +655,231 @@ app.get('/medico/citas', async (req, res) => {
     res.status(500).json({
       error: 'CITAS_ERROR',
       message: 'Error interno al obtener citas'
+    });
+  }
+});
+
+// Endpoint para actualizar una cita
+app.put('/medico/citas/:id', async (req, res) => {
+  try {
+    const isMedicoServiceRunning = await checkMedicoService();
+    if (!isMedicoServiceRunning) {
+      return res.status(503).json({
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'El servicio de médico no está disponible. Por favor, inicie el servicio de médico en el puerto 3100.'
+      });
+    }
+
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    const { id } = req.params;
+    const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin } = req.body;
+
+    console.log('[UPDATE CITA] Actualizando cita:', { id, estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin });
+
+    // Validar datos requeridos
+    if (!estado) {
+      return res.status(400).json({ 
+        message: 'El estado es requerido' 
+      });
+    }
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Verificar que la cita pertenece al médico autenticado
+      const [citaCheck] = await connection.execute(
+        'SELECT id, medicoId, fechaInicio, fechaFin FROM Cita WHERE id = ? AND medicoId = ?',
+        [id, decoded.medicoId]
+      );
+      
+      if (!citaCheck.length) {
+        await connection.end();
+        return res.status(404).json({
+          error: 'CITA_NOT_FOUND',
+          message: 'Cita no encontrada o no pertenece al médico'
+        });
+      }
+
+      // Si se proporciona fecha de inicio o fin, validar solapamiento
+      if (nuevaFechaInicio || nuevaFechaFin) {
+        const fechaInicioActual = citaCheck[0].fechaInicio;
+        const fechaFinActual = citaCheck[0].fechaFin;
+        
+        const fechaInicio = nuevaFechaInicio || fechaInicioActual;
+        const fechaFin = nuevaFechaFin || fechaFinActual;
+        
+        const [overlapCheck] = await connection.execute(`
+          SELECT id FROM Cita 
+          WHERE medicoId = ? 
+          AND id != ? 
+          AND estado != 'CANCELADA'
+          AND NOT (fechaFin <= ? OR fechaInicio >= ?)
+        `, [decoded.medicoId, id, fechaInicio, fechaFin]);
+        
+        if (overlapCheck.length > 0) {
+          await connection.end();
+          return res.status(400).json({
+            error: 'OVERLAP_CONFLICT',
+            message: 'La nueva fecha se solapa con otra cita existente'
+          });
+        }
+      }
+
+      // Actualizar la cita
+      const updateFields = ['estado = ?'];
+      const updateValues = [estado];
+      
+      if (nuevaFechaInicio) {
+        updateFields.push('fechaInicio = ?');
+        updateValues.push(nuevaFechaInicio);
+      }
+      
+      if (nuevaFechaFin) {
+        updateFields.push('fechaFin = ?');
+        updateValues.push(nuevaFechaFin);
+      }
+
+      const [updateResult] = await connection.execute(`
+        UPDATE Cita 
+        SET ${updateFields.join(', ')}, actualizadaPorId = ?, updatedAt = NOW()
+        WHERE id = ?
+      `, [...updateValues, decoded.id, id]);
+
+      if (updateResult.affectedRows === 0) {
+        await connection.end();
+        return res.status(404).json({
+          error: 'UPDATE_FAILED',
+          message: 'No se pudo actualizar la cita'
+        });
+      }
+
+      await connection.end();
+
+      res.json({
+        id: parseInt(id),
+        message: 'Cita actualizada exitosamente'
+      });
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[UPDATE CITA DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'UPDATE_CITA_ERROR',
+        message: 'Error al actualizar en la base de datos: ' + dbError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[UPDATE CITA ERROR]', error.message);
+    res.status(500).json({
+      error: 'UPDATE_CITA_ERROR',
+      message: 'Error interno al actualizar cita'
+    });
+  }
+});
+
+// Endpoint para eliminar una cita
+app.delete('/medico/citas/:id', async (req, res) => {
+  try {
+    const isMedicoServiceRunning = await checkMedicoService();
+    if (!isMedicoServiceRunning) {
+      return res.status(503).json({
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'El servicio de médico no está disponible. Por favor, inicie el servicio de médico en el puerto 3100.'
+      });
+    }
+
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, 'secretKey123');
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    const { id } = req.params;
+
+    console.log('[DELETE CITA] Eliminando cita:', { id });
+
+    // Conectar a la base de datos
+    const connection = await getConnection();
+    
+    try {
+      // Verificar que la cita pertenece al médico autenticado y obtener su estado
+      const [citaCheck] = await connection.execute(
+        'SELECT id, medicoId, estado FROM Cita WHERE id = ? AND medicoId = ?',
+        [id, decoded.medicoId]
+      );
+      
+      if (!citaCheck.length) {
+        await connection.end();
+        return res.status(404).json({
+          error: 'CITA_NOT_FOUND',
+          message: 'Cita no encontrada o no pertenece al médico'
+        });
+      }
+
+      // Verificar que la cita puede ser eliminada (solo ATENDIDA o CANCELADA)
+      const estado = citaCheck[0].estado;
+      if (estado === 'PROGRAMADA') {
+        await connection.end();
+        return res.status(400).json({
+          error: 'DELETE_NOT_ALLOWED',
+          message: 'No puedes eliminar una cita en estado PROGRAMADA'
+        });
+      }
+
+      // Eliminar la cita
+      const [deleteResult] = await connection.execute(
+        'DELETE FROM Cita WHERE id = ?',
+        [id]
+      );
+
+      if (deleteResult.affectedRows === 0) {
+        await connection.end();
+        return res.status(404).json({
+          error: 'DELETE_FAILED',
+          message: 'No se pudo eliminar la cita'
+        });
+      }
+
+      await connection.end();
+
+      res.json({
+        id: parseInt(id),
+        message: 'Cita eliminada exitosamente'
+      });
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[DELETE CITA DB ERROR]', dbError.message);
+      res.status(500).json({
+        error: 'DELETE_CITA_ERROR',
+        message: 'Error al eliminar en la base de datos: ' + dbError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[DELETE CITA ERROR]', error.message);
+    res.status(500).json({
+      error: 'DELETE_CITA_ERROR',
+      message: 'Error interno al eliminar cita'
     });
   }
 });
@@ -787,10 +1020,26 @@ app.post('/medico/citas', async (req, res) => {
           ]);
           pacienteId = pacienteResult.insertId;
         }
-      }
-      
-      console.log('[CREATE CITA] Insertando cita con datos:', {
-        fechaInicio, fechaFin, motivo, observaciones,
+        }
+        
+        // Validar solapamiento antes de insertar
+        const [overlapCheck] = await connection.execute(`
+          SELECT id FROM Cita 
+          WHERE medicoId = ? 
+          AND estado != 'CANCELADA'
+          AND NOT (fechaFin <= ? OR fechaInicio >= ?)
+        `, [medicoId || decoded.medicoId, fechaInicio, fechaFin]);
+        
+        if (overlapCheck.length > 0) {
+          await connection.end();
+          return res.status(400).json({
+            error: 'OVERLAP_CONFLICT',
+            message: 'La cita se solapa con otra cita existente en el mismo horario'
+          });
+        }
+        
+        console.log('[CREATE CITA] Insertando cita con datos:', {
+          fechaInicio, fechaFin, motivo, observaciones,
         pacienteId, medicoId: medicoId || decoded.medicoId, hospitalId
       });
       

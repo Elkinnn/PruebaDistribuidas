@@ -58,27 +58,33 @@ export default function MedicoCitaForm({
 
   useEffect(() => {
     const e = {};
-    if (!form.paciente.nombres.trim()) e.nombres = "Nombres es obligatorio.";
-    if (!form.paciente.apellidos.trim()) e.apellidos = "Apellidos es obligatorio.";
+    
+    // Solo validar campos que no están bloqueados en modo edición
+    if (!locked) {
+      if (!form.paciente.nombres.trim()) e.nombres = "Nombres es obligatorio.";
+      if (!form.paciente.apellidos.trim()) e.apellidos = "Apellidos es obligatorio.";
 
-    if (!form.paciente.documento) e.documento = "La cédula es obligatoria.";
-    else if (form.paciente.documento.length !== 10) e.documento = "La cédula debe tener 10 dígitos.";
+      if (!form.paciente.documento) e.documento = "La cédula es obligatoria.";
+      else if (form.paciente.documento.length !== 10) e.documento = "La cédula debe tener 10 dígitos.";
 
-    if (!form.paciente.telefono) e.telefono = "El teléfono es obligatorio.";
-    else if (form.paciente.telefono.length !== 10) e.telefono = "El teléfono debe tener 10 dígitos.";
+      if (!form.paciente.telefono) e.telefono = "El teléfono es obligatorio.";
+      else if (form.paciente.telefono.length !== 10) e.telefono = "El teléfono debe tener 10 dígitos.";
 
-    if (!form.paciente.fechaNacimiento) e.fechaNacimiento = "La fecha de nacimiento es obligatoria.";
-    else {
-      const fn = new Date(form.paciente.fechaNacimiento);
-      const today = new Date(todayStr + "T23:59:59");
-      if (!isNaN(fn) && fn > today) e.fechaNacimiento = "No puede ser una fecha futura.";
+      if (!form.paciente.fechaNacimiento) e.fechaNacimiento = "La fecha de nacimiento es obligatoria.";
+      else {
+        const fn = new Date(form.paciente.fechaNacimiento);
+        const today = new Date(todayStr + "T23:59:59");
+        if (!isNaN(fn) && fn > today) e.fechaNacimiento = "No puede ser una fecha futura.";
+      }
+
+      if (!form.paciente.sexo) e.sexo = "El sexo es obligatorio.";
+
+      if (!String(form.motivo || "").trim()) e.motivo = "El motivo es obligatorio.";
+      if (!form.medicoId) e.medicoId = "Selecciona un médico.";
+      if (!form.inicio) e.inicio = "Inicio es obligatorio.";
     }
-
-    if (!form.paciente.sexo) e.sexo = "El sexo es obligatorio.";
-
-    if (!String(form.motivo || "").trim()) e.motivo = "El motivo es obligatorio.";
-    if (!form.medicoId) e.medicoId = "Selecciona un médico.";
-    if (!form.inicio) e.inicio = "Inicio es obligatorio.";
+    
+    // Validar campos que siempre son requeridos
     if (!form.fin) e.fin = "Fin es obligatorio.";
 
     if (form.inicio && form.fin) {
@@ -88,7 +94,7 @@ export default function MedicoCitaForm({
     }
 
     setErrors(e);
-  }, [form, todayStr]);
+  }, [form, todayStr, locked]);
 
   const isValid = Object.keys(errors).length === 0;
 
