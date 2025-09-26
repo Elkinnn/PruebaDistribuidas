@@ -122,6 +122,20 @@ export default function CitaForm({
         }
       }
       if (!values.paciente.sexo) e.pacienteSexo = "El sexo es obligatorio.";
+      
+      // Validaciones de formato para cédula y teléfono
+      if (values.paciente.documento?.trim()) {
+        const cleanDocument = values.paciente.documento.replace(/\D/g, ''); // Solo dígitos
+        if (cleanDocument.length !== 10) {
+          e.pacienteDocumento = "La cédula debe tener exactamente 10 dígitos.";
+        }
+      }
+      if (values.paciente.telefono?.trim()) {
+        const cleanPhone = values.paciente.telefono.replace(/\D/g, ''); // Solo dígitos
+        if (cleanPhone.length !== 10) {
+          e.pacienteTelefono = "El teléfono debe tener exactamente 10 dígitos.";
+        }
+      }
     }
     
         return e;
@@ -149,9 +163,15 @@ export default function CitaForm({
   ) && initialData?.estado === 'CANCELADA';
 
   function setPacienteField(k, v) {
+    // Formatear cédula y teléfono para solo permitir dígitos y máximo 10
+    let cleanValue = v;
+    if (k === 'documento' || k === 'telefono') {
+      cleanValue = v.replace(/\D/g, '').slice(0, 10); // Solo dígitos, máximo 10
+    }
+    
     setValues((s) => ({ 
       ...s, 
-      paciente: { ...s.paciente, [k]: v } 
+      paciente: { ...s.paciente, [k]: cleanValue } 
     }));
   }
 
@@ -482,7 +502,7 @@ export default function CitaForm({
                             value={values.paciente.documento}
               onChange={(e) => setPacienteField("documento", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, pacienteDocumento: true }))}
-              placeholder="Ej: 1234567890"
+              placeholder="1234567890 (10 dígitos)"
               disabled={!!values.pacienteId}
               className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
                 values.pacienteId 
@@ -505,7 +525,7 @@ export default function CitaForm({
                             value={values.paciente.telefono}
               onChange={(e) => setPacienteField("telefono", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, pacienteTelefono: true }))}
-              placeholder="Ej: 099 999 9999"
+              placeholder="0999999999 (10 dígitos)"
               disabled={!!values.pacienteId}
               className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
                 values.pacienteId 
