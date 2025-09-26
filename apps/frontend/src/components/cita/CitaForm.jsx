@@ -416,11 +416,6 @@ export default function CitaForm({
             <option value="ATENDIDA">Atendida</option>
             <option value="CANCELADA">Cancelada</option>
           </select>
-          {!isEdit && (
-            <p className="mt-1 text-xs text-slate-500">
-              Las nuevas citas siempre se crean como "Programada"
-            </p>
-          )}
         </div>
 
         {/* Separador */}
@@ -429,11 +424,6 @@ export default function CitaForm({
             <User size={20} />
             Datos del Paciente
           </h3>
-          {!values.pacienteId && (
-            <p className="mb-4 text-sm text-slate-600">
-              Si el paciente ya existe, puedes dejar estos campos vacíos.
-            </p>
-          )}
         </div>
 
         {/* Datos del Paciente */}
