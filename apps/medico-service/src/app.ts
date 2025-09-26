@@ -1,3 +1,5 @@
+// Cargar dotenv como el servicio de admin
+require('dotenv').config();
 import { envs } from "./config/envs"
 import Models from "./data/models"
 import { MySQLDatabase } from "./data/mysql/mysql.database"

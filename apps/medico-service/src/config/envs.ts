@@ -1,16 +1,9 @@
-import 'dotenv/config';
-import { get } from 'env-var';
-import path from 'path';
-
-// Cargar variables de entorno desde el archivo .env en la raíz del proyecto
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-
-
+// Usar process.env directamente como el servicio de admin
 export const envs = {
-    PORT: get('PORT').required().asPortNumber(),
-    MYSQL_DB: get('MYSQL_DB').required().asString(),
-    MYSQL_PORT: get('MYSQL_PORT').required().asPortNumber(), 
-    MYSQL_USER: get('MYSQL_USER').required().asString(), 
-    MYSQL_PASSWORD: get('MYSQL_PASSWORD').asString(),
-    JWT_SECRET: get('JWT_SECRET').required().asString(),
+    PORT: Number(process.env.PORT) || 3100,
+    MYSQL_DB: process.env.MYSQL_DB || 'hospitalservice',
+    MYSQL_PORT: Number(process.env.MYSQL_PORT) || 3306, 
+    MYSQL_USER: process.env.MYSQL_USER || 'root', 
+    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD || '',
+    JWT_SECRET: process.env.JWT_SECRET || 'secretKey123',
 }

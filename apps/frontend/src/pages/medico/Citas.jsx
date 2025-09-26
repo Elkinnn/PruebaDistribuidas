@@ -5,6 +5,7 @@ import Card from "../../components/ui/Card";
 import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/shared/Pagination";
 import MedicoCitaForm from "../../components/medico_cita/MedicoCitaForm";
+import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
 // Si tu API está en src/api/cita.js cambia la import a "../../api/cita"
 import { listCitas, createCita, updateCita, deleteCita } from "../../api/medico_cita";
 
@@ -107,17 +108,19 @@ export default function Citas() {
   );
   const [form, setForm] = useState(emptyForm);
 
-  // Obtener médicos desde la API (esto se puede mejorar con un hook o contexto)
-  const [medicos, setMedicos] = useState([]);
+  // Obtener médico autenticado
+  const { user } = useAuthMedico();
   
-  useEffect(() => {
-    // Por ahora usamos datos estáticos, pero esto debería venir de la API
-    setMedicos([
-      { id: 1, nombre: "Dra. Ana Martínez" },
-      { id: 2, nombre: "Dr. Luis Pérez" },
-      { id: 3, nombre: "Dra. Sofía Delgado" },
-    ]);
-  }, []);
+  // Crear lista con solo el médico autenticado
+  const medicos = useMemo(() => {
+    if (user && user.medicoId) {
+      return [{
+        id: user.medicoId,
+        nombre: `${user.nombre} ${user.apellidos}`
+      }];
+    }
+    return [];
+  }, [user]);
 
   async function load(p = page) {
     setLoading(true);
@@ -137,8 +140,13 @@ export default function Citas() {
   useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page, q]);
 
   function openCreate() {
+    const newForm = { ...emptyForm };
+    // Si hay un médico autenticado, seleccionarlo automáticamente
+    if (user && user.medicoId) {
+      newForm.medicoId = user.medicoId;
+    }
     setEditing(null);
-    setForm(emptyForm);
+    setForm(newForm);
     setMsg("");
     setOpen(true);
   }

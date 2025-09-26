@@ -240,22 +240,35 @@ export default function MedicoCitaForm({
         <div>
           <h4 className="text-lg font-semibold text-slate-900 mb-3">Datos de la cita</h4>
           <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Médico *</label>
-              <select
-                className={`w-full rounded-xl border ${showError("medicoId") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
-                value={form.medicoId}
-                onChange={(e)=>setForm(p=>({ ...p, medicoId:e.target.value }))}
-                onBlur={()=>markTouched("medicoId")}
-                required
-                disabled={locked}
-                aria-invalid={showError("medicoId")}
-              >
-                <option value="" disabled>Selecciona…</option>
-                {medicos.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-              </select>
-              {showError("medicoId") && <p className="mt-1 text-xs text-rose-600">{errors.medicoId}</p>}
-            </div>
+            {/* Solo mostrar selector de médico si hay más de uno */}
+            {medicos.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Médico *</label>
+                <select
+                  className={`w-full rounded-xl border ${showError("medicoId") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
+                  value={form.medicoId}
+                  onChange={(e)=>setForm(p=>({ ...p, medicoId:e.target.value }))}
+                  onBlur={()=>markTouched("medicoId")}
+                  required
+                  disabled={locked}
+                  aria-invalid={showError("medicoId")}
+                >
+                  <option value="" disabled>Selecciona…</option>
+                  {medicos.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                </select>
+                {showError("medicoId") && <p className="mt-1 text-xs text-rose-600">{errors.medicoId}</p>}
+              </div>
+            )}
+            
+            {/* Mostrar médico seleccionado cuando solo hay uno */}
+            {medicos.length === 1 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Médico</label>
+                <div className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  {medicos[0].nombre}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

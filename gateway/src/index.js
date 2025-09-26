@@ -34,6 +34,17 @@ async function getConnection() {
   return await mysql.createConnection(dbConfig);
 }
 
+// Función para verificar si el servicio de médico está corriendo
+async function checkMedicoService() {
+  try {
+    const response = await axios.get(`${MEDICO}/health`, { timeout: 5000 });
+    return response.status === 200;
+  } catch (error) {
+    console.log('[MEDICO SERVICE] No disponible:', error.message);
+    return false;
+  }
+}
+
 // Ruta específica para login - usando axios en lugar de proxy
 app.post('/auth/login', async (req, res) => {
   try {
@@ -277,6 +288,15 @@ app.use('/citas', async (req, res) => {
 // Login de médico directo usando la base de datos
 app.post('/medico/auth/login', async (req, res) => {
   try {
+    // Verificar si el servicio de médico está corriendo
+    const isMedicoServiceRunning = await checkMedicoService();
+    if (!isMedicoServiceRunning) {
+      return res.status(503).json({ 
+        error: 'SERVICE_UNAVAILABLE', 
+        message: 'El servicio de médico no está disponible. Por favor, inicie el servicio de médico en el puerto 3100.' 
+      });
+    }
+    
     console.log(`[MEDICO LOGIN] Direct database login`);
     const { email, password } = req.body;
     
@@ -359,6 +379,15 @@ app.post('/medico/auth/login', async (req, res) => {
 // Endpoint /me para perfil de médico
 app.get('/medico/auth/me', async (req, res) => {
   try {
+    // Verificar si el servicio de médico está corriendo
+    const isMedicoServiceRunning = await checkMedicoService();
+    if (!isMedicoServiceRunning) {
+      return res.status(503).json({ 
+        error: 'SERVICE_UNAVAILABLE', 
+        message: 'El servicio de médico no está disponible. Por favor, inicie el servicio de médico en el puerto 3100.' 
+      });
+    }
+    
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return res.status(401).json({ message: 'Token requerido' });
@@ -465,67 +494,166 @@ app.put('/medico/auth/me', async (req, res) => {
   }
 });
 
-// Endpoint temporal para citas de médico
+// Endpoint para obtener citas del médico autenticado
 app.get('/medico/citas', async (req, res) => {
   try {
-    // Datos temporales para evitar errores 404
-    const citas = [
-      {
-        id: 1,
-        paciente: "Juan Pérez",
-        fecha: "2024-01-15",
-        hora: "09:00",
-        estado: "PROGRAMADA",
-        especialidad: "Medicina General"
-      },
-      {
-        id: 2,
-        paciente: "María García",
-        fecha: "2024-01-15",
-        hora: "10:30",
-        estado: "PROGRAMADA",
-        especialidad: "Medicina General"
-      }
-    ];
+    // Verificar si el servicio de médico está corriendo
+    const isMedicoServiceRunning = await checkMedicoService();
+    if (!isMedicoServiceRunning) {
+      return res.status(503).json({ 
+        error: 'SERVICE_UNAVAILABLE', 
+        message: 'El servicio de médico no está disponible. Por favor, inicie el servicio de médico en el puerto 3100.' 
+      });
+    }
     
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+    
+    const decoded = jwt.verify(token, 'secretKey123');
+    const connection = await getConnection();
+    
+    // Obtener citas del médico autenticado
+    const [citas] = await connection.execute(`
+      SELECT 
+        c.id,
+        c.fecha,
+        c.hora,
+        c.estado,
+        c.motivo,
+        c.observaciones,
+        p.nombres as paciente_nombres,
+        p.apellidos as paciente_apellidos,
+        p.telefono as paciente_telefono,
+        p.email as paciente_email,
+        h.nombre as hospital_nombre
+      FROM cita c
+      LEFT JOIN paciente p ON c.pacienteId = p.id
+      LEFT JOIN hospital h ON c.hospitalId = h.id
+      WHERE c.medicoId = ?
+      ORDER BY c.fecha DESC, c.hora DESC
+    `, [decoded.medicoId]);
+    
+    await connection.end();
     res.json(citas);
+    
   } catch (error) {
     console.error('[MEDICO CITAS ERROR]', error.message);
-    res.status(500).json({ 
-      error: 'CITAS_ERROR', 
-      message: 'Error interno al obtener citas' 
-    });
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ message: 'Token inválido' });
+    } else {
+      res.status(500).json({ 
+        error: 'CITAS_ERROR', 
+        message: 'Error interno al obtener citas' 
+      });
+    }
   }
 });
 
-// Endpoint temporal para citas de hoy
+// Endpoint para obtener citas de hoy del médico autenticado
 app.get('/medico/citas/hoy', async (req, res) => {
   try {
-    // Datos temporales para evitar errores 404
-    const citasHoy = [
-      {
-        id: 1,
-        paciente: "Ana López",
-        hora: "09:00",
-        estado: "PROGRAMADA",
-        especialidad: "Medicina General"
-      },
-      {
-        id: 2,
-        paciente: "Carlos Ruiz",
-        hora: "11:00",
-        estado: "PROGRAMADA",
-        especialidad: "Medicina General"
-      }
-    ];
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
     
+    const decoded = jwt.verify(token, 'secretKey123');
+    const connection = await getConnection();
+    
+    // Obtener citas de hoy del médico autenticado
+    const today = new Date().toISOString().split('T')[0];
+    const [citasHoy] = await connection.execute(`
+      SELECT 
+        c.id,
+        c.fecha,
+        c.hora,
+        c.estado,
+        c.motivo,
+        p.nombres as paciente_nombres,
+        p.apellidos as paciente_apellidos,
+        p.telefono as paciente_telefono
+      FROM cita c
+      LEFT JOIN paciente p ON c.pacienteId = p.id
+      WHERE c.medicoId = ? AND c.fecha = ?
+      ORDER BY c.hora ASC
+    `, [decoded.medicoId, today]);
+    
+    await connection.end();
     res.json(citasHoy);
+    
   } catch (error) {
     console.error('[MEDICO CITAS HOY ERROR]', error.message);
-    res.status(500).json({ 
-      error: 'CITAS_HOY_ERROR', 
-      message: 'Error interno al obtener citas de hoy' 
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ message: 'Token inválido' });
+    } else {
+      res.status(500).json({ 
+        error: 'CITAS_HOY_ERROR', 
+        message: 'Error interno al obtener citas de hoy' 
+      });
+    }
+  }
+});
+
+// Endpoint para crear nueva cita
+app.post('/medico/citas', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+    
+    const decoded = jwt.verify(token, 'secretKey123');
+    const connection = await getConnection();
+    
+    const { 
+      fecha, 
+      hora, 
+      motivo, 
+      observaciones, 
+      pacienteId, 
+      hospitalId 
+    } = req.body;
+    
+    // Validar datos requeridos
+    if (!fecha || !hora || !motivo || !pacienteId || !hospitalId) {
+      await connection.end();
+      return res.status(400).json({ 
+        message: 'Faltan datos requeridos: fecha, hora, motivo, pacienteId, hospitalId' 
+      });
+    }
+    
+    // Crear la cita
+    const [result] = await connection.execute(`
+      INSERT INTO cita (
+        fecha, hora, motivo, observaciones, 
+        pacienteId, medicoId, hospitalId, 
+        estado, creadaPorId, actualizadaPorId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PROGRAMADA', ?, ?)
+    `, [
+      fecha, hora, motivo, observaciones,
+      pacienteId, decoded.medicoId, hospitalId,
+      decoded.id, decoded.id
+    ]);
+    
+    await connection.end();
+    
+    res.status(201).json({
+      id: result.insertId,
+      message: 'Cita creada exitosamente'
     });
+    
+  } catch (error) {
+    console.error('[MEDICO CREATE CITA ERROR]', error.message);
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ message: 'Token inválido' });
+    } else {
+      res.status(500).json({ 
+        error: 'CREATE_CITA_ERROR', 
+        message: 'Error interno al crear cita' 
+      });
+    }
   }
 });
 

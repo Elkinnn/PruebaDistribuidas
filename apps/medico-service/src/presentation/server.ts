@@ -16,10 +16,19 @@ export class Server {
     async start() {
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
+        
+        // Endpoint de salud
+        this.app.get('/health', (req, res) => {
+            res.json({ 
+                ok: true, 
+                service: 'medico-service',
+                timestamp: new Date().toISOString()
+            });
+        });
+        
         this.app.use(this.routes);
         this.app.listen(this.port, () => {
             console.log(`Server is running on port ${this.port}`);
-
         })
     }
 }
