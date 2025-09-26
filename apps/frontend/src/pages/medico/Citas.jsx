@@ -194,6 +194,19 @@ export default function Citas() {
 
   function openEdit(cita) {
     setEditing(cita);
+    
+    // Formatear fecha de nacimiento para el input date
+    let fechaNacimientoFormateada = "";
+    if (cita.paciente?.fechaNacimiento) {
+      const fecha = new Date(cita.paciente.fechaNacimiento);
+      if (!isNaN(fecha)) {
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        fechaNacimientoFormateada = `${year}-${month}-${day}`;
+      }
+    }
+    
     setForm({
       medicoId: cita.medicoId,
       inicio: isoToLocal(cita.inicio),
@@ -206,7 +219,7 @@ export default function Citas() {
         documento: cita.paciente?.documento || "",
         telefono: cita.paciente?.telefono || "",
         email: cita.paciente?.email || "",
-        fechaNacimiento: cita.paciente?.fechaNacimiento || "",
+        fechaNacimiento: fechaNacimientoFormateada,
         sexo: cita.paciente?.sexo || "masculino",
       },
     });

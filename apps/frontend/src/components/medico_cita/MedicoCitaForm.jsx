@@ -147,6 +147,7 @@ export default function MedicoCitaForm({
                 onBlur={()=>markTouched("nombres")}
                 required
                 disabled={locked}
+                className={locked ? "bg-slate-50 text-slate-600" : "bg-white"}
                 aria-invalid={showError("nombres")}
               />
               {showError("nombres") && <p className="mt-1 text-xs text-rose-600">{errors.nombres}</p>}
@@ -161,6 +162,7 @@ export default function MedicoCitaForm({
                 onBlur={()=>markTouched("apellidos")}
                 required
                 disabled={locked}
+                className={locked ? "bg-slate-50 text-slate-600" : "bg-white"}
                 aria-invalid={showError("apellidos")}
               />
               {showError("apellidos") && <p className="mt-1 text-xs text-rose-600">{errors.apellidos}</p>}
@@ -176,6 +178,7 @@ export default function MedicoCitaForm({
                 onBlur={()=>markTouched("documento")}
                 required
                 disabled={locked}
+                className={locked ? "bg-slate-50 text-slate-600" : "bg-white"}
                 aria-invalid={showError("documento")}
               />
               {showError("documento") && <p className="mt-1 text-xs text-rose-600">{errors.documento}</p>}
@@ -191,6 +194,7 @@ export default function MedicoCitaForm({
                 onBlur={()=>markTouched("telefono")}
                 required
                 disabled={locked}
+                className={locked ? "bg-slate-50 text-slate-600" : "bg-white"}
                 aria-invalid={showError("telefono")}
               />
               {showError("telefono") && <p className="mt-1 text-xs text-rose-600">{errors.telefono}</p>}
@@ -204,6 +208,7 @@ export default function MedicoCitaForm({
                 value={form.paciente.email}
                 onChange={(e)=>setForm(p=>({...p, paciente:{...p.paciente, email:e.target.value}}))}
                 disabled={locked}
+                className={locked ? "bg-slate-50 text-slate-600" : "bg-white"}
               />
             </div>
 
@@ -212,7 +217,7 @@ export default function MedicoCitaForm({
               <input
                 type="date"
                 max={todayStr}
-                className={`w-full rounded-xl border ${showError("fechaNacimiento") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
+                className={`w-full rounded-xl border ${showError("fechaNacimiento") ? "border-rose-400" : "border-slate-300"} ${locked ? "bg-slate-50 text-slate-600" : "bg-white"} px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
                 value={form.paciente.fechaNacimiento}
                 onChange={(e)=>setForm(p=>({...p, paciente:{...p.paciente, fechaNacimiento:e.target.value}}))}
                 onBlur={()=>markTouched("fechaNacimiento")}
@@ -226,7 +231,7 @@ export default function MedicoCitaForm({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Sexo *</label>
               <select
-                className={`w-full rounded-xl border ${showError("sexo") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
+                className={`w-full rounded-xl border ${showError("sexo") ? "border-rose-400" : "border-slate-300"} ${locked ? "bg-slate-50 text-slate-600" : "bg-white"} px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
                 value={form?.paciente?.sexo ?? ""}
                 onChange={(e)=>setForm(p=>({...p, paciente:{...p.paciente, sexo:e.target.value}}))}
                 onBlur={()=>markTouched("sexo")}
@@ -277,20 +282,20 @@ export default function MedicoCitaForm({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Inicio *</label>
-                <input
-                  type="datetime-local"
-                  className={`w-full rounded-xl border ${showError("inicio") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
-                  value={form.inicio}
-                  onChange={(e)=>setForm(p=>({ ...p, inicio:e.target.value }))}
-                  onBlur={()=>markTouched("inicio")}
-                  required
-                  disabled={locked}
-                  aria-invalid={showError("inicio")}
-                />
-                {showError("inicio") && <p className="mt-1 text-xs text-rose-600">{errors.inicio}</p>}
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Inicio *</label>
+              <input
+                type="datetime-local"
+                className={`w-full rounded-xl border ${showError("inicio") ? "border-rose-400" : "border-slate-300"} ${locked ? "bg-slate-50 text-slate-600" : "bg-white"} px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
+                value={form.inicio}
+                onChange={(e)=>setForm(p=>({ ...p, inicio:e.target.value }))}
+                onBlur={()=>markTouched("inicio")}
+                required
+                disabled={locked}
+                aria-invalid={showError("inicio")}
+              />
+              {showError("inicio") && <p className="mt-1 text-xs text-rose-600">{errors.inicio}</p>}
+            </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Fin *</label>
                 <input
@@ -311,7 +316,7 @@ export default function MedicoCitaForm({
               <textarea
                 rows={3}
                 placeholder="Detalle breve"
-                className={`w-full rounded-xl border ${showError("motivo") ? "border-rose-400" : "border-slate-300"} bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100 resize-none`}
+                className={`w-full rounded-xl border ${showError("motivo") ? "border-rose-400" : "border-slate-300"} ${locked ? "bg-slate-50 text-slate-600" : "bg-white"} px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100 resize-none`}
                 value={form.motivo}
                 onChange={(e)=>setForm(p=>({ ...p, motivo:e.target.value }))}
                 onBlur={()=>markTouched("motivo")}
@@ -325,7 +330,7 @@ export default function MedicoCitaForm({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Estado</label>
               <select
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                className={`w-full rounded-xl border border-slate-300 ${!locked ? "bg-slate-50 text-slate-600" : "bg-white"} px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100`}
                 value={form.estado}
                 onChange={(e)=>setForm(p=>({ ...p, estado:e.target.value }))}
                 disabled={!locked}
@@ -333,7 +338,7 @@ export default function MedicoCitaForm({
                 {ESTADOS_OPTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
               {!locked && (
-                <p className="mt-1 text-xs text-slate-500">El estado se establece automáticamente como “Programada”.</p>
+                <p className="mt-1 text-xs text-slate-500">El estado se establece automáticamente como "Programada".</p>
               )}
             </div>
           </div>
