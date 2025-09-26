@@ -193,38 +193,41 @@ export default function Perfil() {
         </div>
       </Card>
 
-      {/* Información adicional - Solo si hay especialidades */}
-      {data.especialidades && data.especialidades.length > 0 && (
+      {/* Información adicional y acciones en grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Especialidades - Solo si hay especialidades */}
+        {data.especialidades && data.especialidades.length > 0 && (
+          <Card className="p-6">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Especialidades</h3>
+              <div className="flex flex-wrap justify-center gap-3">
+                {data.especialidades.map((especialidad, index) => (
+                  <span key={index} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full text-sm font-medium shadow-md">
+                    {especialidad}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Acciones */}
         <Card className="p-6">
           <div className="text-center">
-            <h3 className="text-xl font-semibold text-slate-900 mb-4">Especialidades</h3>
-            <div className="flex flex-wrap justify-center gap-3">
-              {data.especialidades.map((especialidad, index) => (
-                <span key={index} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full text-sm font-medium shadow-md">
-                  {especialidad}
-                </span>
-              ))}
-            </div>
+            <h3 className="text-xl font-semibold text-slate-900 mb-2">Gestionar Perfil</h3>
+            <p className="text-slate-600 mb-6">Actualiza tu información personal y profesional</p>
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+              onClick={() => setOpenEdit(true)}
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Editar Perfil
+            </Button>
           </div>
         </Card>
-      )}
-
-      {/* Acciones */}
-      <Card className="p-6">
-        <div className="text-center">
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">Gestionar Perfil</h3>
-          <p className="text-slate-600 mb-6">Actualiza tu información personal y profesional</p>
-          <Button
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200"
-            onClick={() => setOpenEdit(true)}
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Editar Perfil
-          </Button>
-        </div>
-      </Card>
+      </div>
 
       {/* Modal editar */}
       <EditDoctorProfileModal
