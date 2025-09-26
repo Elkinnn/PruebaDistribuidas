@@ -11,14 +11,14 @@ const createEmpleadoSchema = Joi.object({
 });
 
 const updateEmpleadoSchema = Joi.object({
-  hospitalId: Joi.number().integer().positive(),
-  nombres: Joi.string().max(100),
-  apellidos: Joi.string().max(100),
-  tipo: Joi.string().valid('LIMPIEZA', 'SEGURIDAD', 'RECEPCION', 'ADMINISTRATIVO', 'OTRO'),
-  email: Joi.string().email().max(150),
-  telefono: Joi.string().max(50),
-  activo: Joi.boolean(),
-}).min(1);
+  hospitalId: Joi.number().integer().positive().optional(),
+  nombres: Joi.string().max(100).min(1).optional(),
+  apellidos: Joi.string().max(100).min(1).optional(),
+  tipo: Joi.string().valid('LIMPIEZA', 'SEGURIDAD', 'RECEPCION', 'ADMINISTRATIVO', 'OTRO').optional(),
+  email: Joi.string().email().max(150).optional(),
+  telefono: Joi.string().max(50).min(1).optional(),
+  activo: Joi.boolean().optional(),
+}).min(1).unknown(false).strict();
 
 const listEmpleadosSchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),

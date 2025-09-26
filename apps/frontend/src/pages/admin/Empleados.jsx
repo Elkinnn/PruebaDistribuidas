@@ -4,6 +4,7 @@ import Pagination from "../../components/shared/Pagination";
 import EmpleadoTable from "../../components/empleado/EmpleadoTable";
 import EmpleadoForm from "../../components/empleado/EmpleadoForm";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Notification from "../../components/ui/Notification";
 
 import { listEmpleados, createEmpleado, updateEmpleado, deleteEmpleado } from "../../api/empleado";
 import { listHospitals } from "../../api/hospital";
@@ -33,6 +34,14 @@ export default function Empleados() {
             }, {}),
         [hospitals]
     );
+
+    // notificaciones
+    const [notification, setNotification] = useState({
+        open: false,
+        type: "success",
+        title: "",
+        message: ""
+    });
 
     async function load() {
         setLoading(true);
@@ -65,42 +74,109 @@ export default function Empleados() {
             setEditing(null);
             setPage(1);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Empleado creado!",
+                message: "El empleado se ha creado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
             console.error('Error creating empleado:', e);
             
             // Manejar errores específicos
+            let errorMessage = "No se pudo crear el empleado. Por favor, intenta nuevamente.";
             if (e.response?.status === 409) {
-                setServerError("El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.");
+                errorMessage = "El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.";
             } else if (e.response?.status === 400) {
-                setServerError("Los datos proporcionados no son válidos. Por favor, revisa la información.");
+                errorMessage = "Los datos proporcionados no son válidos. Por favor, revisa la información.";
             } else if (e.response?.data?.message) {
-                setServerError(e.response.data.message);
-            } else {
-                setServerError("No se pudo crear el empleado. Por favor, intenta nuevamente.");
+                errorMessage = e.response.data.message;
             }
+            
+            setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al crear",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
     async function handleEdit(values) {
         try {
             setServerError("");
-            await updateEmpleado(editing.id, values);
+            console.log('🔍 [EMPLEADO EDIT] Updating empleado with ID:', editing.id);
+            console.log('🔍 [EMPLEADO EDIT] Values being sent:', JSON.stringify(values, null, 2));
+            
+            // Asegurar que solo se envíen los campos editables
+            const updateData = {
+                hospitalId: values.hospitalId,
+                nombres: values.nombres,
+                apellidos: values.apellidos,
+                tipo: values.tipo,
+                email: values.email,
+                telefono: values.telefono,
+                activo: values.activo
+            };
+            
+            console.log('🔍 [EMPLEADO EDIT] Cleaned update data:', JSON.stringify(updateData, null, 2));
+            
+            await updateEmpleado(editing.id, updateData);
             setModalOpen(false);
             setEditing(null);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Empleado actualizado!",
+                message: "El empleado se ha actualizado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
-            console.error('Error updating empleado:', e);
+            console.error('❌ [EMPLEADO EDIT] Error updating empleado:', e);
+            console.error('❌ [EMPLEADO EDIT] Error response:', e.response?.data);
+            console.error('❌ [EMPLEADO EDIT] Error status:', e.response?.status);
             
             // Manejar errores específicos
+            let errorMessage = "No se pudo actualizar el empleado. Por favor, intenta nuevamente.";
             if (e.response?.status === 409) {
-                setServerError("El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.");
+                errorMessage = "El correo electrónico ya está registrado en el sistema. Por favor, usa un email diferente.";
             } else if (e.response?.status === 400) {
-                setServerError("Los datos proporcionados no son válidos. Por favor, revisa la información.");
+                errorMessage = e.response.data?.message || "Los datos proporcionados no son válidos. Por favor, revisa la información.";
+                if (e.response.data?.details) {
+                    console.error('❌ [EMPLEADO EDIT] Validation details:', e.response.data.details);
+                    // Mostrar cada detalle de validación específico
+                    e.response.data.details.forEach((detail, index) => {
+                        console.error(`❌ [EMPLEADO EDIT] Validation error ${index + 1}:`, {
+                            field: detail.path?.join('.') || 'unknown',
+                            message: detail.message,
+                            value: detail.context?.value
+                        });
+                    });
+                }
             } else if (e.response?.data?.message) {
-                setServerError(e.response.data.message);
-            } else {
-                setServerError("No se pudo actualizar el empleado. Por favor, intenta nuevamente.");
+                errorMessage = e.response.data.message;
             }
+            
+            setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al actualizar",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -111,12 +187,35 @@ export default function Empleados() {
 
     async function confirmDelete() {
         if (!toDelete) return;
-        await deleteEmpleado(toDelete.id);
-        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
-        setConfirmOpen(false);
-        setToDelete(null);
-        if (page > maxPage) setPage(maxPage);
-        else load();
+        
+        try {
+            await deleteEmpleado(toDelete.id);
+            const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
+            setConfirmOpen(false);
+            setToDelete(null);
+            if (page > maxPage) setPage(maxPage);
+            else load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Empleado eliminado!",
+                message: "El empleado se ha eliminado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error deleting empleado:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar el empleado. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     const headerSubtitle = useMemo(
@@ -231,6 +330,16 @@ export default function Empleados() {
                 <AlertTriangle size={14} />
                 Datos conectados al backend real a través del API Gateway.
             </div>
+
+            {/* Notificación */}
+            <Notification
+                open={notification.open}
+                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+                type={notification.type}
+                title={notification.title}
+                message={notification.message}
+                duration={notification.duration}
+            />
         </div>
     );
 }

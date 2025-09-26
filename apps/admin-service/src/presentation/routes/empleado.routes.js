@@ -6,13 +6,40 @@ const router = Router();
 
 // Middleware de validación
 const validate = (schema) => (req, res, next) => {
-  const { error } = schema.validate(req.body);
+  console.log('🔍 [EMPLEADO VALIDATION] Raw request body:', JSON.stringify(req.body, null, 2));
+  
+  // Limpiar datos antes de validar
+  const cleanedBody = {};
+  Object.keys(req.body).forEach(key => {
+    const value = req.body[key];
+    // Solo incluir campos que no sean undefined, null o string vacío
+    if (value !== undefined && value !== null && value !== '') {
+      cleanedBody[key] = value;
+    }
+  });
+  
+  console.log('🔍 [EMPLEADO VALIDATION] Cleaned body:', JSON.stringify(cleanedBody, null, 2));
+  
+  const { error, value } = schema.validate(cleanedBody, { abortEarly: false, stripUnknown: true });
   if (error) {
+    console.log('❌ [EMPLEADO VALIDATION] Validation error:', error.details);
+    error.details.forEach((detail, index) => {
+      console.log(`❌ [EMPLEADO VALIDATION] Error ${index + 1}:`, {
+        field: detail.path?.join('.') || 'unknown',
+        message: detail.message,
+        value: detail.context?.value,
+        type: detail.type
+      });
+    });
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
-      message: error.details[0].message
+      message: 'Los datos proporcionados no son válidos. Por favor, revisa la información.',
+      details: error.details
     });
   }
+  // Reemplazar req.body con los datos validados
+  req.body = value;
+  console.log('✅ [EMPLEADO VALIDATION] Validation passed, cleaned body:', JSON.stringify(value, null, 2));
   next();
 };
 
@@ -110,22 +137,28 @@ router.post('/', validate(createEmpleadoSchema), async (req, res) => {
 router.put('/:id', validate(updateEmpleadoSchema), async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🔍 [EMPLEADO UPDATE] Request params:', { id });
+    console.log('🔍 [EMPLEADO UPDATE] Request body:', JSON.stringify(req.body, null, 2));
+    
     const empleado = await empleados.update(id, req.body);
     
     if (!empleado) {
+      console.log('❌ [EMPLEADO UPDATE] Empleado no encontrado:', id);
       return res.status(404).json({
         error: 'NOT_FOUND',
         message: 'Empleado no encontrado'
       });
     }
     
+    console.log('✅ [EMPLEADO UPDATE] Updated successfully:', empleado.id);
     res.json({
       success: true,
       data: empleado,
       message: 'Empleado actualizado exitosamente'
     });
   } catch (error) {
-    console.error('Error actualizando empleado:', error);
+    console.error('❌ [EMPLEADO UPDATE] Error:', error.message);
+    console.error('❌ [EMPLEADO UPDATE] Stack:', error.stack);
     
     if (error.status) {
       return res.status(error.status).json({

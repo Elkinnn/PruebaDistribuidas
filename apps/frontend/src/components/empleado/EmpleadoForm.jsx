@@ -74,10 +74,27 @@ export default function EmpleadoForm({
         e.preventDefault();
         markAllTouched();
         if (isInvalid) return;
-        onSubmit?.({
-            ...values,
-            hospitalId: Number(values.hospitalId),
+        
+        // Preparar los datos para envío - solo campos editables
+        const submitData = {
+            hospitalId: values.hospitalId ? Number(values.hospitalId) : undefined,
+            nombres: values.nombres?.trim(),
+            apellidos: values.apellidos?.trim(),
+            tipo: values.tipo,
+            email: values.email?.trim(),
+            telefono: values.telefono?.trim(),
+            activo: Boolean(values.activo) // Convertir a boolean
+        };
+        
+        // Limpiar campos vacíos para evitar problemas de validación
+        Object.keys(submitData).forEach(key => {
+            if (submitData[key] === '' || submitData[key] === null || submitData[key] === undefined) {
+                delete submitData[key];
+            }
         });
+        
+        console.log('🔍 [EMPLEADO FORM] Submitting data:', submitData);
+        onSubmit?.(submitData);
     }
 
     return (

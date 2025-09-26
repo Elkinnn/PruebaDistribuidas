@@ -96,10 +96,40 @@ export default function Citas() {
             setEditing(null);
             setPage(1);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Cita creada!",
+                message: "La cita se ha creado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
-            // Mostrar mensaje de error específico del backend
-            const errorMessage = e?.message || "No se pudo crear la cita.";
+            console.error('Error creating cita:', e);
+            
+            // Manejar errores específicos
+            let errorMessage = "No se pudo crear la cita. Por favor, intenta nuevamente.";
+            if (e.response?.status === 409) {
+                errorMessage = "Ya existe una cita programada en ese horario. Por favor, selecciona otro horario.";
+            } else if (e.response?.status === 400) {
+                errorMessage = "Los datos proporcionados no son válidos. Por favor, revisa la información.";
+            } else if (e.response?.data?.message) {
+                errorMessage = e.response.data.message;
+            } else if (e?.message) {
+                errorMessage = e.message;
+            }
+            
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al crear",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -110,10 +140,40 @@ export default function Citas() {
             setModalOpen(false);
             setEditing(null);
             load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Cita actualizada!",
+                message: "La cita se ha actualizado exitosamente",
+                duration: 4000
+            });
         } catch (e) {
-            // Mostrar mensaje de error específico del backend
-            const errorMessage = e?.message || "No se pudo actualizar la cita.";
+            console.error('Error updating cita:', e);
+            
+            // Manejar errores específicos
+            let errorMessage = "No se pudo actualizar la cita. Por favor, intenta nuevamente.";
+            if (e.response?.status === 409) {
+                errorMessage = "Ya existe una cita programada en ese horario. Por favor, selecciona otro horario.";
+            } else if (e.response?.status === 400) {
+                errorMessage = "Los datos proporcionados no son válidos. Por favor, revisa la información.";
+            } else if (e.response?.data?.message) {
+                errorMessage = e.response.data.message;
+            } else if (e?.message) {
+                errorMessage = e.message;
+            }
+            
             setServerError(errorMessage);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al actualizar",
+                message: errorMessage,
+                duration: 6000
+            });
         }
     }
 
@@ -124,13 +184,36 @@ export default function Citas() {
 
     async function confirmDelete() {
         if (!toDelete) return;
-        await deleteCita(toDelete.id);
+        
+        try {
+            await deleteCita(toDelete.id);
 
-        const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
-        setConfirmOpen(false);
-        setToDelete(null);
-        if (page > maxPage) setPage(maxPage);
-        else load();
+            const maxPage = Math.max(1, Math.ceil((total - 1) / pageSize));
+            setConfirmOpen(false);
+            setToDelete(null);
+            if (page > maxPage) setPage(maxPage);
+            else load();
+            
+            // Mostrar notificación de éxito
+            setNotification({
+                open: true,
+                type: "success",
+                title: "¡Cita eliminada!",
+                message: "La cita se ha eliminado exitosamente",
+                duration: 4000
+            });
+        } catch (e) {
+            console.error('Error deleting cita:', e);
+            
+            // Mostrar notificación de error
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar la cita. Intenta nuevamente.",
+                duration: 6000
+            });
+        }
     }
 
     async function handleCancelarPasadas() {
