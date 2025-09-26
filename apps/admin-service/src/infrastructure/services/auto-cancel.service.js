@@ -5,7 +5,7 @@ class AutoCancelService {
   constructor() {
     this.isRunning = false;
     this.intervalId = null;
-    this.intervalMs = 60000; // 1 minuto
+    this.intervalMs = 30000; // 30 segundos
   }
 
   start() {
@@ -14,7 +14,7 @@ class AutoCancelService {
       return;
     }
 
-    console.log('🔄 Iniciando AutoCancelService - Cancelación automática de citas cada minuto');
+    console.log('🔄 Iniciando AutoCancelService - Cancelación automática de citas cada 30 segundos');
     this.isRunning = true;
     
     // Ejecutar inmediatamente al iniciar

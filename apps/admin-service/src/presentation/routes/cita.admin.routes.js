@@ -82,15 +82,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// POST /citas/cancelar-pasadas
-router.post('/cancelar-pasadas', async (req, res) => {
-  try {
-    const result = await repo.cancelarCitasPasadas();
-    res.json({ data: result });
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_CANCEL_PAST', message: e.message });
-  }
-});
 
 
 // GET /citas/kpis?desde=&hasta=&hospitalId=
