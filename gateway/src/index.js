@@ -524,37 +524,123 @@ app.get('/medico/citas', async (req, res) => {
       return res.status(401).json({ message: 'Token inválido' });
     }
     
-    // Por ahora, devolver datos de prueba
-    const citas = [
-      {
-        id: 1,
-        fecha: '2024-12-01',
-        hora: '09:00:00',
-        estado: 'PROGRAMADA',
-        motivo: 'Consulta general',
-        observaciones: 'Primera consulta',
-        paciente_nombres: 'Juan',
-        paciente_apellidos: 'Pérez',
-        paciente_telefono: '123456789',
-        paciente_email: 'juan@email.com',
-        hospital_nombre: 'Hospital Central'
-      },
-      {
-        id: 2,
-        fecha: '2024-12-02',
-        hora: '10:30:00',
-        estado: 'PROGRAMADA',
-        motivo: 'Seguimiento',
-        observaciones: 'Control de presión',
-        paciente_nombres: 'María',
-        paciente_apellidos: 'González',
-        paciente_telefono: '987654321',
-        paciente_email: 'maria@email.com',
-        hospital_nombre: 'Hospital Central'
-      }
-    ];
+    // Conectar a la base de datos para obtener citas reales
+    const connection = await getConnection();
     
-    res.json(citas);
+    try {
+      console.log('[MEDICO CITAS] Consultando citas reales para médico:', decoded.medicoId);
+      
+      // Obtener parámetros de consulta
+      const { page = 1, pageSize = 8, q = '' } = req.query;
+      const offset = (page - 1) * pageSize;
+      
+      // Construir consulta con filtros
+      let whereClause = 'WHERE c.medicoId = ?';
+      let params = [decoded.medicoId];
+      
+      if (q) {
+        whereClause += ' AND (c.pacienteNombre LIKE ? OR c.motivo LIKE ? OR c.estado LIKE ?)';
+        const searchTerm = `%${q}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+
+      // Contar total de citas
+      const [countResult] = await connection.execute(`
+        SELECT COUNT(*) as total 
+        FROM Cita c 
+        ${whereClause}
+      `, params);
+      
+      const total = countResult[0].total;
+
+      // Obtener citas paginadas
+      const [citasResult] = await connection.execute(`
+        SELECT 
+          c.id,
+          c.fechaInicio,
+          c.fechaFin,
+          c.motivo,
+          c.estado,
+          c.pacienteNombre,
+          c.pacienteTelefono,
+          c.pacienteEmail,
+          h.nombre as hospital_nombre,
+          c.createdAt,
+          c.updatedAt
+        FROM Cita c
+        LEFT JOIN Hospital h ON c.hospitalId = h.id
+        ${whereClause}
+        ORDER BY c.fechaInicio DESC
+        LIMIT ? OFFSET ?
+      `, [...params, parseInt(pageSize), offset]);
+
+      await connection.end();
+
+      console.log('[MEDICO CITAS] Citas reales encontradas:', citasResult.length);
+
+      // Formatear datos para el frontend
+      const citas = citasResult.map(cita => {
+        // Manejar fechaInicio correctamente
+        let fecha = null;
+        let hora = null;
+        
+        if (cita.fechaInicio) {
+          const fechaStr = cita.fechaInicio.toString();
+          if (fechaStr.includes('T')) {
+            fecha = fechaStr.split('T')[0];
+            hora = fechaStr.split('T')[1];
+          } else {
+            // Si es solo fecha, usar como está
+            fecha = fechaStr;
+            hora = '00:00:00';
+          }
+        }
+        
+        // Crear objeto de fecha/hora para inicio y fin
+        const inicio = fecha && hora ? `${fecha}T${hora}` : cita.fechaInicio;
+        const fin = cita.fechaFin || inicio;
+        
+        return {
+          id: cita.id,
+          inicio: inicio,
+          fin: fin,
+          estado: cita.estado,
+          motivo: cita.motivo,
+          observaciones: '', // Campo vacío ya que no existe en la BD
+          paciente: {
+            nombres: cita.pacienteNombre ? cita.pacienteNombre.split(' ')[0] : '',
+            apellidos: cita.pacienteNombre ? cita.pacienteNombre.split(' ').slice(1).join(' ') : '',
+            telefono: cita.pacienteTelefono || '',
+            email: cita.pacienteEmail || ''
+          },
+          hospital_nombre: cita.hospital_nombre || 'Hospital Central',
+          createdAt: cita.createdAt,
+          updatedAt: cita.updatedAt
+        };
+      });
+
+      // Devolver estructura esperada por el frontend
+      res.json({
+        data: citas,
+        total: total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        totalPages: Math.ceil(total / pageSize)
+      });
+
+    } catch (dbError) {
+      await connection.end();
+      console.error('[MEDICO CITAS DB ERROR]', dbError.message);
+      
+      // Si hay error en la base de datos, devolver estructura vacía
+      res.json({
+        data: [],
+        total: 0,
+        page: 1,
+        pageSize: 8,
+        totalPages: 0
+      });
+    }
     
   } catch (error) {
     console.error('[MEDICO CITAS ERROR]', error.message);
