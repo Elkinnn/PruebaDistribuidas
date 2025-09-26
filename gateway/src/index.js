@@ -328,13 +328,17 @@ app.post('/medico/auth/login', async (req, res) => {
     
     // Obtener información del médico si existe
     let medicoInfo = null;
+    let hospitalInfo = null;
     if (user.medicoId) {
       const [medicos] = await connection.execute(
-        'SELECT * FROM medico WHERE id = ?',
+        'SELECT m.*, h.nombre as hospital_nombre FROM medico m LEFT JOIN hospital h ON m.hospitalId = h.id WHERE m.id = ?',
         [user.medicoId]
       );
       if (medicos.length > 0) {
         medicoInfo = medicos[0];
+        hospitalInfo = {
+          nombre: medicos[0].hospital_nombre || 'Hospital Central'
+        };
       }
     }
     
@@ -360,7 +364,8 @@ app.post('/medico/auth/login', async (req, res) => {
         medicoId: user.medicoId,
         nombre: medicoInfo?.nombres || "Dr. Usuario",
         apellidos: medicoInfo?.apellidos || "",
-        especialidades: [] // Se puede implementar después
+        especialidades: [], // Se puede implementar después
+        hospital: hospitalInfo?.nombre || "Hospital Central"
       }
     };
     

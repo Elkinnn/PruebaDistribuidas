@@ -113,8 +113,20 @@ export default function MedicoLayout() {
           <div
             className={`hidden md:flex items-center justify-between border-r border-slate-200 px-3 ${SIDEBAR_W}`}
           >
-            {/* Puedes personalizar Logo para que diga Clinix Médico si tu componente lo soporta */}
-            <Logo compact={collapsed} />
+            {/* Logo con nombre del hospital */}
+            {collapsed ? (
+              <Logo compact={true} />
+            ) : (
+              <div className="flex items-center gap-3">
+                <Logo compact={true} />
+                <div className="flex flex-col">
+                  <div className="text-lg font-bold text-slate-900">
+                    {medicoInfo?.hospital || user?.hospital || "Hospital Central"}
+                  </div>
+                  <div className="text-xs text-slate-500">Gestión Hospitalaria</div>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => setCollapsed((s) => !s)}
               className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
@@ -239,8 +251,16 @@ export default function MedicoLayout() {
               onKeyDown={(e) => e.key === "Escape" && setMobileOpen(false)}
             >
               <div className="flex h-full flex-col border-r border-slate-200 bg-white/95 backdrop-blur overflow-y-auto">
-                <div className="flex items-center justify-between px-3 py-4">
-                  <Logo compact={false} />
+                 <div className="flex items-center justify-between px-3 py-4">
+                   <div className="flex items-center gap-3">
+                     <Logo compact={true} />
+                     <div className="flex flex-col">
+                       <div className="text-lg font-bold text-slate-900">
+                         {medicoInfo?.hospital || user?.hospital || "Hospital Central"}
+                       </div>
+                       <div className="text-xs text-slate-500">Gestión Hospitalaria</div>
+                     </div>
+                   </div>
                   <button
                     onClick={() => setMobileOpen(false)}
                     className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
