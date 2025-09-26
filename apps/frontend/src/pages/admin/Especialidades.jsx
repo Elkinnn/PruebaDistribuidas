@@ -236,9 +236,8 @@ export default function Especialidades() {
                 title="Eliminar especialidad"
                 message={
                     <>
-                        ¿Seguro que deseas eliminar{" "}
-                        <span className="font-semibold">“{confirm.item?.nombre}”</span>?
-                        <br />
+                        ¿Seguro que deseas eliminar la especialidad{" "}
+                        <span className="font-semibold">"{confirm.item?.nombre}"</span>?<br />
                         Esta acción no se puede deshacer.
                     </>
                 }
@@ -248,11 +247,6 @@ export default function Especialidades() {
                 onConfirm={onConfirmDelete}
             />
 
-            {/* Nota de conexión */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                <AlertTriangle size={14} />
-                Datos conectados al backend real a través del API Gateway.
-            </div>
 
             {/* Notificación */}
             <Notification

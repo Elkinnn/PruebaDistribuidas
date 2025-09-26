@@ -288,8 +288,8 @@ export default function Hospitales() {
                 title="Eliminar hospital"
                 message={
                     <>
-                        ¿Seguro que deseas eliminar{" "}
-                        <span className="font-semibold">“{toDelete?.nombre}”</span>?<br />
+                        ¿Seguro que deseas eliminar el hospital{" "}
+                        <span className="font-semibold">"{toDelete?.nombre}"</span>?<br />
                         Esta acción no se puede deshacer.
                     </>
                 }
@@ -298,11 +298,6 @@ export default function Hospitales() {
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota de conexión */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                <AlertTriangle size={14} />
-                Datos conectados al backend real a través del API Gateway.
-            </div>
 
             {/* Notificación */}
             <Notification

@@ -266,11 +266,14 @@ export default function CitaForm({
                 setField("medicoId", ""); // Reset médico al cambiar hospital
               }}
               onBlur={() => setTouched((t) => ({ ...t, hospitalId: true }))}
+              disabled={isEdit}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-                touched.hospitalId && errors.hospitalId
-                                ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
-                                : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
-                            }`}
+                isEdit
+                  ? "cursor-not-allowed bg-slate-100 text-slate-500 border-slate-300"
+                  : touched.hospitalId && errors.hospitalId
+                  ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                  : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
+              }`}
                     >
               <option value="">— Selecciona hospital —</option>
                         {hospitals.map((h) => (
@@ -292,9 +295,9 @@ export default function CitaForm({
               value={values.medicoId}
               onChange={(e) => setField("medicoId", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, medicoId: true }))}
-              disabled={!values.hospitalId}
+              disabled={isEdit || !values.hospitalId}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-                !values.hospitalId
+                isEdit || !values.hospitalId
                   ? "cursor-not-allowed bg-slate-100 text-slate-400"
                   : touched.medicoId && errors.medicoId
                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
@@ -311,7 +314,7 @@ export default function CitaForm({
             {touched.medicoId && errors.medicoId ? (
               <p className="mt-1 text-xs text-rose-600">{errors.medicoId}</p>
             ) : null}
-            {!values.hospitalId && (
+            {!values.hospitalId && !isEdit && (
               <p className="mt-1 text-xs text-slate-500">Primero selecciona un hospital</p>
             )}
           </div>
@@ -426,11 +429,7 @@ export default function CitaForm({
             <User size={20} />
             Datos del Paciente
           </h3>
-          {values.pacienteId ? (
-            <p className="mb-4 text-sm text-slate-600">
-              Los datos del paciente no se pueden modificar. Esta cita está asociada a un paciente existente.
-            </p>
-          ) : (
+          {!values.pacienteId && (
             <p className="mb-4 text-sm text-slate-600">
               Si el paciente ya existe, puedes dejar estos campos vacíos.
             </p>

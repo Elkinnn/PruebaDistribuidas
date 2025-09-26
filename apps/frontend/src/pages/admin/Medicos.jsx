@@ -277,20 +277,21 @@ export default function Medicos() {
                 tone="danger"
                 title="Eliminar médico"
                 message={
-                    delTarget
-                        ? `¿Seguro que deseas eliminar a "${delTarget.nombres} ${delTarget.apellidos}"? Esta acción eliminará completamente el médico y su usuario de la base de datos. No se puede deshacer.`
-                        : ""
+                    delTarget ? (
+                        <>
+                            ¿Seguro que deseas eliminar al médico{" "}
+                            <span className="font-semibold">"{delTarget.nombres} {delTarget.apellidos}"</span>?<br />
+                            Esta acción no se puede deshacer.
+                        </>
+                    ) : (
+                        ""
+                    )
                 }
                 confirmText="Eliminar"
                 cancelText="Cancelar"
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota de conexión */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                <AlertTriangle size={14} />
-                Datos conectados al backend real a través del API Gateway.
-            </div>
 
             {/* Notificación */}
             <Notification

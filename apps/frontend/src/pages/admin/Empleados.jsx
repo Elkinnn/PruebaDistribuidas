@@ -309,11 +309,10 @@ export default function Empleados() {
                 message={
                     toDelete ? (
                         <>
-                            ¿Seguro que deseas eliminar a{" "}
+                            ¿Seguro que deseas eliminar al empleado{" "}
                             <span className="font-semibold">
-                                “{toDelete.nombres} {toDelete.apellidos}”
-                            </span>
-                            ?<br />
+                                "{toDelete.nombres} {toDelete.apellidos}"
+                            </span>?<br />
                             Esta acción no se puede deshacer.
                         </>
                     ) : (
@@ -325,11 +324,6 @@ export default function Empleados() {
                 onConfirm={confirmDelete}
             />
 
-            {/* Nota de conexión */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                <AlertTriangle size={14} />
-                Datos conectados al backend real a través del API Gateway.
-            </div>
 
             {/* Notificación */}
             <Notification
