@@ -14,6 +14,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar, Pie, Doughnut, Radar, PolarArea } from 'react-chartjs-2';
+import { BarChart3, PieChart, Building2, Users, TrendingUp, Activity } from "lucide-react";
 import { getGraficasData } from "../../api/cita";
 
 // Registrar componentes de Chart.js
@@ -360,9 +361,14 @@ export default function Graficas({ filtros }) {
     <div className="space-y-8">
       {/* Header con diseño profesional */}
       <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-          📊 Análisis Visual de Datos
-        </h2>
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <BarChart3 className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Análisis Visual de Datos
+          </h2>
+        </div>
         <p className="text-slate-600 text-lg">Visualización interactiva de datos de citas médicas en tiempo real</p>
       </div>
 
@@ -372,7 +378,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📈</span>
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Citas por Día</h3>
@@ -397,7 +403,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🥧</span>
+              <PieChart className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Distribución de Especialidades</h3>
@@ -425,7 +431,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🏢</span>
+              <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Citas por Hospital</h3>
@@ -450,7 +456,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📊</span>
+              <BarChart3 className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Ranking de Médicos</h3>
@@ -478,7 +484,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📊</span>
+              <Activity className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Estados por Día</h3>
@@ -503,7 +509,7 @@ export default function Graficas({ filtros }) {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🍩</span>
+              <Users className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800">Personal por Hospital</h3>

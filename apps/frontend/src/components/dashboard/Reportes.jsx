@@ -114,9 +114,14 @@ export default function Reportes({ filtros }) {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-          📄 Generación de Reportes
-        </h2>
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Generación de Reportes
+          </h2>
+        </div>
         <p className="text-slate-600 text-lg">Descarga reportes detallados en formato PDF basados en tus filtros de fecha</p>
       </div>
 

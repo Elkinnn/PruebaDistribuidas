@@ -89,29 +89,40 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Título */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-                    <p className="text-slate-600">KPIs de citas médicas basados en datos reales.</p>
+        <div className="space-y-8">
+            {/* Header mejorado */}
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Dashboard Médico</h1>
+                        <p className="text-emerald-100 mt-2">Métricas y análisis en tiempo real</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-sm font-medium">Datos en vivo</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Filtros */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Filtros de fecha</h3>
+            {/* Filtros mejorados */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <Calendar className="w-4 h-4 text-slate-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800">Filtros de Período</h3>
+                    </div>
                     {(filtros.desde && filtros.hasta) && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs text-green-600 font-medium">Filtros activos</span>
+                        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium">Filtros activos</span>
                         </div>
                     )}
                     {(filtros.desde || filtros.hasta) && !(filtros.desde && filtros.hasta) && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                            <span className="text-xs text-yellow-600 font-medium">Selecciona ambas fechas para filtrar</span>
+                        <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-lg">
+                            <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                            <span className="text-sm font-medium">Selecciona ambas fechas</span>
                         </div>
                     )}
                 </div>
@@ -178,103 +189,91 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-                    {/* KPIs */}
-                    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                        {/* Total Citas */}
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-slate-50 p-2 text-indigo-600">
-                                    <CalendarDays size={18} />
-                                </div>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl font-semibold">{kpis.totalCitas}</p>
-                                <p className="text-sm text-slate-600">Total Citas</p>
-                                {filtros.desde && filtros.hasta && (
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        {filtros.desde} - {filtros.hasta}
-                                    </p>
-                                )}
-                            </div>
+            {/* KPIs mejorados */}
+            <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                {/* Total Citas */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <CalendarDays className="w-6 h-6 text-white" />
                         </div>
-
-                        {/* % Canceladas */}
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-slate-50 p-2 text-red-600">
-                                    <XCircle size={18} />
-                                </div>
-                                <span className="text-xs font-medium text-red-600">
-                                    {kpis.canceladas} de {kpis.totalCitas}
-                                </span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl font-semibold">{kpis.porcentajeCanceladas}%</p>
-                                <p className="text-sm text-slate-600">% Canceladas</p>
-                            </div>
-                        </div>
-
-                        {/* % Atendidas */}
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-slate-50 p-2 text-emerald-600">
-                                    <CheckCircle size={18} />
-                                </div>
-                                <span className="text-xs font-medium text-emerald-600">
-                                    {kpis.atendidas} de {kpis.totalCitas}
-                                </span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl font-semibold">{kpis.porcentajeAtendidas}%</p>
-                                <p className="text-sm text-slate-600">% Atendidas</p>
-                            </div>
-                        </div>
-
-                        {/* % Programadas */}
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-slate-50 p-2 text-blue-600">
-                                    <Calendar size={18} />
-                                </div>
-                                <span className="text-xs font-medium text-blue-600">
-                                    {kpis.programadas} de {kpis.totalCitas}
-                                </span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl font-semibold">{kpis.porcentajeProgramadas}%</p>
-                                <p className="text-sm text-slate-600">% Programadas</p>
-                            </div>
-                        </div>
-
-                        {/* Tiempo Medio */}
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-slate-50 p-2 text-amber-600">
-                                    <Clock size={18} />
-                                </div>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl font-semibold">{kpis.tiempoMedioConsulta}</p>
-                                <p className="text-sm text-slate-600">Tiempo medio (min)</p>
-                                <p className="text-xs text-slate-500 mt-1">Solo citas atendidas</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Información adicional */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                <Clock className="h-5 w-5 text-blue-400" />
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm text-blue-800">
-                                    <strong>Nota:</strong> Los datos mostrados son en tiempo real desde la base de datos. 
-                                    El tiempo medio de consulta se calcula usando fechaInicio → fechaFin para citas con estado 'ATENDIDA'.
-                                </p>
-                            </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-bold text-blue-700">{kpis.totalCitas}</div>
+                            <div className="text-sm text-blue-600 font-medium">Total Citas</div>
                         </div>
                     </div>
+                    {filtros.desde && filtros.hasta && (
+                        <div className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">
+                            {filtros.desde} - {filtros.hasta}
+                        </div>
+                    )}
+                </div>
+
+                {/* % Canceladas */}
+                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl border border-red-200 p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <XCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-bold text-red-700">{kpis.porcentajeCanceladas}%</div>
+                            <div className="text-sm text-red-600 font-medium">Canceladas</div>
+                        </div>
+                    </div>
+                    <div className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded-lg">
+                        {kpis.canceladas} de {kpis.totalCitas} citas
+                    </div>
+                </div>
+
+                {/* % Atendidas */}
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl border border-emerald-200 p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <CheckCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-bold text-emerald-700">{kpis.porcentajeAtendidas}%</div>
+                            <div className="text-sm text-emerald-600 font-medium">Atendidas</div>
+                        </div>
+                    </div>
+                    <div className="text-xs text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
+                        {kpis.atendidas} de {kpis.totalCitas} citas
+                    </div>
+                </div>
+
+                {/* % Programadas */}
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl border border-indigo-200 p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <Calendar className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-bold text-indigo-700">{kpis.porcentajeProgramadas}%</div>
+                            <div className="text-sm text-indigo-600 font-medium">Programadas</div>
+                        </div>
+                    </div>
+                    <div className="text-xs text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">
+                        {kpis.programadas} de {kpis.totalCitas} citas
+                    </div>
+                </div>
+
+                {/* Tiempo Medio */}
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl border border-amber-200 p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <Clock className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-bold text-amber-700">{kpis.tiempoMedioConsulta}</div>
+                            <div className="text-sm text-amber-600 font-medium">Minutos</div>
+                        </div>
+                    </div>
+                    <div className="text-xs text-amber-500 bg-amber-50 px-2 py-1 rounded-lg">
+                        Tiempo medio de consulta
+                    </div>
+                </div>
+            </section>
+
 
                     {/* Gráficas */}
                     <Graficas filtros={filtros} />
