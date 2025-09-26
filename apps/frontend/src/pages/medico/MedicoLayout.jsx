@@ -70,11 +70,12 @@ export default function MedicoLayout() {
   // Escuchar eventos de actualización del perfil
   useEffect(() => {
     const handleProfileUpdate = (event) => {
-      const { nombre } = event.detail;
-      if (nombre) {
+      const { nombre, email } = event.detail;
+      if (nombre || email) {
         setMedicoInfo(prev => ({
           ...prev,
-          nombre: nombre
+          ...(nombre && { nombre }),
+          ...(email && { email })
         }));
       }
     };

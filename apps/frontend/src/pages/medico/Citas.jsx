@@ -162,12 +162,13 @@ export default function Citas() {
   // Escuchar eventos de actualización del perfil
   useEffect(() => {
     const handleProfileUpdate = (event) => {
-      const { nombre } = event.detail;
-      console.log('[CITAS] Evento de actualización recibido:', nombre);
-      if (nombre) {
+      const { nombre, email } = event.detail;
+      console.log('[CITAS] Evento de actualización recibido:', { nombre, email });
+      if (nombre || email) {
         setMedicoInfo(prev => ({
           ...prev,
-          nombre: nombre
+          ...(nombre && { nombre }),
+          ...(email && { email })
         }));
       }
     };

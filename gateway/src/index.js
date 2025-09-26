@@ -1156,6 +1156,15 @@ app.put('/medico/perfil', async (req, res) => {
           SET ${updates.join(', ')}
           WHERE id = ?
         `, values);
+        
+        // Si se actualizó el email, también actualizar en la tabla usuario
+        if (email) {
+          await connection.execute(
+            'UPDATE usuario SET email = ? WHERE medicoId = ?', 
+            [email, decoded.medicoId]
+          );
+          console.log('[MEDICO PERFIL] Email actualizado en tabla usuario:', email);
+        }
       }
       
       // Los días de trabajo solo se actualizan en el frontend (no en la base de datos)

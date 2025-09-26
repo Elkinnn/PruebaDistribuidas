@@ -59,15 +59,23 @@ export default function Perfil() {
           ...backendData
         }));
 
-        // Actualizar localStorage con el nuevo nombre
-        if (backendData.nombre) {
+        // Actualizar localStorage con el nuevo nombre y email
+        if (backendData.nombre || backendData.email) {
           const userData = JSON.parse(localStorage.getItem("clinix_user_medico") || "{}");
-          userData.nombre = backendData.nombre;
+          if (backendData.nombre) {
+            userData.nombre = backendData.nombre;
+          }
+          if (backendData.email) {
+            userData.email = backendData.email;
+          }
           localStorage.setItem("clinix_user_medico", JSON.stringify(userData));
           
           // Disparar evento personalizado para actualizar el layout
           window.dispatchEvent(new CustomEvent('medicoProfileUpdated', { 
-            detail: { nombre: backendData.nombre } 
+            detail: { 
+              nombre: backendData.nombre,
+              email: backendData.email 
+            } 
           }));
         }
       }
