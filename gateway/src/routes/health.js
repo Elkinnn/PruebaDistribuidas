@@ -50,6 +50,32 @@ const checkServiceHealth = async (serviceName, url) => {
   }
 };
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Verificar estado del gateway y servicios
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Gateway y servicios funcionando correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthStatus'
+ *       503:
+ *         description: Gateway degradado o servicios con problemas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthStatus'
+ *       500:
+ *         description: Error interno del gateway
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Endpoint de salud del gateway
 router.get('/', async (req, res) => {
   try {

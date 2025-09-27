@@ -4,6 +4,9 @@ const { randomUUID } = require('crypto');
 const { helmet, cors, rateLimit } = require('./middleware/security');
 const config = require('./config');
 
+// Swagger documentation
+const { swaggerUi, specs } = require('./swagger');
+
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const proxyRoutes = require('./routes/proxy');
@@ -32,6 +35,12 @@ app.use(cors);
 // Middlewares básicos
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' })); // Aumentar límite para archivos grandes
+
+// Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'API Gateway Documentation'
+}));
 
 // Rutas
 app.use('/auth', rateLimit, authRoutes); // Rate limit solo en /auth

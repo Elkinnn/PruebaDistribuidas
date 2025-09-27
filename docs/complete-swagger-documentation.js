@@ -1,15 +1,34 @@
-const { Router } = require('express');
-const repo = require('../../infrastructure/persistence/hospital.repo');
-const { createHospitalSchema, updateHospitalSchema } = require('../validators/hospital.schema');
+#!/usr/bin/env node
 
-const router = Router();
+const fs = require('fs');
+const path = require('path');
 
-/**
+console.log('📚 Completando documentación Swagger para todas las rutas...');
+
+// Función para agregar documentación Swagger a un archivo de rutas
+function addSwaggerDocumentation(routeFile, entityName, entitySchema) {
+  const filePath = path.join(__dirname, '..', 'apps', 'admin-service', 'src', 'presentation', 'routes', routeFile);
+  
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  Archivo no encontrado: ${routeFile}`);
+    return;
+  }
+
+  let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Verificar si ya tiene documentación Swagger
+  if (content.includes('@swagger')) {
+    console.log(`✅ ${routeFile} ya tiene documentación Swagger`);
+    return;
+  }
+
+  // Documentación para GET (lista)
+  const getListDoc = `/**
  * @swagger
- * /hospitales:
+ * /${entityName.toLowerCase()}s:
  *   get:
- *     summary: Obtener lista de hospitales
- *     tags: [Hospitales]
+ *     summary: Obtener lista de ${entityName.toLowerCase()}s
+ *     tags: [${entityName}s]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -32,7 +51,7 @@ const router = Router();
  *         description: Término de búsqueda
  *     responses:
  *       200:
- *         description: Lista de hospitales obtenida exitosamente
+ *         description: Lista de ${entityName.toLowerCase()}s obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -41,7 +60,7 @@ const router = Router();
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Hospital'
+ *                     $ref: '#/components/schemas/${entitySchema}'
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       401:
@@ -56,27 +75,15 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-// GET /hospitales?page=&size=&q=
-router.get('/', async (req, res) => {
-  try {
-    const page = Number(req.query.page || 1);
-    const size = Number(req.query.size || 20);
-    const q = (req.query.q || '').toString();
+ */`;
 
-    const result = await repo.list({ page, size, q });
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_LIST', message: e.message });
-  }
-});
-
-/**
+  // Documentación para GET por ID
+  const getByIdDoc = `/**
  * @swagger
- * /hospitales/{id}:
+ * /${entityName.toLowerCase()}s/{id}:
  *   get:
- *     summary: Obtener hospital por ID
- *     tags: [Hospitales]
+ *     summary: Obtener ${entityName.toLowerCase()} por ID
+ *     tags: [${entityName}s]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -85,19 +92,19 @@ router.get('/', async (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID del hospital
+ *         description: ID del ${entityName.toLowerCase()}
  *     responses:
  *       200:
- *         description: Hospital obtenido exitosamente
+ *         description: ${entityName} obtenido exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   $ref: '#/components/schemas/Hospital'
+ *                   $ref: '#/components/schemas/${entitySchema}'
  *       404:
- *         description: Hospital no encontrado
+ *         description: ${entityName} no encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -114,24 +121,15 @@ router.get('/', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-// GET /hospitales/:id
-router.get('/:id', async (req, res) => {
-  try {
-    const item = await repo.findById(req.params.id);
-    if (!item) return res.status(404).json({ error: 'NOT_FOUND', message: 'Hospital no encontrado' });
-    res.json({ data: item });
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_GET', message: e.message });
-  }
-});
+ */`;
 
-/**
+  // Documentación para POST
+  const postDoc = `/**
  * @swagger
- * /hospitales:
+ * /${entityName.toLowerCase()}s:
  *   post:
- *     summary: Crear nuevo hospital
- *     tags: [Hospitales]
+ *     summary: Crear nuevo ${entityName.toLowerCase()}
+ *     tags: [${entityName}s]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -139,32 +137,17 @@ router.get('/:id', async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - nombre
- *             properties:
- *               nombre:
- *                 type: string
- *                 description: Nombre del hospital
- *                 example: "Hospital General"
- *               direccion:
- *                 type: string
- *                 description: Dirección del hospital
- *                 example: "Av. Principal 123"
- *               telefono:
- *                 type: string
- *                 description: Teléfono del hospital
- *                 example: "+1234567890"
+ *             $ref: '#/components/schemas/${entitySchema}'
  *     responses:
  *       201:
- *         description: Hospital creado exitosamente
+ *         description: ${entityName} creado exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   $ref: '#/components/schemas/Hospital'
+ *                   $ref: '#/components/schemas/${entitySchema}'
  *       400:
  *         description: Error de validación
  *         content:
@@ -183,26 +166,15 @@ router.get('/:id', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-// POST /hospitales
-router.post('/', async (req, res) => {
-  try {
-    const { error, value } = createHospitalSchema.validate(req.body, { abortEarly: false });
-    if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
+ */`;
 
-    const item = await repo.create(value);
-    res.status(201).json({ data: item });
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_CREATE', message: e.message });
-  }
-});
-
-/**
+  // Documentación para PUT
+  const putDoc = `/**
  * @swagger
- * /hospitales/{id}:
+ * /${entityName.toLowerCase()}s/{id}:
  *   put:
- *     summary: Actualizar hospital
- *     tags: [Hospitales]
+ *     summary: Actualizar ${entityName.toLowerCase()}
+ *     tags: [${entityName}s]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -211,36 +183,23 @@ router.post('/', async (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID del hospital
+ *         description: ID del ${entityName.toLowerCase()}
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *                 description: Nombre del hospital
- *                 example: "Hospital General"
- *               direccion:
- *                 type: string
- *                 description: Dirección del hospital
- *                 example: "Av. Principal 123"
- *               telefono:
- *                 type: string
- *                 description: Teléfono del hospital
- *                 example: "+1234567890"
+ *             $ref: '#/components/schemas/${entitySchema}'
  *     responses:
  *       200:
- *         description: Hospital actualizado exitosamente
+ *         description: ${entityName} actualizado exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   $ref: '#/components/schemas/Hospital'
+ *                   $ref: '#/components/schemas/${entitySchema}'
  *       400:
  *         description: Error de validación
  *         content:
@@ -248,7 +207,7 @@ router.post('/', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       404:
- *         description: Hospital no encontrado
+ *         description: ${entityName} no encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -265,27 +224,15 @@ router.post('/', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-// PUT /hospitales/:id
-router.put('/:id', async (req, res) => {
-  try {
-    const { error, value } = updateHospitalSchema.validate(req.body, { abortEarly: false });
-    if (error) return res.status(400).json({ error: 'VALIDATION_ERROR', details: error.details });
+ */`;
 
-    const item = await repo.update(req.params.id, value);
-    if (!item) return res.status(404).json({ error: 'NOT_FOUND', message: 'Hospital no encontrado' });
-    res.json({ data: item });
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_UPDATE', message: e.message });
-  }
-});
-
-/**
+  // Documentación para DELETE
+  const deleteDoc = `/**
  * @swagger
- * /hospitales/{id}:
+ * /${entityName.toLowerCase()}s/{id}:
  *   delete:
- *     summary: Eliminar hospital
- *     tags: [Hospitales]
+ *     summary: Eliminar ${entityName.toLowerCase()}
+ *     tags: [${entityName}s]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -294,10 +241,10 @@ router.put('/:id', async (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID del hospital
+ *         description: ID del ${entityName.toLowerCase()}
  *     responses:
  *       200:
- *         description: Hospital eliminado exitosamente
+ *         description: ${entityName} eliminado exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -307,7 +254,7 @@ router.put('/:id', async (req, res) => {
  *                   type: boolean
  *                   example: true
  *       404:
- *         description: Hospital no encontrado
+ *         description: ${entityName} no encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -324,16 +271,54 @@ router.put('/:id', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-// DELETE /hospitales/:id
-router.delete('/:id', async (req, res) => {
-  try {
-    const ok = await repo.remove(req.params.id);
-    if (!ok) return res.status(404).json({ error: 'NOT_FOUND', message: 'Hospital no encontrado' });
-    res.json({ data: true });
-  } catch (e) {
-    res.status(500).json({ error: 'ERROR_DELETE', message: e.message });
-  }
+ */`;
+
+  // Insertar documentación antes de cada método
+  content = content.replace(
+    /\/\/ GET \/.*\nrouter\.get\('\/',/,
+    `${getListDoc}\n// GET /${entityName.toLowerCase()}s?page=&size=&q=\nrouter.get('/',`
+  );
+
+  content = content.replace(
+    /\/\/ GET \/.*\nrouter\.get\('\/:id',/,
+    `${getByIdDoc}\n// GET /${entityName.toLowerCase()}s/:id\nrouter.get('/:id',`
+  );
+
+  content = content.replace(
+    /\/\/ POST \/.*\nrouter\.post\('\/',/,
+    `${postDoc}\n// POST /${entityName.toLowerCase()}s\nrouter.post('/',`
+  );
+
+  content = content.replace(
+    /\/\/ PUT \/.*\nrouter\.put\('\/:id',/,
+    `${putDoc}\n// PUT /${entityName.toLowerCase()}s/:id\nrouter.put('/:id',`
+  );
+
+  content = content.replace(
+    /\/\/ DELETE \/.*\nrouter\.delete\('\/:id',/,
+    `${deleteDoc}\n// DELETE /${entityName.toLowerCase()}s/:id\nrouter.delete('/:id',`
+  );
+
+  fs.writeFileSync(filePath, content);
+  console.log(`✅ Documentación agregada a ${routeFile}`);
+}
+
+// Lista de rutas a documentar
+const routesToDocument = [
+  { file: 'hospital.routes.js', entity: 'Hospital', schema: 'Hospital' },
+  { file: 'medico.routes.js', entity: 'Medico', schema: 'Medico' },
+  { file: 'empleado.routes.js', entity: 'Empleado', schema: 'Empleado' },
+  { file: 'cita.admin.routes.js', entity: 'Cita', schema: 'Cita' }
+];
+
+console.log('📋 Documentando rutas...');
+
+routesToDocument.forEach(route => {
+  addSwaggerDocumentation(route.file, route.entity, route.schema);
 });
 
-module.exports = router;
+console.log('\n🎉 Documentación Swagger completada!');
+console.log('\n📝 Próximos pasos:');
+console.log('1. Reinicia el Admin Service para ver los cambios');
+console.log('2. Ve a http://localhost:3001/api-docs');
+console.log('3. Deberías ver todas las secciones: Especialidades, Hospitales, Médicos, Empleados, Citas');
