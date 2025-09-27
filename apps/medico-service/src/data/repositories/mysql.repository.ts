@@ -65,9 +65,29 @@ export class MySQLRepository<T extends ObjectLiteral> extends IDatabaseRepositor
 
     public async delete(deleted: T): Promise<[boolean, CustomError?]> {
         try {
-            const flag = !!await this.datasource.delete(deleted);
-            return [flag]
+            console.log(`[MYSQL REPOSITORY DELETE] Eliminando entidad:`, deleted);
+            
+            // Intentar eliminar por ID si la entidad tiene un campo id
+            if (deleted && typeof deleted === 'object' && 'id' in deleted) {
+                console.log(`[MYSQL REPOSITORY DELETE] Eliminando por ID: ${deleted.id}`);
+                const result = await this.datasource.delete({ id: deleted.id } as any);
+                console.log(`[MYSQL REPOSITORY DELETE] Resultado eliminación por ID:`, result);
+                
+                if (result.affected && result.affected > 0) {
+                    console.log(`[MYSQL REPOSITORY DELETE] ✅ Eliminación exitosa`);
+                    return [true];
+                } else {
+                    console.log(`[MYSQL REPOSITORY DELETE] ❌ No se eliminó ninguna fila`);
+                    return [false, new CustomError(400, "No se pudo eliminar la entidad", "No se encontró la entidad o no se pudo eliminar")]
+                }
+            } else {
+                // Fallback al método original
+                console.log(`[MYSQL REPOSITORY DELETE] Usando método original`);
+                const flag = !!await this.datasource.delete(deleted);
+                return [flag]
+            }
         } catch (error) {
+            console.error(`[MYSQL REPOSITORY DELETE ERROR]`, error);
             return [false, new CustomError(400, "Error al borrar", error)]
         }
     }

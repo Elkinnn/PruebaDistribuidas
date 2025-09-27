@@ -24,6 +24,13 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const usuario = await repository.findById(payload.id);
     if (!usuario) throw new CustomError(404, "Usuario no encontrado", null);
 
+    console.log('[AUTH MIDDLEWARE] Usuario encontrado:', {
+      id: usuario.id,
+      email: usuario.email,
+      medicoId: usuario.medicoId,
+      rol: usuario.rol
+    });
+
     // Si el usuario tiene medicoId, obtener información del médico
     let medicoInfo = null;
     if (usuario.medicoId) {
@@ -33,13 +40,20 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         if (medicoDatasource) {
           const medicoRepository = new EntityRepository<Medico>(medicoDatasource, new MedicoMapper());
           medicoInfo = await medicoRepository.findById(usuario.medicoId, ['hospital', 'usuario']);
-          console.log('[AUTH MIDDLEWARE] Médico obtenido:', medicoInfo);
+          console.log('[AUTH MIDDLEWARE] Médico obtenido:', {
+            id: medicoInfo?.id,
+            nombres: medicoInfo?.nombres,
+            apellidos: medicoInfo?.apellidos,
+            hospitalId: medicoInfo?.hospital?.id
+          });
         }
       } catch (error) {
         console.log("Error obteniendo info del médico en middleware:", error);
         // Si hay error obteniendo el médico, usar solo la información del usuario
         medicoInfo = null;
       }
+    } else {
+      console.log('[AUTH MIDDLEWARE] Usuario no tiene medicoId asociado');
     }
 
     // Asignar tanto el usuario como el médico (si existe) al request
@@ -63,6 +77,13 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       };
     }
     (req as any).medico = medicoInfo;
+
+    console.log('[AUTH MIDDLEWARE] Médico asignado al request:', {
+      id: medicoInfo.id,
+      nombres: medicoInfo.nombres,
+      apellidos: medicoInfo.apellidos,
+      hospitalId: medicoInfo.hospital?.id
+    });
 
     next();
   } catch (err) {

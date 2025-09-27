@@ -23,13 +23,22 @@ export class CRUDCitas {
     }
     public async getAll(): Promise<Cita[]> {
         try {
+            console.log(`[CRUD CITAS GETALL] Obteniendo citas para médico: ${this.medico.id}`);
             // Filtrar solo por médico (para que vea todas sus citas, independientemente del hospital)
             const result = await this.repository.findBy({ 
                 medicoId: this.medico.id
             } as any, ['paciente', 'hospital', 'medico'])
+            
+            console.log(`[CRUD CITAS GETALL] Citas encontradas: ${result?.length || 0}`);
+            if (result && result.length > 0) {
+                result.forEach((cita, index) => {
+                    console.log(`[CRUD CITAS GETALL] Cita ${index + 1}: ID=${cita.id}, Estado=${cita.estado}, Motivo=${cita.motivo}`);
+                });
+            }
+            
             return result ?? []
         } catch (error) {
-            console.error('[CRUD CITAS] Error en getAll:', error);
+            console.error('[CRUD CITAS GETALL] Error en getAll:', error);
             throw new CustomError(500, "Error al cargar las citas", 
                 "No se pudieron cargar las citas. Por favor, intente nuevamente o contacte al administrador si el problema persiste.")
         }
@@ -97,22 +106,34 @@ export class CRUDCitas {
             });
             // Validaciones de estado con mensajes claros
             if (toUpdate.estado == "ATENDIDA") {
-                console.log('[CRUD CITAS UPDATE] Error: No se puede modificar una cita ATENDIDA');
-                throw new CustomError(400, "No se puede modificar una cita atendida", 
-                    "Una cita que ya ha sido atendida no puede ser modificada.");
+                // Solo permitir cambiar la fecha de fin en citas ATENDIDAS
+                if (data.estado && data.estado !== "ATENDIDA") {
+                    console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita ATENDIDA');
+                    throw new CustomError(400, "No se puede cambiar el estado de una cita atendida", 
+                        "Una cita que ya ha sido atendida solo puede tener su fecha de fin modificada.");
+                }
+                console.log('[CRUD CITAS UPDATE] Permitiendo actualización de fecha de fin en cita ATENDIDA');
             }
             
             if (toUpdate.estado == "CANCELADA") {
-                console.log('[CRUD CITAS UPDATE] Error: No se puede modificar una cita CANCELADA');
-                throw new CustomError(400, "No se puede modificar una cita cancelada", 
-                    "Una cita que ha sido cancelada no puede ser modificada.");
+                // Solo permitir cambiar la fecha de fin en citas CANCELADAS
+                if (data.estado && data.estado !== "CANCELADA") {
+                    console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita CANCELADA');
+                    throw new CustomError(400, "No se puede cambiar el estado de una cita cancelada", 
+                        "Una cita que ha sido cancelada solo puede tener su fecha de fin modificada.");
+                }
+                console.log('[CRUD CITAS UPDATE] Permitiendo actualización de fecha de fin en cita CANCELADA');
             }
             
-            // Solo permitir cambiar estado de PROGRAMADA a ATENDIDA
-            if (toUpdate.estado == "PROGRAMADA" && data.estado && data.estado != "ATENDIDA") {
-                console.log('[CRUD CITAS UPDATE] Error: Solo se puede cambiar PROGRAMADA a ATENDIDA');
-                throw new CustomError(400, "Solo se puede cambiar el estado a ATENDIDA", 
-                    "Solo se puede cambiar el estado de una cita programada a ATENDIDA.");
+            // Validar cambios de estado solo para citas PROGRAMADAS y solo si se está cambiando el estado
+            if (toUpdate.estado == "PROGRAMADA" && data.estado && data.estado !== toUpdate.estado) {
+                // Permitir cambiar de PROGRAMADA a ATENDIDA o CANCELADA
+                if (data.estado !== "ATENDIDA" && data.estado !== "CANCELADA") {
+                    console.log('[CRUD CITAS UPDATE] Error: Estado inválido para cita PROGRAMADA');
+                    throw new CustomError(400, "Estado inválido", 
+                        "Solo se puede cambiar el estado de una cita programada a ATENDIDA o CANCELADA.");
+                }
+                console.log(`[CRUD CITAS UPDATE] Cambiando estado de ${toUpdate.estado} a ${data.estado}`);
             }
             
             // No permitir cambiar el motivo
@@ -124,20 +145,48 @@ export class CRUDCitas {
             // No actualizar el motivo (no se puede modificar)
             // toUpdate.motivo = data.motivo ?? toUpdate.motivo;
             
-            // Solo actualizar estado y fecha de fin
+            // Actualizar campos permitidos
+            console.log('[CRUD CITAS UPDATE] Datos recibidos:', data);
+            
             if (data.estado) {
                 toUpdate.estado = data.estado;
+                console.log(`[CRUD CITAS UPDATE] Actualizando estado a: ${data.estado}`);
             }
+            
             if (data.fechaFin) {
                 toUpdate.fechaFin = data.fechaFin;
+                console.log(`[CRUD CITAS UPDATE] Actualizando fecha de fin a: ${data.fechaFin}`);
             }
+            
+            // Actualizar metadatos
             toUpdate.actualizadaPor = this.medico.usuario;
             toUpdate.updatedAt = new Date();
+            
+            console.log('[CRUD CITAS UPDATE] Cita a actualizar:', {
+                id: toUpdate.id,
+                estado: toUpdate.estado,
+                fechaFin: toUpdate.fechaFin,
+                motivo: toUpdate.motivo
+            });
+            
+            console.log('[CRUD CITAS UPDATE] Enviando cita al repositorio para actualizar...');
             const result = await this.repository.update(toUpdate);
             if (result instanceof Error) {
+                console.error('[CRUD CITAS UPDATE] Error del repositorio:', result);
                 throw new CustomError(400, "Error al actualizar la cita", 
                     "No se pudo guardar los cambios de la cita. Verifique que los datos sean correctos.");
             }
+            
+            console.log('[CRUD CITAS UPDATE] ✅ Cita actualizada exitosamente, resultado:', result);
+            
+            // Verificar que la cita sigue existiendo después de la actualización
+            const citaVerificada = await this.repository.findBy({
+                id: id,
+                medicoId: this.medico.id
+            } as any);
+            
+            console.log(`[CRUD CITAS UPDATE] Verificación post-actualización: ${citaVerificada?.length || 0} citas encontradas`);
+            
             return result;
         } catch (error) {
             if (error instanceof CustomError) {
@@ -151,22 +200,39 @@ export class CRUDCitas {
 
     public async delete(id: number): Promise<boolean> {
         try {
+            console.log(`[CRUD CITAS DELETE] Intentando eliminar cita ID: ${id} para médico: ${this.medico.id}`);
+            
+            // Primero verificar que la cita existe y pertenece al médico
             const deletables = await this.repository.findBy({
                 id: id,
                 medico: this.medico
             })
+            
             if (!deletables || deletables.length != 1) {
+                console.log(`[CRUD CITAS DELETE] Cita no encontrada: ID ${id}, médico ${this.medico.id}`);
                 throw new CustomError(404, "Cita no encontrada", 
                     "La cita que intenta eliminar no existe o no pertenece a este médico.")
             }
-            const deleted = deletables[0]
-            const result = await this.repository.delete(deleted)
+            
+            const citaToDelete = deletables[0];
+            console.log(`[CRUD CITAS DELETE] Cita encontrada: ID ${citaToDelete.id}, estado ${citaToDelete.estado}`);
+            
+            // Usar el método delete del repositorio pero con logging detallado
+            console.log(`[CRUD CITAS DELETE] Usando repositorio para eliminar cita ${id}`);
+            const result = await this.repository.delete(citaToDelete);
+            
+            console.log(`[CRUD CITAS DELETE] Resultado del repositorio:`, result);
+            
             if (result instanceof Error) {
+                console.log(`[CRUD CITAS DELETE] ❌ Error del repositorio:`, result.message);
                 throw new CustomError(400, "Error al eliminar la cita", 
                     "No se pudo eliminar la cita. Verifique que no tenga dependencias o contacte al administrador.")
             }
+            
+            console.log(`[CRUD CITAS DELETE] ✅ Cita ${id} eliminada exitosamente`);
             return result
         } catch (error) {
+            console.error(`[CRUD CITAS DELETE ERROR]`, error);
             if (error instanceof CustomError) {
                 throw error;
             }

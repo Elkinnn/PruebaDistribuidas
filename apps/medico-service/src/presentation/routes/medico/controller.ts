@@ -199,28 +199,34 @@ export class MedicoController {
             const usecase = new CRUDCitas(medico);
             
             // Obtener parámetros de consulta
-            const { page = 1, pageSize = 4, q = '' } = req.query;
+            const { page = 1, pageSize = 10, q = '' } = req.query; // Aumentar pageSize por defecto a 10
             const pageNum = parseInt(page.toString());
             const pageSizeNum = parseInt(pageSize.toString());
             const offset = (pageNum - 1) * pageSizeNum;
             
+            console.log(`[GET CITAS] Parámetros: page=${pageNum}, pageSize=${pageSizeNum}, q='${q}'`);
+            
             // Usar el caso de uso existente para obtener citas
             const citas = await usecase.getAll();
+            console.log(`[GET CITAS] Total de citas obtenidas del repositorio: ${citas.length}`);
             
             // Aplicar filtros si hay búsqueda
             let filteredCitas = citas;
             if (q) {
                 const searchTerm = q.toString().toLowerCase();
+                console.log(`[GET CITAS] Aplicando filtro de búsqueda: '${searchTerm}'`);
                 filteredCitas = citas.filter((cita: any) => 
                     cita.paciente?.nombres?.toLowerCase().includes(searchTerm) ||
                     cita.motivo?.toLowerCase().includes(searchTerm) ||
                     cita.estado?.toLowerCase().includes(searchTerm)
                 );
+                console.log(`[GET CITAS] Citas después del filtro: ${filteredCitas.length}`);
             }
             
             // Aplicar paginación
             const total = filteredCitas.length;
             const paginatedCitas = filteredCitas.slice(offset, offset + pageSizeNum);
+            console.log(`[GET CITAS] Paginación: total=${total}, offset=${offset}, limit=${pageSizeNum}, resultado=${paginatedCitas.length}`);
             
             // Formatear datos para el frontend
             const formattedCitas = paginatedCitas.map((cita: any) => ({
