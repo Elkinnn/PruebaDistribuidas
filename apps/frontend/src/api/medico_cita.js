@@ -3,7 +3,7 @@ import { apiMedico } from "./client.medico";
 
 const ESTADOS = ["PROGRAMADA", "CANCELADA", "ATENDIDA"];
 
-export async function listCitas({ page = 1, pageSize = 8, q = "" } = {}) {
+export async function listCitas({ page = 1, pageSize = 4, q = "" } = {}) {
   try {
     const response = await apiMedico.get(`/medico/citas?page=${page}&pageSize=${pageSize}&q=${q}`);
     return {
@@ -22,6 +22,14 @@ export async function createCita(values) {
     return response.data;
   } catch (error) {
     console.error('Error creating cita:', error);
+    
+    // Extraer mensaje de error más específico del backend
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.response = error.response;
+      throw customError;
+    }
+    
     throw error;
   }
 }
@@ -32,6 +40,14 @@ export async function updateCita(id, values) {
     return response.data;
   } catch (error) {
     console.error('Error updating cita:', error);
+    
+    // Extraer mensaje de error más específico del backend
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.response = error.response;
+      throw customError;
+    }
+    
     throw error;
   }
 }
@@ -42,6 +58,14 @@ export async function deleteCita(id) {
     return response.data;
   } catch (error) {
     console.error('Error deleting cita:', error);
+    
+    // Extraer mensaje de error más específico del backend
+    if (error.response?.data?.message) {
+      const customError = new Error(error.response.data.message);
+      customError.response = error.response;
+      throw customError;
+    }
+    
     throw error;
   }
 }

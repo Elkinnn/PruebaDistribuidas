@@ -193,7 +193,7 @@ export class MedicoController {
             const usecase = new CRUDCitas(medico);
             
             // Obtener parámetros de consulta
-            const { page = 1, pageSize = 8, q = '' } = req.query;
+            const { page = 1, pageSize = 4, q = '' } = req.query;
             const pageNum = parseInt(page.toString());
             const pageSizeNum = parseInt(pageSize.toString());
             const offset = (pageNum - 1) * pageSizeNum;
@@ -248,6 +248,13 @@ export class MedicoController {
             });
         } catch (error) {
             console.error('[MEDICO CITAS ERROR]', error);
+            if (error instanceof CustomError) {
+                res.status(error.statusCode).json({
+                    error: 'CITAS_ERROR',
+                    message: error.message
+                });
+                return;
+            }
             res.status(500).json({
                 error: 'CITAS_ERROR',
                 message: 'Error interno al obtener citas'
@@ -295,9 +302,16 @@ export class MedicoController {
             res.json(citasHoy);
         } catch (error) {
             console.error('[MEDICO CITAS HOY ERROR]', error);
-            res.status(500).json({ 
-                error: 'CITAS_HOY_ERROR', 
-                message: 'Error interno al obtener citas de hoy' 
+            if (error instanceof CustomError) {
+                res.status(error.statusCode).json({
+                    error: 'CITAS_HOY_ERROR',
+                    message: error.message
+                });
+                return;
+            }
+            res.status(500).json({
+                error: 'CITAS_HOY_ERROR',
+                message: 'Error interno al obtener citas de hoy'
             });
         }
     }
@@ -447,19 +461,21 @@ export class MedicoController {
         try {
             const medico = (req as any).medico;
             const { id } = req.params;
-            const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin } = req.body;
+            const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin, motivo } = req.body;
 
-            // Validar datos requeridos
-            if (!estado) {
-                return res.status(400).json({ 
-                    message: 'El estado es requerido' 
+            // Validar que no se intente cambiar el motivo
+            if (motivo !== undefined) {
+                return res.status(400).json({
+                    error: 'UPDATE_CITA_ERROR',
+                    message: 'No se puede modificar el motivo de la cita'
                 });
             }
 
             const usecase = new CRUDCitas(medico);
             
             // Preparar datos de actualización
-            const updateData: any = { estado };
+            const updateData: any = {};
+            if (estado) updateData.estado = estado;
             if (nuevaFechaInicio) updateData.fechaInicio = nuevaFechaInicio;
             if (nuevaFechaFin) updateData.fechaFin = nuevaFechaFin;
 
@@ -474,7 +490,10 @@ export class MedicoController {
         } catch (error) {
             console.error('[UPDATE CITA ERROR]', error);
             if (error instanceof CustomError) {
-                res.status(error.statusCode).json({ message: error.message });
+                res.status(error.statusCode).json({ 
+                    error: 'UPDATE_CITA_ERROR',
+                    message: error.message 
+                });
                 return;
             }
             res.status(500).json({
@@ -501,7 +520,10 @@ export class MedicoController {
         } catch (error) {
             console.error('[DELETE CITA ERROR]', error);
             if (error instanceof CustomError) {
-                res.status(error.statusCode).json({ message: error.message });
+                res.status(error.statusCode).json({ 
+                    error: 'DELETE_CITA_ERROR',
+                    message: error.message 
+                });
                 return;
             }
             res.status(500).json({

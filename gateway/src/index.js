@@ -274,7 +274,7 @@ async function proxyToMedicoService(req, res, endpoint) {
     
     const config = {
       method: req.method,
-      url: `${MEDICO}${endpoint}`,
+      url: `${MEDICO}${endpoint}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`,
       headers: {
         ...req.headers
       },

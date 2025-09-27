@@ -59,8 +59,11 @@ export default function Citas() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);       // objeto cita o null
   const [items, setItems] = useState([]);             // página actual
+  
   const [total, setTotal] = useState(0);              // total registros
   const [page, setPage] = useState(1);                // página actual
+  
+  
   const pageSize = 4;                                  // ← paginación 4 en 4
 
   const [loading, setLoading] = useState(true);
@@ -125,10 +128,10 @@ export default function Citas() {
     return [];
   }, [user, medicoInfo]);
 
-  async function load(p = page) {
+  async function load(pageNum) {
     setLoading(true);
     try {
-      const { items, total } = await listCitas({ q, page: p, pageSize });
+      const { items, total } = await listCitas({ q, page: pageNum, pageSize });
       setItems(items);
       setTotal(total);
     } finally {
@@ -140,7 +143,10 @@ export default function Citas() {
   useEffect(() => { setPage(1); }, [q]);
 
   // cargar cada vez que cambie page o q
-  useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page, q]);
+  useEffect(() => { 
+    load(page); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, q, pageSize]);
 
   // Cargar información inicial del médico
   useEffect(() => {
@@ -228,8 +234,22 @@ export default function Citas() {
   }
 
   // Función para convertir errores técnicos en mensajes amigables
-  function getFriendlyErrorMessage(errorMessage) {
+  function getFriendlyErrorMessage(errorMessage, errorResponse = null) {
     if (!errorMessage) return "Error al procesar la solicitud.";
+    
+    // Si el error viene del backend con un mensaje específico, usarlo
+    if (errorResponse?.response?.data?.message) {
+      return errorResponse.response.data.message;
+    }
+    
+    // Si el error tiene un mensaje específico del backend, usarlo
+    if (errorMessage && !errorMessage.includes("Duplicate entry") && 
+        !errorMessage.includes("ECONNREFUSED") && 
+        !errorMessage.includes("database") && 
+        !errorMessage.includes("SQL") &&
+        !errorMessage.includes("connection")) {
+      return errorMessage;
+    }
     
     // Error de email duplicado
     if (errorMessage.includes("Duplicate entry") && errorMessage.includes("uk_paciente_hosp_email")) {
@@ -290,7 +310,7 @@ export default function Citas() {
       await load(editing ? page : 1);
       if (!editing) setPage(1);
     } catch (err) {
-      const friendlyMessage = getFriendlyErrorMessage(err.message);
+      const friendlyMessage = getFriendlyErrorMessage(err.message, err);
       setMsg(friendlyMessage);
       showToast(friendlyMessage, "error");
     }
@@ -307,7 +327,7 @@ export default function Citas() {
       await load();
       showToast("Cita eliminada correctamente.", "success");
     } catch (e) {
-      const friendlyMessage = getFriendlyErrorMessage(e.message);
+      const friendlyMessage = getFriendlyErrorMessage(e.message, e);
       showToast(friendlyMessage, "error");
     } finally {
       setConfirmOpen(false);
@@ -318,6 +338,10 @@ export default function Citas() {
   function cancelDelete() {
     setConfirmOpen(false);
     setDeleteId(null);
+  }
+  
+  function handlePageChange(newPage) {
+    setPage(newPage);
   }
 
   return (
@@ -437,7 +461,7 @@ export default function Citas() {
               page={page}
               pageSize={pageSize}
               total={total}
-              onChange={setPage}
+              onChange={handlePageChange}
             />
           </div>
         </div>
