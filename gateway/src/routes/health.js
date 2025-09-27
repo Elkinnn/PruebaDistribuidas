@@ -4,26 +4,45 @@ const config = require('../config');
 
 const router = express.Router();
 
-// Función para verificar el estado de un servicio
+// Función para verificar el estado de un servicio con medición de tiempo
 const checkServiceHealth = async (serviceName, url) => {
+  const startTime = performance.now();
+  
   try {
-    const response = await axios.get(`${url}/health`, { 
-      timeout: 5000,
-      headers: { 'User-Agent': 'API-Gateway-Health-Check' }
-    });
+    // Intentar HEAD /health primero
+    let response;
+    try {
+      response = await axios.head(`${url}/health`, { 
+        timeout: 5000,
+        headers: { 'User-Agent': 'API-Gateway-Health-Check' }
+      });
+    } catch (headError) {
+      // Si HEAD falla, intentar GET /health
+      response = await axios.get(`${url}/health`, { 
+        timeout: 5000,
+        headers: { 'User-Agent': 'API-Gateway-Health-Check' }
+      });
+    }
+    
+    const responseTime = performance.now() - startTime;
     
     return {
       name: serviceName,
       url,
       status: 'healthy',
-      responseTime: response.headers['x-response-time'] || 'unknown',
+      statusCode: response.status,
+      responseTimeMs: Math.round(responseTime),
       lastCheck: new Date().toISOString()
     };
   } catch (error) {
+    const responseTime = performance.now() - startTime;
+    
     return {
       name: serviceName,
       url,
-      status: 'unhealthy',
+      status: error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' ? 'unreachable' : 'unhealthy',
+      statusCode: error.response?.status || null,
+      responseTimeMs: Math.round(responseTime),
       error: error.message,
       lastCheck: new Date().toISOString()
     };
@@ -45,9 +64,22 @@ router.get('/', async (req, res) => {
     }
     
     const allHealthy = services.every(service => service.status === 'healthy');
+    const hasUnreachable = services.some(service => service.status === 'unreachable');
     
-    res.status(allHealthy ? 200 : 503).json({
-      gateway: 'healthy',
+    // Determinar estado del gateway
+    let gatewayStatus = 'healthy';
+    let statusCode = 200;
+    
+    if (hasUnreachable) {
+      gatewayStatus = 'degraded';
+      statusCode = 503;
+    } else if (!allHealthy) {
+      gatewayStatus = 'unhealthy';
+      statusCode = 503;
+    }
+    
+    res.status(statusCode).json({
+      gateway: gatewayStatus,
       timestamp: new Date().toISOString(),
       services,
       environment: config.nodeEnv

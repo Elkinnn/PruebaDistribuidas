@@ -1,10 +1,30 @@
 const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const axios = require('axios');
+const { createProxyConfig, createFileProxyConfig } = require('../middleware/proxy');
 const config = require('../config');
 
 const router = express.Router();
 
-// Helper para hacer proxy con axios (solución real y definitiva)
+// Namespacing: /admin/** → ADMIN_SERVICE_URL
+router.use('/admin', createProxyMiddleware(createProxyConfig(config.services.admin, {
+  '^/admin': '' // Remover /admin del path
+})));
+
+// Namespacing: /medico/** → MEDICO_SERVICE_URL
+if (config.services.medico) {
+  router.use('/medico', createProxyMiddleware(createProxyConfig(config.services.medico, {
+    '^/medico': '' // Remover /medico del path
+  })));
+}
+
+// Proxy especial para archivos binarios (PDFs) en /admin/citas/reportes/**
+router.use('/admin/citas/reportes', createProxyMiddleware(createFileProxyConfig(config.services.admin, {
+  '^/admin': '' // Remover /admin del path
+})));
+
+// Proxy de compatibilidad para rutas legacy (sin namespacing)
+// Usando axios como fallback para garantizar compatibilidad
 const createAxiosProxy = (servicePath) => {
   return async (req, res) => {
     try {
@@ -44,28 +64,21 @@ const createAxiosProxy = (servicePath) => {
       
       console.log(`[PROXY RESPONSE] ${req.method} ${req.url} -> ${response.status}`);
     } catch (error) {
-      // 304 (Not Modified) no es un error, es una respuesta válida
-      if (error.response && error.response.status === 304) {
-        console.log(`[PROXY RESPONSE] ${req.method} ${req.url} -> 304 (Not Modified)`);
-        res.status(304).end();
-        return;
-      }
-      
       console.error(`[PROXY ERROR] ${req.method} ${req.url}:`, error.message);
       
       if (error.response) {
         res.status(error.response.status).json(error.response.data);
       } else {
-        res.status(500).json({
-          error: 'PROXY_ERROR',
-          message: 'Error de conexión con el servicio backend'
+        res.status(502).json({
+          error: 'UPSTREAM_UNAVAILABLE',
+          message: 'Servicio backend no disponible'
         });
       }
     }
   };
 };
 
-// Proxies para el servicio admin (solución real y definitiva)
+// Proxies de compatibilidad usando axios
 router.use('/especialidades', createAxiosProxy('/especialidades'));
 router.use('/hospitales', createAxiosProxy('/hospitales'));
 router.use('/medicos', createAxiosProxy('/medicos'));

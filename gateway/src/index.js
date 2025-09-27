@@ -1,5 +1,6 @@
 const express = require('express');
 const morgan = require('morgan');
+const { randomUUID } = require('crypto');
 const { helmet, cors, rateLimit } = require('./middleware/security');
 const config = require('./config');
 
@@ -10,17 +11,30 @@ const healthRoutes = require('./routes/health');
 
 const app = express();
 
+// Trust proxy para headers de forwarding
+app.set('trust proxy', 1);
+
+// Middleware de trazabilidad
+app.use((req, res, next) => {
+  // Generar ID único para la request
+  req.id = req.headers['x-request-id'] || randomUUID();
+  
+  // Añadir Vary: Origin para CORS
+  res.setHeader('Vary', 'Origin');
+  
+  next();
+});
+
 // Middlewares de seguridad (orden importante)
 app.use(helmet);
 app.use(cors);
-app.use(rateLimit);
 
 // Middlewares básicos
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' })); // Aumentar límite para archivos grandes
 
 // Rutas
-app.use('/auth', authRoutes);
+app.use('/auth', rateLimit, authRoutes); // Rate limit solo en /auth
 app.use('/health', healthRoutes);
 app.use('/', proxyRoutes);
 

@@ -3,18 +3,8 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 
-// Configuración de Helmet para seguridad
-const helmetConfig = helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-  crossOriginEmbedderPolicy: false
-});
+// Configuración de Helmet (por defecto, sin CSP estricta)
+const helmetConfig = helmet();
 
 // Configuración de CORS
 const corsConfig = cors(config.cors);

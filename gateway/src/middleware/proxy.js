@@ -1,20 +1,28 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const config = require('../config');
 
-// Configuración común para todos los proxies
+// Configuración base del proxy
 const createProxyConfig = (target, pathRewrite = {}) => ({
   target,
   changeOrigin: true,
   pathRewrite,
   timeout: config.timeout,
+  proxyTimeout: config.timeout,
+  buffer: false,
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[PROXY] ${req.method} ${req.url} -> ${target}${req.url}`);
-    
-    // Pasar headers de autorización
+    // Propagar headers de autorización
     if (req.headers.authorization) {
       proxyReq.setHeader('authorization', req.headers.authorization);
-      console.log(`[PROXY] Passing authorization header to ${target}`);
     }
+    
+    // Añadir headers de trazabilidad
+    if (req.id) {
+      proxyReq.setHeader('x-request-id', req.id);
+    }
+    
+    // Headers de forwarding
+    proxyReq.setHeader('x-forwarded-for', req.ip || req.connection.remoteAddress);
+    proxyReq.setHeader('x-forwarded-proto', req.protocol);
     
     // Pasar otros headers importantes
     if (req.headers['content-type']) {
@@ -22,27 +30,35 @@ const createProxyConfig = (target, pathRewrite = {}) => ({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    console.log(`[PROXY RESPONSE] ${req.method} ${req.url} -> ${proxyRes.statusCode}`);
+    // Reflejar x-request-id en la respuesta
+    if (req.id) {
+      res.setHeader('x-request-id', req.id);
+    }
   },
   onError: (err, req, res) => {
     console.error(`[PROXY ERROR] ${req.method} ${req.url}:`, err.message);
-    res.status(500).json({
-      error: 'PROXY_ERROR',
-      message: 'Error de conexión con el servicio backend'
+    res.status(502).json({
+      error: 'UPSTREAM_UNAVAILABLE',
+      message: 'Servicio backend no disponible'
     });
   }
 });
 
-// Proxy para rutas que manejan archivos (PDFs)
+// Configuración especial para archivos binarios (PDFs)
 const createFileProxyConfig = (target, pathRewrite = {}) => ({
   ...createProxyConfig(target, pathRewrite),
   onProxyRes: (proxyRes, req, res) => {
-    // Para archivos, copiar todos los headers excepto content-encoding
+    // Para archivos PDF, mantener headers intactos
     Object.keys(proxyRes.headers).forEach(key => {
       if (key.toLowerCase() !== 'content-encoding') {
         res.setHeader(key, proxyRes.headers[key]);
       }
     });
+    
+    // Reflejar x-request-id
+    if (req.id) {
+      res.setHeader('x-request-id', req.id);
+    }
   }
 });
 
