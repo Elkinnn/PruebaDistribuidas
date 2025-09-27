@@ -21,8 +21,10 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData, esp
         const e = {};
         if (!values.nombre?.trim()) e.nombre = "El nombre es obligatorio.";
         if (values.telefono?.trim()) {
-            const ok = /^(\+?\d[\d\s-]{7,})$/.test(values.telefono.trim());
-            if (!ok) e.telefono = "Teléfono inválido (use dígitos, espacios o guiones).";
+            // Remover espacios, guiones y otros caracteres para contar solo dígitos
+            const digitsOnly = values.telefono.replace(/\D/g, '');
+            const ok = digitsOnly.length === 10;
+            if (!ok) e.telefono = "El teléfono debe tener exactamente 10 dígitos.";
         }
         return e;
     }, [values]);
@@ -31,6 +33,17 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData, esp
 
     function setField(k, v) {
         setValues((s) => ({ ...s, [k]: v }));
+    }
+
+    function handleTelefonoChange(e) {
+        const value = e.target.value;
+        // Remover caracteres no numéricos
+        const digitsOnly = value.replace(/\D/g, '');
+        
+        // Limitar a máximo 10 dígitos
+        if (digitsOnly.length <= 10) {
+            setField("telefono", value);
+        }
     }
 
     function toggleEspecialidad(especialidadId) {
@@ -126,10 +139,10 @@ export default function HospitalForm({ open, onClose, onSubmit, initialData, esp
                                 ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
                                 : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
                             }`}
-                        placeholder="099 999 9999 / 02-222-333"
+                        placeholder="0999999999 (10 dígitos)"
                         value={values.telefono}
                         onBlur={() => setTouched((t) => ({ ...t, telefono: true }))}
-                        onChange={(e) => setField("telefono", e.target.value)}
+                        onChange={handleTelefonoChange}
                     />
                     {touched.telefono && errors.telefono ? (
                         <p className="mt-1 text-xs text-rose-600">{errors.telefono}</p>

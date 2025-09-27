@@ -47,8 +47,11 @@ export default function EmpleadoForm({
             if (!ok) e.email = "Correo inválido.";
         }
         if (values.telefono?.trim()) {
-            const ok = /^(\+?\d[\d\s-]{7,})$/.test(values.telefono.trim());
-            if (!ok) e.telefono = "Teléfono inválido.";
+            // Solo permitir exactamente 10 dígitos
+            const cleanPhone = values.telefono.replace(/\D/g, ''); // Solo dígitos
+            if (cleanPhone.length !== 10) {
+                e.telefono = "El teléfono debe tener exactamente 10 dígitos.";
+            }
         }
         return e;
     }, [values]);
@@ -56,7 +59,13 @@ export default function EmpleadoForm({
     const isInvalid = Object.keys(errors).length > 0;
 
     function setField(k, v) {
-        setValues((s) => ({ ...s, [k]: v }));
+        // Formatear teléfono para solo permitir dígitos y máximo 10
+        if (k === 'telefono') {
+            const cleanValue = v.replace(/\D/g, '').slice(0, 10); // Solo dígitos, máximo 10
+            setValues((s) => ({ ...s, [k]: cleanValue }));
+        } else {
+            setValues((s) => ({ ...s, [k]: v }));
+        }
     }
 
     function markAllTouched() {
@@ -250,7 +259,7 @@ export default function EmpleadoForm({
                         value={values.telefono}
                         onChange={(e) => setField("telefono", e.target.value)}
                         onBlur={() => setTouched((t) => ({ ...t, telefono: true }))}
-                        placeholder="099 999 9999 / 02-222-333"
+                        placeholder="0999999999 (10 dígitos)"
                         className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${touched.telefono && errors.telefono
                                 ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
                                 : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"

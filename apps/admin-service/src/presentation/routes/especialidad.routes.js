@@ -5,6 +5,59 @@ const { createEspecialidadSchema, updateEspecialidadSchema } =
 
 const router = Router();
 
+/**
+ * @swagger
+ * /especialidades:
+ *   get:
+ *     summary: Obtener lista de especialidades
+ *     tags: [Especialidades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Tamaño de página
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Término de búsqueda
+ *     responses:
+ *       200:
+ *         description: Lista de especialidades obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Especialidad'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // GET /especialidades?page=&size=&q=
 router.get('/', async (req, res) => {
   try {
@@ -18,6 +71,50 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /especialidades/{id}:
+ *   get:
+ *     summary: Obtener especialidad por ID
+ *     tags: [Especialidades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la especialidad
+ *     responses:
+ *       200:
+ *         description: Especialidad obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Especialidad'
+ *       404:
+ *         description: Especialidad no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // GET /especialidades/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -29,6 +126,64 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /especialidades:
+ *   post:
+ *     summary: Crear nueva especialidad
+ *     tags: [Especialidades]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre de la especialidad
+ *                 example: "Cardiología"
+ *               descripcion:
+ *                 type: string
+ *                 description: Descripción de la especialidad
+ *                 example: "Especialidad en enfermedades del corazón"
+ *               activa:
+ *                 type: boolean
+ *                 description: Estado de la especialidad
+ *                 default: true
+ *     responses:
+ *       201:
+ *         description: Especialidad creada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Especialidad'
+ *       400:
+ *         description: Error de validación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // POST /especialidades
 router.post('/', async (req, res) => {
   try {
@@ -41,6 +196,74 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /especialidades/{id}:
+ *   put:
+ *     summary: Actualizar especialidad
+ *     tags: [Especialidades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la especialidad
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre de la especialidad
+ *                 example: "Cardiología"
+ *               descripcion:
+ *                 type: string
+ *                 description: Descripción de la especialidad
+ *                 example: "Especialidad en enfermedades del corazón"
+ *               activa:
+ *                 type: boolean
+ *                 description: Estado de la especialidad
+ *     responses:
+ *       200:
+ *         description: Especialidad actualizada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Especialidad'
+ *       400:
+ *         description: Error de validación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Especialidad no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // PUT /especialidades/:id
 router.put('/:id', async (req, res) => {
   try {
@@ -54,6 +277,51 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /especialidades/{id}:
+ *   delete:
+ *     summary: Eliminar especialidad
+ *     tags: [Especialidades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la especialidad
+ *     responses:
+ *       200:
+ *         description: Especialidad eliminada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Especialidad no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // DELETE /especialidades/:id
 router.delete('/:id', async (req, res) => {
   try {

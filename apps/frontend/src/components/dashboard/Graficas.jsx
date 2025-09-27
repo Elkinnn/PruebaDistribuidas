@@ -14,6 +14,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar, Pie, Doughnut, Radar, PolarArea } from 'react-chartjs-2';
+import { BarChart3, PieChart, Building2, Users, TrendingUp, Activity } from "lucide-react";
 import { getGraficasData } from "../../api/cita";
 
 // Registrar componentes de Chart.js
@@ -345,14 +346,17 @@ export default function Graficas({ filtros }) {
     ],
   };
 
-  // Componente para mostrar cuando no hay datos
+  // Componente mejorado para mostrar cuando no hay datos
   const EmptyState = ({ icon, title, message, color = "blue" }) => (
-    <div className="flex flex-col items-center justify-center h-80 text-center">
-      <div className={`w-16 h-16 bg-${color}-100 rounded-full flex items-center justify-center mb-4`}>
-        <span className="text-2xl">{icon}</span>
+    <div className="flex flex-col items-center justify-center h-80 text-center p-8">
+      <div className={`w-20 h-20 bg-gradient-to-br from-${color}-100 to-${color}-200 rounded-2xl flex items-center justify-center mb-6 shadow-lg`}>
+        <div className="text-3xl">{icon}</div>
       </div>
-      <h3 className="text-lg font-semibold text-slate-700 mb-2">{title}</h3>
-      <p className="text-slate-500 max-w-sm">{message}</p>
+      <h3 className="text-xl font-bold text-slate-700 mb-3">{title}</h3>
+      <p className="text-slate-500 max-w-sm leading-relaxed">{message}</p>
+      <div className="mt-4 px-4 py-2 bg-slate-100 rounded-lg">
+        <p className="text-xs text-slate-500">Selecciona un rango de fechas para ver los datos</p>
+      </div>
     </div>
   );
 
@@ -360,28 +364,41 @@ export default function Graficas({ filtros }) {
     <div className="space-y-8">
       {/* Header con diseño profesional */}
       <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-          📊 Análisis Visual de Datos
-        </h2>
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <BarChart3 className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Análisis Visual de Datos
+          </h2>
+        </div>
         <p className="text-slate-600 text-lg">Visualización interactiva de datos de citas médicas en tiempo real</p>
       </div>
 
       {/* Primera fila de gráficas */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* 1. Citas por día */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📈</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-blue-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <TrendingUp className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors duration-300">Citas por Día</h3>
+                <p className="text-sm text-slate-500">Tendencia temporal de volumen</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Citas por Día</h3>
-              <p className="text-sm text-slate-500">Tendencia temporal de volumen</p>
+            <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Tiempo real</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.citasPorDia.length > 0 ? (
-              <Line data={datosCitasPorDia} options={chartOptions} />
+              <div className="h-full w-full">
+                <Line data={datosCitasPorDia} options={chartOptions} />
+              </div>
             ) : (
               <EmptyState 
                 icon="📈" 
@@ -394,19 +411,27 @@ export default function Graficas({ filtros }) {
         </div>
 
         {/* 2. Top especialidades */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🥧</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-emerald-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <PieChart className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-emerald-700 transition-colors duration-300">Distribución de Especialidades</h3>
+                <p className="text-sm text-slate-500">Proporción de citas por especialidad</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Distribución de Especialidades</h3>
-              <p className="text-sm text-slate-500">Proporción de citas por especialidad</p>
+            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Interactivo</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.especialidades.length > 0 ? (
-              <Pie data={datosEspecialidades} options={chartOptions} />
+              <div className="h-full w-full">
+                <Pie data={datosEspecialidades} options={chartOptions} />
+              </div>
             ) : (
               <EmptyState 
                 icon="🥧" 
@@ -422,19 +447,27 @@ export default function Graficas({ filtros }) {
       {/* Segunda fila de gráficas */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* 3. Pacientes por hospital */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🏢</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-purple-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <Building2 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-purple-700 transition-colors duration-300">Citas por Hospital</h3>
+                <p className="text-sm text-slate-500">Distribución por estado y hospital</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Citas por Hospital</h3>
-              <p className="text-sm text-slate-500">Distribución por estado y hospital</p>
+            <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Comparativo</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.pacientesPorHospital.length > 0 ? (
-              <Bar data={datosPacientesPorHospital} options={chartOptions} />
+              <div className="h-full w-full">
+                <Bar data={datosPacientesPorHospital} options={chartOptions} />
+              </div>
             ) : (
               <EmptyState 
                 icon="🏢" 
@@ -447,19 +480,27 @@ export default function Graficas({ filtros }) {
         </div>
 
         {/* 4. Top médicos */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📊</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-amber-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <BarChart3 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-amber-700 transition-colors duration-300">Ranking de Médicos</h3>
+                <p className="text-sm text-slate-500">Médicos con más citas atendidas</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Ranking de Médicos</h3>
-              <p className="text-sm text-slate-500">Médicos con más citas atendidas</p>
+            <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Top 5</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.medicosTop.length > 0 ? (
-              <Bar data={datosMedicosTop} options={opcionesMedicos} />
+              <div className="h-full w-full">
+                <Bar data={datosMedicosTop} options={opcionesMedicos} />
+              </div>
             ) : (
               <EmptyState 
                 icon="📊" 
@@ -475,19 +516,27 @@ export default function Graficas({ filtros }) {
       {/* Tercera fila: Gráficas especiales */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* 5. Estados por día */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">📊</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-indigo-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <Activity className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors duration-300">Estados por Día</h3>
+                <p className="text-sm text-slate-500">Distribución temporal de estados</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Estados por Día</h3>
-              <p className="text-sm text-slate-500">Distribución temporal de estados</p>
+            <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Temporal</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.estadosPorDia.length > 0 ? (
-              <Bar data={datosEstadosPorDia} options={chartOptions} />
+              <div className="h-full w-full">
+                <Bar data={datosEstadosPorDia} options={chartOptions} />
+              </div>
             ) : (
               <EmptyState 
                 icon="📊" 
@@ -500,19 +549,27 @@ export default function Graficas({ filtros }) {
         </div>
 
         {/* 6. Empleados por hospital */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl flex items-center justify-center mr-4">
-              <span className="text-white text-xl">🍩</span>
+        <div className="group bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 hover:border-pink-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <Users className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 group-hover:text-pink-700 transition-colors duration-300">Personal por Hospital</h3>
+                <p className="text-sm text-slate-500">Distribución de empleados médicos</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Personal por Hospital</h3>
-              <p className="text-sm text-slate-500">Distribución de empleados médicos</p>
+            <div className="flex items-center gap-2 bg-pink-50 text-pink-700 px-3 py-1 rounded-lg">
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Personal</span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-80 relative">
             {datosGraficas.empleadosPorHospital.length > 0 ? (
-              <Doughnut data={datosEmpleadosPorHospital} options={chartOptions} />
+              <div className="h-full w-full">
+                <Doughnut data={datosEmpleadosPorHospital} options={chartOptions} />
+              </div>
             ) : (
               <EmptyState 
                 icon="🍩" 

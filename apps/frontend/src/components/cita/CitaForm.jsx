@@ -122,6 +122,20 @@ export default function CitaForm({
         }
       }
       if (!values.paciente.sexo) e.pacienteSexo = "El sexo es obligatorio.";
+      
+      // Validaciones de formato para cédula y teléfono
+      if (values.paciente.documento?.trim()) {
+        const cleanDocument = values.paciente.documento.replace(/\D/g, ''); // Solo dígitos
+        if (cleanDocument.length !== 10) {
+          e.pacienteDocumento = "La cédula debe tener exactamente 10 dígitos.";
+        }
+      }
+      if (values.paciente.telefono?.trim()) {
+        const cleanPhone = values.paciente.telefono.replace(/\D/g, ''); // Solo dígitos
+        if (cleanPhone.length !== 10) {
+          e.pacienteTelefono = "El teléfono debe tener exactamente 10 dígitos.";
+        }
+      }
     }
     
         return e;
@@ -149,9 +163,15 @@ export default function CitaForm({
   ) && initialData?.estado === 'CANCELADA';
 
   function setPacienteField(k, v) {
+    // Formatear cédula y teléfono para solo permitir dígitos y máximo 10
+    let cleanValue = v;
+    if (k === 'documento' || k === 'telefono') {
+      cleanValue = v.replace(/\D/g, '').slice(0, 10); // Solo dígitos, máximo 10
+    }
+    
     setValues((s) => ({ 
       ...s, 
-      paciente: { ...s.paciente, [k]: v } 
+      paciente: { ...s.paciente, [k]: cleanValue } 
     }));
   }
 
@@ -266,11 +286,14 @@ export default function CitaForm({
                 setField("medicoId", ""); // Reset médico al cambiar hospital
               }}
               onBlur={() => setTouched((t) => ({ ...t, hospitalId: true }))}
+              disabled={isEdit}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-                touched.hospitalId && errors.hospitalId
-                                ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
-                                : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
-                            }`}
+                isEdit
+                  ? "cursor-not-allowed bg-slate-100 text-slate-500 border-slate-300"
+                  : touched.hospitalId && errors.hospitalId
+                  ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                  : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
+              }`}
                     >
               <option value="">— Selecciona hospital —</option>
                         {hospitals.map((h) => (
@@ -292,9 +315,9 @@ export default function CitaForm({
               value={values.medicoId}
               onChange={(e) => setField("medicoId", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, medicoId: true }))}
-              disabled={!values.hospitalId}
+              disabled={isEdit || !values.hospitalId}
               className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-4 ${
-                !values.hospitalId
+                isEdit || !values.hospitalId
                   ? "cursor-not-allowed bg-slate-100 text-slate-400"
                   : touched.medicoId && errors.medicoId
                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
@@ -311,7 +334,7 @@ export default function CitaForm({
             {touched.medicoId && errors.medicoId ? (
               <p className="mt-1 text-xs text-rose-600">{errors.medicoId}</p>
             ) : null}
-            {!values.hospitalId && (
+            {!values.hospitalId && !isEdit && (
               <p className="mt-1 text-xs text-slate-500">Primero selecciona un hospital</p>
             )}
           </div>
@@ -413,11 +436,6 @@ export default function CitaForm({
             <option value="ATENDIDA">Atendida</option>
             <option value="CANCELADA">Cancelada</option>
           </select>
-          {!isEdit && (
-            <p className="mt-1 text-xs text-slate-500">
-              Las nuevas citas siempre se crean como "Programada"
-            </p>
-          )}
         </div>
 
         {/* Separador */}
@@ -426,15 +444,6 @@ export default function CitaForm({
             <User size={20} />
             Datos del Paciente
           </h3>
-          {values.pacienteId ? (
-            <p className="mb-4 text-sm text-slate-600">
-              Los datos del paciente no se pueden modificar. Esta cita está asociada a un paciente existente.
-            </p>
-          ) : (
-            <p className="mb-4 text-sm text-slate-600">
-              Si el paciente ya existe, puedes dejar estos campos vacíos.
-            </p>
-          )}
         </div>
 
         {/* Datos del Paciente */}
@@ -493,7 +502,7 @@ export default function CitaForm({
                             value={values.paciente.documento}
               onChange={(e) => setPacienteField("documento", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, pacienteDocumento: true }))}
-              placeholder="Ej: 1234567890"
+              placeholder="1234567890 (10 dígitos)"
               disabled={!!values.pacienteId}
               className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
                 values.pacienteId 
@@ -516,7 +525,7 @@ export default function CitaForm({
                             value={values.paciente.telefono}
               onChange={(e) => setPacienteField("telefono", e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, pacienteTelefono: true }))}
-              placeholder="Ej: 099 999 9999"
+              placeholder="0999999999 (10 dígitos)"
               disabled={!!values.pacienteId}
               className={`w-full rounded-xl border px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
                 values.pacienteId 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, CalendarDays, Search, AlertTriangle } from "lucide-react";
+import { Plus, CalendarDays, Search } from "lucide-react";
 import Pagination from "../../components/shared/Pagination";
 import CitaTable from "../../components/cita/CitaTable";
 import CitaForm from "../../components/cita/CitaForm";
@@ -12,7 +12,6 @@ import {
     updateCita,
     deleteCita,
     getCita,
-    cancelarCitasPasadas,
 } from "../../api/cita";
 
 import { listMedicos } from "../../api/medico";
@@ -216,43 +215,6 @@ export default function Citas() {
         }
     }
 
-    async function handleCancelarPasadas() {
-        try {
-            // Mostrar notificación de carga
-            setNotification({
-                open: true,
-                type: "loading",
-                title: "Procesando...",
-                message: "Cancelando citas pasadas..."
-            });
-
-            const result = await cancelarCitasPasadas();
-            console.log('Citas canceladas:', result);
-            
-            // Recargar la lista para mostrar los cambios
-            load();
-            
-            // Mostrar notificación de éxito
-            setNotification({
-                open: true,
-                type: "success",
-                title: "¡Citas canceladas!",
-                message: result.mensaje,
-                duration: 4000
-            });
-        } catch (e) {
-            console.error("Error cancelando citas pasadas:", e);
-            
-            // Mostrar notificación de error
-            setNotification({
-                open: true,
-                type: "error",
-                title: "Error",
-                message: "No se pudieron cancelar las citas: " + e.message,
-                duration: 6000
-            });
-        }
-    }
 
     const subtitle = useMemo(
         () => (q ? `(${total} resultados)` : `${total} registros`),
@@ -284,14 +246,6 @@ export default function Citas() {
                             className="w-52 rounded-xl border border-slate-300 pl-8 pr-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                         />
                     </div>
-
-                    <button
-                        onClick={handleCancelarPasadas}
-                        className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
-                    >
-                        <AlertTriangle size={16} />
-                        Cancelar Pasadas
-                    </button>
 
                     <button
                         onClick={() => {
@@ -358,11 +312,11 @@ export default function Citas() {
                 message={
                     toDelete ? (
                         <>
-                            ¿Confirmas eliminar la cita de{" "}
+                            ¿Seguro que deseas eliminar la cita de{" "}
                             <span className="font-semibold">
-                                “{toDelete.paciente || toDelete.pacienteInfo?.nombres}”
-                            </span>
-                            ?
+                                "{toDelete.pacienteNombre || 'Sin nombre'}"
+                            </span>?<br />
+                            Esta acción no se puede deshacer.
                         </>
                     ) : (
                         ""
@@ -374,11 +328,6 @@ export default function Citas() {
                 tone="danger"
             />
 
-            {/* Nota de conexión */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                <AlertTriangle size={14} />
-                Datos conectados al backend real a través del API Gateway.
-            </div>
 
             {/* Notificación */}
             <Notification

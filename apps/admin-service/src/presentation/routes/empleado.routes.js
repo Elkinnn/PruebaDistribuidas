@@ -54,6 +54,72 @@ const validateQuery = (schema) => (req, res, next) => {
   next();
 };
 
+/**
+ * @swagger
+ * /empleados:
+ *   get:
+ *     summary: Obtener lista de empleados
+ *     tags: [Empleados]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Tamaño de página
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Término de búsqueda
+ *       - in: query
+ *         name: hospitalId
+ *         schema:
+ *           type: integer
+ *         description: ID del hospital
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *         description: Tipo de empleado
+ *     responses:
+ *       200:
+ *         description: Lista de empleados obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Empleado'
+ *                 meta:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 /* GET /empleados - Listar empleados con paginación y filtros */
 router.get('/', validateQuery(listEmpleadosSchema), async (req, res) => {
   try {
@@ -77,6 +143,53 @@ router.get('/', validateQuery(listEmpleadosSchema), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /empleados/{id}:
+ *   get:
+ *     summary: Obtener empleado por ID
+ *     tags: [Empleados]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del empleado
+ *     responses:
+ *       200:
+ *         description: Empleado obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Empleado'
+ *       404:
+ *         description: Empleado no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 /* GET /empleados/:id - Obtener empleado por ID */
 router.get('/:id', async (req, res) => {
   try {
@@ -104,6 +217,75 @@ router.get('/:id', async (req, res) => {
 });
 
 /* POST /empleados - Crear empleado */
+/**
+ * @swagger
+ * /empleados:
+ *   post:
+ *     summary: Crear nuevo empleado
+ *     tags: [Empleados]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *               - apellido
+ *               - email
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre del empleado
+ *                 example: "Juan"
+ *               apellido:
+ *                 type: string
+ *                 description: Apellido del empleado
+ *                 example: "Pérez"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email del empleado
+ *                 example: "juan.perez@hospital.com"
+ *               telefono:
+ *                 type: string
+ *                 description: Teléfono del empleado
+ *                 example: "+1234567890"
+ *               cargo:
+ *                 type: string
+ *                 description: Cargo del empleado
+ *                 example: "Administrador"
+ *     responses:
+ *       201:
+ *         description: Empleado creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Empleado'
+ *       400:
+ *         description: Error de validación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/', validate(createEmpleadoSchema), async (req, res) => {
   try {
     console.log('🔍 [EMPLEADO CREATE] Request body:', JSON.stringify(req.body, null, 2));
@@ -134,6 +316,84 @@ router.post('/', validate(createEmpleadoSchema), async (req, res) => {
 });
 
 /* PUT /empleados/:id - Actualizar empleado */
+/**
+ * @swagger
+ * /empleados/{id}:
+ *   put:
+ *     summary: Actualizar empleado
+ *     tags: [Empleados]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del empleado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre del empleado
+ *                 example: "Juan"
+ *               apellido:
+ *                 type: string
+ *                 description: Apellido del empleado
+ *                 example: "Pérez"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email del empleado
+ *                 example: "juan.perez@hospital.com"
+ *               telefono:
+ *                 type: string
+ *                 description: Teléfono del empleado
+ *                 example: "+1234567890"
+ *               cargo:
+ *                 type: string
+ *                 description: Cargo del empleado
+ *                 example: "Administrador"
+ *     responses:
+ *       200:
+ *         description: Empleado actualizado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Empleado'
+ *       400:
+ *         description: Error de validación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Empleado no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.put('/:id', validate(updateEmpleadoSchema), async (req, res) => {
   try {
     const { id } = req.params;
@@ -175,6 +435,51 @@ router.put('/:id', validate(updateEmpleadoSchema), async (req, res) => {
 });
 
 /* DELETE /empleados/:id - Eliminar empleado */
+/**
+ * @swagger
+ * /empleados/{id}:
+ *   delete:
+ *     summary: Eliminar empleado
+ *     tags: [Empleados]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del empleado
+ *     responses:
+ *       200:
+ *         description: Empleado eliminado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Empleado no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
