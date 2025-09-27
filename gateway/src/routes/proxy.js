@@ -6,6 +6,12 @@ const config = require('../config');
 
 const router = express.Router();
 
+// Proxy especial para archivos binarios (PDFs) en /admin/citas/reportes/**
+// IMPORTANTE: Esta ruta debe ir ANTES que /admin para que se ejecute
+router.use('/admin/citas/reportes', createProxyMiddleware(createFileProxyConfig(config.services.admin, {
+  '^/admin': '' // Remover /admin del path
+})));
+
 // Namespacing: /admin/** → ADMIN_SERVICE_URL
 router.use('/admin', createProxyMiddleware(createProxyConfig(config.services.admin, {
   '^/admin': '' // Remover /admin del path
@@ -17,11 +23,6 @@ if (config.services.medico) {
     '^/medico': '' // Remover /medico del path
   })));
 }
-
-// Proxy especial para archivos binarios (PDFs) en /admin/citas/reportes/**
-router.use('/admin/citas/reportes', createProxyMiddleware(createFileProxyConfig(config.services.admin, {
-  '^/admin': '' // Remover /admin del path
-})));
 
 // Proxy de compatibilidad para rutas legacy (sin namespacing)
 // Usando axios como fallback para garantizar compatibilidad
