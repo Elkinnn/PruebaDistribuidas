@@ -15,6 +15,9 @@ import { CRUDCitas } from "../../../domain/use-cases/citas/crud.usecase";
 import { HospitalEspecialidadModel } from "../../../data/models/hospital-especialidad.model";
 import { HospitalEspecialidadMapper } from "../../../infraestructure/mapper/hospital-especialidad.mapper";
 import { HospitalEspecialidad } from "../../../domain/entities/hospital-especialidad.entity";
+import { UsuarioModel } from "../../../data/models/usuario.model";
+import { UsuarioMapper } from "../../../infraestructure/mapper/usuario.mapper";
+import { Usuario } from "../../../domain/entities/usuario.model";
 
 interface LoginResponse {
     token: string;
@@ -560,12 +563,30 @@ export class MedicoController {
             
             console.log('[DEBUG] Especialidades encontradas:', especialidadesResult?.length || 0);
             
+            // Función para asignar iconos según la especialidad
+            const getSpecialtyIcon = (nombre: string): string => {
+                const nombreLower = nombre.toLowerCase();
+                if (nombreLower.includes('cardiología') || nombreLower.includes('cardio')) return '❤️';
+                if (nombreLower.includes('dermatología') || nombreLower.includes('dermato')) return '🧴';
+                if (nombreLower.includes('pediatría') || nombreLower.includes('pediatra')) return '👶';
+                if (nombreLower.includes('neurología') || nombreLower.includes('neuro')) return '🧠';
+                if (nombreLower.includes('oftalmología') || nombreLower.includes('oftalmo')) return '👁️';
+                if (nombreLower.includes('ginecología') || nombreLower.includes('gineco')) return '👩';
+                if (nombreLower.includes('traumatología') || nombreLower.includes('trauma')) return '🦴';
+                if (nombreLower.includes('psiquiatría') || nombreLower.includes('psiquiatra')) return '🧠';
+                if (nombreLower.includes('medicina general') || nombreLower.includes('general')) return '🩺';
+                if (nombreLower.includes('cirugía') || nombreLower.includes('cirugia')) return '🔪';
+                if (nombreLower.includes('anestesiología') || nombreLower.includes('anestesia')) return '💉';
+                if (nombreLower.includes('radiología') || nombreLower.includes('radio')) return '📷';
+                return '🩺'; // Icono por defecto
+            };
+            
             // Formatear datos para el frontend
             const especialidades = especialidadesResult?.map((esp: any) => ({
                 id: esp.id,
                 nombre: esp.nombre,
                 descripcion: esp.descripcion,
-                icono: "🩺", // Icono por defecto
+                icono: getSpecialtyIcon(esp.nombre),
                 activa: true, // Por defecto activa
                 medicos: 1 // Por ahora, se puede implementar después contar médicos por especialidad
             })) || [];
@@ -599,6 +620,83 @@ export class MedicoController {
             res.status(500).json({
                 error: 'ESPECIALIDADES_ERROR',
                 message: 'Error interno al obtener especialidades'
+            });
+        }
+    }
+
+    updateProfile = async (req: Request, res: Response) => {
+        try {
+            const medico = (req as any).medico;
+            const { nombres, apellidos, email } = req.body;
+            
+            console.log('[DEBUG] Actualizando perfil médico:', { nombres, apellidos, email });
+            
+            // Actualizar información del médico en la tabla medico
+            const database = GlobalDatabase.getInstance().database;
+            const medicoDatasource = DatasourceFactory.generateRepository(database, MedicoModel);
+            
+            if (!medicoDatasource) {
+                throw new CustomError(500, "Error de conexión a la base de datos", null);
+            }
+            
+            const medicoRepository = new EntityRepository<Medico>(medicoDatasource, new MedicoMapper());
+            
+            // Actualizar el médico
+            const medicoActualizado = new Medico(
+                medico.id,
+                nombres || medico.nombres,
+                apellidos || medico.apellidos,
+                email || medico.email,
+                medico.activo,
+                medico.usuario,
+                medico.hospital
+            );
+            
+            const result = await medicoRepository.update(medicoActualizado);
+            if (result instanceof Error) {
+                throw new CustomError(500, "Error al actualizar médico", result);
+            }
+            
+            // Actualizar el email en la tabla usuario también
+            const usuarioDatasource = DatasourceFactory.generateRepository(database, UsuarioModel);
+            if (usuarioDatasource && email) {
+                const usuarioRepository = new EntityRepository(usuarioDatasource, new UsuarioMapper());
+                const usuarioActualizado = new Usuario(
+                    medico.usuario.id,
+                    email,
+                    medico.usuario.password,
+                    medico.usuario.rol,
+                    medico.usuario.activo,
+                    medico.usuario.medicoId
+                );
+                
+                await usuarioRepository.update(usuarioActualizado);
+            }
+            
+            console.log('[DEBUG] Perfil médico actualizado exitosamente');
+            
+            res.json({
+                success: true,
+                message: 'Perfil actualizado exitosamente',
+                data: {
+                    id: medico.id,
+                    nombres: nombres || medico.nombres,
+                    apellidos: apellidos || medico.apellidos,
+                    email: email || medico.email
+                }
+            });
+        } catch (error) {
+            console.error('[UPDATE PROFILE ERROR]', error);
+            if (error instanceof CustomError) {
+                res.status(error.statusCode).json({
+                    error: 'UPDATE_PROFILE_ERROR',
+                    message: error.message
+                });
+                return;
+            }
+            res.status(500).json({
+                error: 'UPDATE_PROFILE_ERROR',
+                message: 'Error interno al actualizar perfil'
             });
         }
     }

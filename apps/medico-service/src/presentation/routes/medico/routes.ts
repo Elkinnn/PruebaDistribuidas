@@ -24,7 +24,7 @@ export class MedicoRoutes {
         // Rutas de información del médico
         router.get('/especialidades', authMiddleware, controller.getEspecialidades);
         router.get('/perfil', authMiddleware, controller.getPerfil);
-        router.put('/perfil', authMiddleware, controller.updatePerfil);
+        router.put('/perfil', authMiddleware, controller.updateProfile);
         router.get('/info', authMiddleware, controller.getInfo);
         router.get('/stats', authMiddleware, controller.getStats);
         router.get('/dashboard/stats', authMiddleware, controller.getDashboardStats);

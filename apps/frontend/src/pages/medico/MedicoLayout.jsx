@@ -12,7 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Logo from "../../components/ui/Logo";         // mismo Logo que usas en Admin
-import { logoutMedico } from "../../api/auth.medico";
+import { useAuthMedico } from "../../auth/useAuthMedico";
 import { getMedicoInfo } from "../../api/medico_info";
 
 const links = [
@@ -24,6 +24,7 @@ const links = [
 
 export default function MedicoLayout() {
   const nav = useNavigate();
+  const { logout } = useAuthMedico();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -59,8 +60,7 @@ export default function MedicoLayout() {
         }
       })();
     } catch {
-      logoutMedico();
-      nav("/medico/login", { replace: true });
+      logout();
       return;
     } finally {
       setLoading(false);
@@ -223,8 +223,7 @@ export default function MedicoLayout() {
           <div className="border-t border-slate-200 px-2 pb-3 pt-1">
             <button
               onClick={() => {
-                logoutMedico();
-                nav("/medico/login", { replace: true });
+                logout();
               }}
               title="Cerrar sesión"
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
@@ -317,8 +316,7 @@ export default function MedicoLayout() {
                 <div className="border-t border-slate-200 px-2 pb-3 pt-1">
                   <button
                     onClick={() => {
-                      logoutMedico();
-                      nav("/medico/login", { replace: true });
+                      logout();
                     }}
                     title="Cerrar sesión"
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
