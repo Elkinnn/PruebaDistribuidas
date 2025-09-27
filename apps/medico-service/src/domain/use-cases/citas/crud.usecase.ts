@@ -148,19 +148,24 @@ export class CRUDCitas {
             // Actualizar campos permitidos
             console.log('[CRUD CITAS UPDATE] Datos recibidos:', data);
             
+            // Crear un objeto con solo los campos que queremos actualizar
+            const updateFields: any = {};
+            
             if (data.estado) {
-                toUpdate.estado = data.estado;
+                updateFields.estado = data.estado;
                 console.log(`[CRUD CITAS UPDATE] Actualizando estado a: ${data.estado}`);
             }
             
             if (data.fechaFin) {
-                toUpdate.fechaFin = data.fechaFin;
+                updateFields.fechaFin = data.fechaFin;
                 console.log(`[CRUD CITAS UPDATE] Actualizando fecha de fin a: ${data.fechaFin}`);
             }
             
             // Actualizar metadatos
-            toUpdate.actualizadaPor = this.medico.usuario;
-            toUpdate.updatedAt = new Date();
+            updateFields.actualizadaPor = this.medico.usuario;
+            updateFields.updatedAt = new Date();
+            
+            console.log('[CRUD CITAS UPDATE] Campos a actualizar:', updateFields);
             
             console.log('[CRUD CITAS UPDATE] Cita a actualizar:', {
                 id: toUpdate.id,
@@ -169,25 +174,57 @@ export class CRUDCitas {
                 motivo: toUpdate.motivo
             });
             
-            console.log('[CRUD CITAS UPDATE] Enviando cita al repositorio para actualizar...');
-            const result = await this.repository.update(toUpdate);
-            if (result instanceof Error) {
-                console.error('[CRUD CITAS UPDATE] Error del repositorio:', result);
+            console.log('[CRUD CITAS UPDATE] Enviando campos específicos al repositorio para actualizar...');
+            
+            // Usar una actualización directa en la base de datos para evitar problemas con entidades
+            try {
+                const database = GlobalDatabase.getInstance().database;
+                if ((database as any).dataSource) {
+                    // Construir la query SQL directamente
+                    const setClause = [];
+                    const values = [];
+                    
+                    if (updateFields.estado) {
+                        setClause.push('`estado` = ?');
+                        values.push(updateFields.estado);
+                    }
+                    
+                    if (updateFields.fechaFin) {
+                        setClause.push('`fechaFin` = ?');
+                        values.push(updateFields.fechaFin);
+                    }
+                    
+                    setClause.push('`updatedAt` = ?');
+                    values.push(updateFields.updatedAt);
+                    
+                    if (updateFields.actualizadaPor) {
+                        setClause.push('`actualizadaPorId` = ?');
+                        values.push(updateFields.actualizadaPor.id);
+                    }
+                    
+                    values.push(toUpdate.id); // Para el WHERE
+                    
+                    const query = `UPDATE \`cita\` SET ${setClause.join(', ')} WHERE \`id\` = ?`;
+                    
+                    console.log('[CRUD CITAS UPDATE] Ejecutando query:', query);
+                    console.log('[CRUD CITAS UPDATE] Con valores:', values);
+                    
+                    const result = await (database as any).dataSource.query(query, values);
+                    console.log('[CRUD CITAS UPDATE] ✅ Resultado de la query:', result);
+                    
+                    const result2 = result.affectedRows > 0;
+                    console.log('[CRUD CITAS UPDATE] ✅ Cita actualizada exitosamente, filas afectadas:', result.affectedRows);
+                    return result2;
+                }
+            } catch (error) {
+                console.error('[CRUD CITAS UPDATE] Error en actualización directa:', error);
                 throw new CustomError(400, "Error al actualizar la cita", 
                     "No se pudo guardar los cambios de la cita. Verifique que los datos sean correctos.");
             }
             
-            console.log('[CRUD CITAS UPDATE] ✅ Cita actualizada exitosamente, resultado:', result);
-            
-            // Verificar que la cita sigue existiendo después de la actualización
-            const citaVerificada = await this.repository.findBy({
-                id: id,
-                medicoId: this.medico.id
-            } as any);
-            
-            console.log(`[CRUD CITAS UPDATE] Verificación post-actualización: ${citaVerificada?.length || 0} citas encontradas`);
-            
-            return result;
+            // Si llegamos aquí, hubo un problema con la configuración
+            throw new CustomError(500, "Error de configuración", 
+                "No se pudo configurar la actualización de la cita.");
         } catch (error) {
             if (error instanceof CustomError) {
                 throw error;

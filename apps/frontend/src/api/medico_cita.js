@@ -36,10 +36,15 @@ export async function createCita(values) {
 
 export async function updateCita(id, values) {
   try {
+    console.log('[UPDATE CITA FRONTEND] Enviando actualización:');
+    console.log('- ID:', id);
+    console.log('- Valores:', values);
+    
     const response = await apiMedico.put(`/medico/citas/${id}`, values);
     return response.data;
   } catch (error) {
     console.error('Error updating cita:', error);
+    console.error('Error response:', error.response?.data);
     
     // Extraer mensaje de error más específico del backend
     if (error.response?.data?.message) {

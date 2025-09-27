@@ -42,9 +42,11 @@ if (config.services.medico) {
       // Agregar body si existe
       if (req.body && Object.keys(req.body).length > 0) {
         axiosConfig.data = req.body;
+        console.log(`[MEDICO PROXY] Body enviado:`, req.body);
       }
       
       console.log(`[MEDICO PROXY] Enviando request:`, axiosConfig.method, axiosConfig.url);
+      console.log(`[MEDICO PROXY] Headers:`, axiosConfig.headers);
       
       const response = await axios(axiosConfig);
       res.status(response.status).json(response.data);
@@ -54,10 +56,17 @@ if (config.services.medico) {
       console.error(`[MEDICO PROXY ERROR] ${req.method} ${req.url}:`, error.message);
       if (error.response) {
         console.error(`[MEDICO PROXY ERROR] Response status: ${error.response.status}`);
+        console.error(`[MEDICO PROXY ERROR] Response headers:`, error.response.headers);
         console.error(`[MEDICO PROXY ERROR] Response data:`, error.response.data);
         res.status(error.response.status).json(error.response.data);
+      } else if (error.code === 'ECONNREFUSED') {
+        console.error(`[MEDICO PROXY ERROR] Conexión rechazada - servicio no disponible`);
+        res.status(502).json({
+          error: 'SERVICE_UNAVAILABLE',
+          message: 'El servicio de médico no está disponible'
+        });
       } else {
-        console.error(`[MEDICO PROXY ERROR] No response from medico-service`);
+        console.error(`[MEDICO PROXY ERROR] Error desconocido:`, error);
         res.status(502).json({
           error: 'PROXY_ERROR',
           message: 'Error de conexión con el servicio de médico'

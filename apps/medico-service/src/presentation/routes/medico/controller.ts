@@ -475,8 +475,17 @@ export class MedicoController {
             const { id } = req.params;
             const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin, motivo } = req.body;
 
+            console.log('[UPDATE CITA CONTROLLER] Datos recibidos:');
+            console.log('- ID de cita:', id);
+            console.log('- Estado:', estado);
+            console.log('- Fecha inicio:', nuevaFechaInicio);
+            console.log('- Fecha fin:', nuevaFechaFin);
+            console.log('- Motivo:', motivo);
+            console.log('- Body completo:', req.body);
+
             // Validar que no se intente cambiar el motivo
             if (motivo !== undefined) {
+                console.log('[UPDATE CITA CONTROLLER] Error: Motivo incluido en la actualización');
                 return res.status(400).json({
                     error: 'UPDATE_CITA_ERROR',
                     message: 'No se puede modificar el motivo de la cita'
@@ -488,8 +497,32 @@ export class MedicoController {
             // Preparar datos de actualización
             const updateData: any = {};
             if (estado) updateData.estado = estado;
-            if (nuevaFechaInicio) updateData.fechaInicio = nuevaFechaInicio;
-            if (nuevaFechaFin) updateData.fechaFin = nuevaFechaFin;
+            if (nuevaFechaInicio) {
+                try {
+                    updateData.fechaInicio = new Date(nuevaFechaInicio);
+                    console.log('[UPDATE CITA CONTROLLER] Fecha inicio convertida:', updateData.fechaInicio);
+                } catch (error) {
+                    console.error('[UPDATE CITA CONTROLLER] Error convirtiendo fecha inicio:', error);
+                    return res.status(400).json({
+                        error: 'UPDATE_CITA_ERROR',
+                        message: 'Formato de fecha de inicio inválido'
+                    });
+                }
+            }
+            if (nuevaFechaFin) {
+                try {
+                    updateData.fechaFin = new Date(nuevaFechaFin);
+                    console.log('[UPDATE CITA CONTROLLER] Fecha fin convertida:', updateData.fechaFin);
+                } catch (error) {
+                    console.error('[UPDATE CITA CONTROLLER] Error convirtiendo fecha fin:', error);
+                    return res.status(400).json({
+                        error: 'UPDATE_CITA_ERROR',
+                        message: 'Formato de fecha de fin inválido'
+                    });
+                }
+            }
+            
+            console.log('[UPDATE CITA CONTROLLER] Datos preparados para actualización:', updateData);
 
             // Actualizar la cita
             const success = await usecase.update(parseInt(id), updateData);

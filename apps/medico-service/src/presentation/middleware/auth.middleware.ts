@@ -60,6 +60,30 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     (req as any).usuario = usuario;
     // Si no se pudo obtener la info del médico, crear un objeto médico básico con la info del usuario
     if (!medicoInfo) {
+      // Obtener el primer hospital disponible de la base de datos
+      let defaultHospital = { id: 1, nombre: 'Hospital Central', direccion: '', telefono: '', activo: true };
+      
+      try {
+        // Intentar obtener un hospital válido de la base de datos usando query directa
+        if ((database as any).dataSource) {
+          const hospitals = await (database as any).dataSource.query(
+            'SELECT id, nombre, direccion, telefono, activo FROM hospital WHERE activo = 1 LIMIT 1'
+          );
+          if (hospitals && hospitals.length > 0) {
+            defaultHospital = {
+              id: hospitals[0].id,
+              nombre: hospitals[0].nombre || 'Hospital Central',
+              direccion: hospitals[0].direccion || '',
+              telefono: hospitals[0].telefono || '',
+              activo: hospitals[0].activo
+            };
+            console.log('[AUTH MIDDLEWARE] Usando hospital por defecto:', defaultHospital);
+          }
+        }
+      } catch (error) {
+        console.log('[AUTH MIDDLEWARE] Error obteniendo hospital por defecto, usando ID 1:', error);
+      }
+      
       medicoInfo = {
         id: usuario.medicoId ? parseInt(usuario.medicoId.toString()) : usuario.id,
         nombres: 'Dr.',
@@ -67,13 +91,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         email: usuario.email,
         activo: usuario.activo,
         usuario: usuario, // Agregar el usuario real
-        hospital: {
-          id: 9,
-          nombre: 'Hospital Central',
-          direccion: '',
-          telefono: '',
-          activo: true
-        }
+        hospital: defaultHospital
       };
     }
     (req as any).medico = medicoInfo;

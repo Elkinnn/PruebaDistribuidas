@@ -296,7 +296,9 @@ export default function Citas() {
     try {
       if (editing) {
         // solo estado y fin
-        await updateCita(editing.id, { estado: form.estado, fin: form.fin });
+        const updateData = { estado: form.estado, fechaFin: form.fin };
+        console.log('[CITAS COMPONENT] Actualizando cita:', editing.id, 'con datos:', updateData);
+        await updateCita(editing.id, updateData);
         setMsg("Cita actualizada exitosamente.");
         showToast("Cita actualizada correctamente.", "success");
       } else {
