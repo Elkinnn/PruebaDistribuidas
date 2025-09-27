@@ -37,4 +37,22 @@ router.delete('/:hospitalId/especialidades/:especialidadId', async (req, res) =>
   }
 });
 
+// POST /cleanup-especialidades-huérfanas - Limpiar especialidades huérfanas
+router.post('/cleanup-especialidades-huérfanas', async (req, res) => {
+  try {
+    const cleanedCount = await hre.cleanupOrphanedEspecialidades();
+    res.json({ 
+      success: true, 
+      message: `Se limpiaron ${cleanedCount} especialidades huérfanas`,
+      cleanedCount 
+    });
+  } catch (e) {
+    console.error('Error limpiando especialidades huérfanas:', e);
+    res.status(500).json({ 
+      error: 'CLEANUP_ERROR', 
+      message: 'Error limpiando especialidades huérfanas: ' + e.message 
+    });
+  }
+});
+
 module.exports = router;

@@ -19,12 +19,42 @@ async function addToHospital(hospitalId, especialidadId) {
 }
 
 async function removeFromHospital(hospitalId, especialidadId) {
-  const [result] = await pool.query(
-    `DELETE FROM HospitalEspecialidad
-      WHERE hospitalId = :hospitalId AND especialidadId = :especialidadId`,
-    { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
-  );
-  return result.affectedRows > 0;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    
+    // 1. Eliminar la asignación hospital-especialidad
+    const [result] = await conn.query(
+      `DELETE FROM HospitalEspecialidad
+        WHERE hospitalId = :hospitalId AND especialidadId = :especialidadId`,
+      { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
+    );
+    
+    if (result.affectedRows === 0) {
+      await conn.rollback();
+      return false;
+    }
+    
+    // 2. Limpiar especialidades huérfanas de médicos del hospital
+    // Eliminar todas las asignaciones de esta especialidad a médicos de este hospital
+    await conn.query(
+      `DELETE me FROM MedicoEspecialidad me
+       INNER JOIN Medico m ON me.medicoId = m.id
+       WHERE m.hospitalId = :hospitalId AND me.especialidadId = :especialidadId`,
+      { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
+    );
+    
+    console.log(`[CLEANUP] Especialidad ${especialidadId} eliminada del hospital ${hospitalId} y limpiadas referencias huérfanas`);
+    
+    await conn.commit();
+    return true;
+  } catch (error) {
+    await conn.rollback();
+    console.error('[CLEANUP ERROR] Error eliminando especialidad del hospital:', error);
+    throw error;
+  } finally {
+    conn.release();
+  }
 }
 
 async function listByHospital(hospitalId, { page = 1, size = 20 } = {}) {
@@ -51,4 +81,39 @@ async function listByHospital(hospitalId, { page = 1, size = 20 } = {}) {
   return { data: rows, meta: { page: Number(page), size: Number(size), total } };
 }
 
-module.exports = { addToHospital, removeFromHospital, listByHospital };
+/**
+ * Limpia especialidades huérfanas de médicos
+ * Elimina asignaciones de médicos a especialidades que ya no están disponibles en su hospital
+ */
+async function cleanupOrphanedEspecialidades() {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    
+    // Encontrar y eliminar especialidades huérfanas
+    const [orphaned] = await conn.query(
+      `DELETE me FROM MedicoEspecialidad me
+       INNER JOIN Medico m ON me.medicoId = m.id
+       LEFT JOIN HospitalEspecialidad he ON he.hospitalId = m.hospitalId AND he.especialidadId = me.especialidadId
+       WHERE he.especialidadId IS NULL`
+    );
+    
+    console.log(`[CLEANUP] Especialidades huérfanas limpiadas: ${orphaned.affectedRows} registros eliminados`);
+    
+    await conn.commit();
+    return orphaned.affectedRows;
+  } catch (error) {
+    await conn.rollback();
+    console.error('[CLEANUP ERROR] Error limpiando especialidades huérfanas:', error);
+    throw error;
+  } finally {
+    conn.release();
+  }
+}
+
+module.exports = { 
+  addToHospital, 
+  removeFromHospital, 
+  listByHospital, 
+  cleanupOrphanedEspecialidades 
+};
