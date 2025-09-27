@@ -12,6 +12,9 @@ import { CitaModel } from "../../../data/models/cita.model";
 import { CitaMapper } from "../../../infraestructure/mapper/cita.mapper";
 import { Cita } from "../../../domain/entities/cita.entity";
 import { CRUDCitas } from "../../../domain/use-cases/citas/crud.usecase";
+import { HospitalEspecialidadModel } from "../../../data/models/hospital-especialidad.model";
+import { HospitalEspecialidadMapper } from "../../../infraestructure/mapper/hospital-especialidad.mapper";
+import { HospitalEspecialidad } from "../../../domain/entities/hospital-especialidad.entity";
 
 interface LoginResponse {
     token: string;
@@ -537,33 +540,42 @@ export class MedicoController {
     getEspecialidades = async (req: Request, res: Response) => {
         try {
             const medico = (req as any).medico;
+            console.log('[DEBUG] Medico hospital ID:', medico.hospital.id);
             
-            // Por ahora devolver datos mock, se puede implementar después
-            const especialidades = [
-                {
-                    id: 1,
-                    nombre: "Medicina General",
-                    descripcion: "Atención médica integral y preventiva.",
-                    medicos: 5,
-                    icono: "🩺",
-                    activa: true
-                },
-                {
-                    id: 2,
-                    nombre: "Cardiología",
-                    descripcion: "Especialidad en enfermedades del corazón.",
-                    medicos: 3,
-                    icono: "❤️",
-                    activa: true
-                }
-            ];
+            // Obtener especialidades del hospital del médico usando consulta SQL directa
+            const database = GlobalDatabase.getInstance().database;
+            
+            if (!(database as any).dataSource) {
+                throw new CustomError(500, "Error de conexión a la base de datos", null);
+            }
+            
+            // Consulta SQL directa para obtener especialidades del hospital
+            const especialidadesResult = await (database as any).dataSource.query(`
+                SELECT e.id, e.nombre, e.descripcion
+                FROM especialidad e
+                JOIN hospitalespecialidad he ON e.id = he.especialidadId
+                WHERE he.hospitalId = ?
+                ORDER BY e.nombre
+            `, [medico.hospital.id]);
+            
+            console.log('[DEBUG] Especialidades encontradas:', especialidadesResult?.length || 0);
+            
+            // Formatear datos para el frontend
+            const especialidades = especialidadesResult?.map((esp: any) => ({
+                id: esp.id,
+                nombre: esp.nombre,
+                descripcion: esp.descripcion,
+                icono: "🩺", // Icono por defecto
+                activa: true, // Por defecto activa
+                medicos: 1 // Por ahora, se puede implementar después contar médicos por especialidad
+            })) || [];
 
             // Calcular estadísticas
             const totalEspecialidades = especialidades.length;
-            const totalMedicos = especialidades.reduce((sum, esp) => sum + esp.medicos, 0);
-            const masPopular = especialidades.reduce((prev, current) =>
+            const totalMedicos = especialidades.reduce((sum: number, esp: any) => sum + esp.medicos, 0);
+            const masPopular = especialidades.length > 0 ? especialidades.reduce((prev: any, current: any) =>
                 prev.medicos > current.medicos ? prev : current
-            );
+            ) : { nombre: 'N/A', medicos: 0 };
 
             res.json({
                 data: especialidades,
@@ -577,6 +589,13 @@ export class MedicoController {
             });
         } catch (error) {
             console.error('[MEDICO ESPECIALIDADES ERROR]', error);
+            if (error instanceof CustomError) {
+                res.status(error.statusCode).json({
+                    error: 'ESPECIALIDADES_ERROR',
+                    message: error.message
+                });
+                return;
+            }
             res.status(500).json({
                 error: 'ESPECIALIDADES_ERROR',
                 message: 'Error interno al obtener especialidades'
