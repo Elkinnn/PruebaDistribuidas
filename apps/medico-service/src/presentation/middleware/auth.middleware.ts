@@ -4,8 +4,11 @@ import { GlobalDatabase } from "../../infraestructure/datasource/datasource.glob
 import { DatasourceFactory } from "../../infraestructure/datasource/datasource.factory";
 import { UsuarioModel } from "../../data/models/usuario.model";
 import { UsuarioMapper } from "../../infraestructure/mapper/usuario.mapper";
+import { MedicoModel } from "../../data/models/medico.model";
+import { MedicoMapper } from "../../infraestructure/mapper/medico.mapper";
 import { EntityRepository } from "../../domain/repository/repository.entity";
 import { CustomError } from "../../domain/errors/error.entity";
+import { Medico } from "../../domain/entities/medico.entity";
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -19,12 +22,54 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const repository = new EntityRepository(datasource!, new UsuarioMapper());
 
     const usuario = await repository.findById(payload.id);
-    if (!usuario) throw new CustomError(404, "Médico no encontrado", null);
+    if (!usuario) throw new CustomError(404, "Usuario no encontrado", null);
 
-    (req as any).medico = usuario;
+    // Si el usuario tiene medicoId, obtener información del médico
+    let medicoInfo = null;
+    if (usuario.medicoId) {
+      try {
+        console.log('[AUTH MIDDLEWARE] Obteniendo info del médico con ID:', usuario.medicoId);
+        const medicoDatasource = DatasourceFactory.generateRepository(database, MedicoModel);
+        if (medicoDatasource) {
+          const medicoRepository = new EntityRepository<Medico>(medicoDatasource, new MedicoMapper());
+          medicoInfo = await medicoRepository.findById(usuario.medicoId, ['hospital', 'usuario']);
+          console.log('[AUTH MIDDLEWARE] Médico obtenido:', medicoInfo);
+        }
+      } catch (error) {
+        console.log("Error obteniendo info del médico en middleware:", error);
+        // Si hay error obteniendo el médico, usar solo la información del usuario
+        medicoInfo = null;
+      }
+    }
+
+    // Asignar tanto el usuario como el médico (si existe) al request
+    (req as any).usuario = usuario;
+    // Si no se pudo obtener la info del médico, crear un objeto médico básico con la info del usuario
+    if (!medicoInfo) {
+      medicoInfo = {
+        id: usuario.medicoId ? parseInt(usuario.medicoId.toString()) : usuario.id,
+        nombres: 'Dr.',
+        apellidos: 'Usuario',
+        email: usuario.email,
+        activo: usuario.activo,
+        usuario: usuario, // Agregar el usuario real
+        hospital: {
+          id: 9,
+          nombre: 'Hospital Central',
+          direccion: '',
+          telefono: '',
+          activo: true
+        }
+      };
+    }
+    (req as any).medico = medicoInfo;
 
     next();
   } catch (err) {
+    if (err instanceof CustomError) {
+      res.status(err.statusCode).json({ message: err.message });
+      return;
+    }
     res.status(401).json({ message: "Token inválido o expirado", error: err });
   }
 };

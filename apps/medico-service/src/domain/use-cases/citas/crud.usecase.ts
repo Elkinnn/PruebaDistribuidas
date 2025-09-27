@@ -23,9 +23,13 @@ export class CRUDCitas {
     }
     public async getAll(): Promise<Cita[]> {
         try {
-            const result = await this.repository.findBy({ medico: this.medico })
+            // Filtrar solo por médico (para que vea todas sus citas, independientemente del hospital)
+            const result = await this.repository.findBy({ 
+                medicoId: this.medico.id
+            } as any, ['paciente', 'hospital', 'medico'])
             return result ?? []
         } catch (error) {
+            console.error('[CRUD CITAS] Error en getAll:', error);
             throw new CustomError(400, "Error al cargar los Citas", error)
         }
     }
@@ -45,13 +49,19 @@ export class CRUDCitas {
 
     public async create(created: any): Promise<boolean> {
         try {
-            const result = await this.repository.create(created)
-            console.log(result)
-            if (result instanceof Error) {
-                throw result
+            console.log('[CRUD CITAS] Creando cita con datos:', created);
+            const [result, error] = await this.repository.create(created)
+            console.log('[CRUD CITAS] Resultado del repositorio:', result);
+            
+            if (error) {
+                console.error('[CRUD CITAS] Error en repositorio:', error.message);
+                throw error
             }
-            return result
+            
+            console.log('[CRUD CITAS] Cita creada exitosamente');
+            return !!result
         } catch (error) {
+            console.error('[CRUD CITAS] Error en creación:', error);
             throw error
         }
     }
@@ -66,8 +76,26 @@ export class CRUDCitas {
                 throw new CustomError(404, "Cita no encontrada", "No encontrada");
             }
             const toUpdate = query[0]
-            if (toUpdate.estado != "PROGRAMADA") {
-                throw new CustomError(404, "Cita NO ACTUALIZABLE", "No se puede actualizar una cita que no esta PROGRAMADA");
+            console.log('[CRUD CITAS UPDATE] Cita encontrada:', {
+                id: toUpdate.id,
+                estado: toUpdate.estado,
+                motivo: toUpdate.motivo
+            });
+            // Permitir editar citas en cualquier estado, pero con restricciones
+            if (toUpdate.estado == "ATENDIDA" && data.estado && data.estado != "ATENDIDA") {
+                console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita ATENDIDA');
+                throw new CustomError(404, "Cita NO ACTUALIZABLE", "No se puede cambiar el estado de una cita ya ATENDIDA");
+            }
+            
+            if (toUpdate.estado == "CANCELADA" && data.estado && data.estado != "CANCELADA") {
+                console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita CANCELADA');
+                throw new CustomError(404, "Cita NO ACTUALIZABLE", "No se puede cambiar el estado de una cita ya CANCELADA");
+            }
+            
+            // Solo permitir cambiar estado si está PROGRAMADA
+            if (toUpdate.estado != "PROGRAMADA" && data.estado && data.estado != toUpdate.estado) {
+                console.log(`[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita ${toUpdate.estado}`);
+                throw new CustomError(404, "Cita NO ACTUALIZABLE", `No se puede cambiar el estado de una cita que está ${toUpdate.estado}`);
             }
             toUpdate.motivo = data.motivo ?? toUpdate.motivo;
             toUpdate.estado = data.estado ?? toUpdate.estado;

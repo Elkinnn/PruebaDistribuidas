@@ -19,10 +19,13 @@ export class EntityRepository<Entity> {
         const models = await this.datasource.findBy(where, relations)
         return models ? models.map(this.mapper.toDomain) : null
     }
-    public async create(created: Entity): Promise<boolean | Error> {
+    public async create(created: Entity): Promise<[Entity, Error?]> {
         const entity = this.mapper.toModel(created)
         const [result, error] = await this.datasource.create(entity)
-        return error ?? result
+        if (error) {
+            return [created, error]
+        }
+        return [this.mapper.toDomain(result)]
     }
     public async update(updated: Entity): Promise<boolean | Error> {
         const entity = this.mapper.toModel(updated)

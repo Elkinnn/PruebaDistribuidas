@@ -17,7 +17,12 @@ export class MySQLRepository<T extends ObjectLiteral> extends IDatabaseRepositor
     }
 
     public findAll(relations?: string[]): Promise<T[]> {
-        return this.datasource.find({ relations })
+        return this.datasource.find({ 
+            relations,
+            order: {
+                id: 'DESC' as any // Ordenar por ID descendente para mostrar las más recientes primero
+            }
+        })
     }
 
     public findById(id: number, relations?: string[]): Promise<T | null> {
@@ -31,16 +36,21 @@ export class MySQLRepository<T extends ObjectLiteral> extends IDatabaseRepositor
     public findBy(where: Partial<T>, relations?: string[]): Promise<T[] | null> {
         return this.datasource.find({
             where: where,
-            relations: relations
+            relations: relations,
+            order: {
+                id: 'DESC' as any // Ordenar por ID descendente para mostrar las más recientes primero
+            }
         })
     }
-    public async create(created: T): Promise<[boolean, CustomError?]> {
+    public async create(created: T): Promise<[T, CustomError?]> {
         try {
-            const flag = !!await this.datasource.save(created);
-            return [flag]
+            console.log('[MYSQL REPOSITORY] Intentando crear entidad:', created);
+            const savedEntity = await this.datasource.save(created);
+            console.log('[MYSQL REPOSITORY] Entidad creada exitosamente:', savedEntity);
+            return [savedEntity]
         } catch (error) {
-            console.log()
-            return [false, new CustomError(400, "Error al crear", error)]
+            console.error('[MYSQL REPOSITORY] Error al crear:', error);
+            return [created, new CustomError(400, "Error al crear", error)]
         }
     }
 

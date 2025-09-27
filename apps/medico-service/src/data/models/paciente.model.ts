@@ -2,7 +2,7 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, JoinColum
 import { HospitalModel } from "./hospital.model";
 import { CitaModel } from "./cita.model";
 
-@Entity("pacientes")
+@Entity("paciente")
 export class PacienteModel {
     @PrimaryGeneratedColumn()
     id!: number;
@@ -35,6 +35,9 @@ export class PacienteModel {
 
     @Column({ type: "varchar", length: 150, nullable: true })
     email!: string | null;
+
+    @Column({ type: "varchar", length: 50, nullable: true })
+    documento!: string | null;
 
     @Column({ type: "boolean", default: true })
     activo!: boolean;

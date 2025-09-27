@@ -1,0 +1,155 @@
+ARQUITECTURA ACTUAL DEL SISTEMA DE CITAS MÉDICAS
+====================================================
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                    CLIENTE                                      │
+│                              (Navegador Web)                                    │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ HTTP/HTTPS
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND                                            │
+│                         React + Vite (Puerto 3003)                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   React     │  │   Auth     │  │ Components  │  │    API      │            │
+│  │     App     │  │  Context   │  │             │  │   Client    │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘            │
+│                                                                                 │
+│  • Admin Dashboard    • Medico Dashboard    • Protected Routes                 │
+│  • Login Forms        • Cita Management     • JWT Token Handling              │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ HTTP API Calls
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              API GATEWAY                                        │
+│                         Express (Puerto 3000)                                   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        REVERSE PROXY + AUTH                                │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │ │
+│  │  │   Proxy     │  │    JWT     │  │   Route     │  │   Direct    │        │ │
+│  │  │  Handler    │  │   Auth     │  │  Handlers   │  │    DB       │        │ │
+│  │  │             │  │            │  │             │  │   Access     │        │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│  • Routes: /auth/login, /hospitales, /medicos, /citas, /medico/*              │
+│  • Direct MySQL access for medico operations                                   │
+│  • PDF Report Generation                                                       │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ HTTP Proxy
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            ADMIN SERVICE                                        │
+│                    Express + Node.js (Puerto 3001)                             │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                           LAYERED ARCHITECTURE                              │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │ │
+│  │  │Presentation │  │  Business   │  │Infrastructure│  │  Persistence│        │ │
+│  │  │   Layer     │  │   Logic     │  │   Layer     │  │    Layer    │        │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│  • Auth Routes (/auth/login)                                                   │
+│  • CRUD: Hospitales, Especialidades, Médicos, Empleados                       │
+│  • Cita Management (Admin)                                                     │
+│  • Auto Cancel Service                                                          │
+│  • PDF Generator Service                                                       │
+│  • KPIs & Reports                                                              │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ HTTP Proxy
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            MEDICO SERVICE                                      │
+│                    TypeScript + Express (Puerto 3002)                          │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        CLEAN ARCHITECTURE                                  │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │ │
+│  │  │Presentation │  │   Domain    │  │Infrastructure│  │    Data     │        │ │
+│  │  │   Layer     │  │   Layer     │  │   Layer     │  │   Layer     │        │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│  • Login Routes (/login)                                                       │
+│  • Cita Management (/citas)                                                     │
+│  • Entities: Cita, Medico, Paciente, Hospital                                  │
+│  • Use Cases: Create, Read, Update, Delete                                     │
+│  • Repository Pattern                                                          │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              DATABASE                                          │
+│                           MYSQL (Puerto 3306)                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                           DATABASE TABLES                                 │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │ │
+│  │  │  Hospital   │  │  Medico     │  │   Cita      │  │ Especialidad│        │ │
+│  │  │   Table     │  │   Table     │  │   Table     │  │   Table     │        │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │ │
+│  │                                                                             │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │ │
+│  │  │   Usuario   │  │  Paciente   │  │  Empleado   │  │ MedicoEspec │        │ │
+│  │  │   Table     │  │   Table     │  │   Table     │  │   Table     │        │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │ │
+│  │                                                                             │ │
+│  │  • Single Database (MySQL)                                                 │ │
+│  │  • Admin Service Connection (mysql2)                                       │ │
+│  │  • Medico Service Connection (mysql2)                                      │ │
+│  │  │  • Gateway Direct Access (mysql2/promise)                               │ │
+│  │  • Repository Pattern                                                      │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+FLUJO DE COMUNICACIÓN
+====================
+
+1. CLIENTE → FRONTEND
+   └─ HTTP/HTTPS Requests
+
+2. FRONTEND → GATEWAY
+   └─ API Calls with JWT Token
+
+3. GATEWAY → ADMIN SERVICE
+   └─ HTTP Proxy (Admin Operations)
+
+4. GATEWAY → MEDICO SERVICE
+   └─ HTTP Proxy (Medico Operations)
+
+5. GATEWAY → MYSQL
+   └─ Direct Database Access (mysql2/promise)
+
+6. ADMIN SERVICE → MYSQL
+   └─ Repository Pattern (mysql2)
+
+7. MEDICO SERVICE → MYSQL
+   └─ Repository Pattern (mysql2)
+
+AUTENTICACIÓN JWT
+=================
+
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   CLIENTE   │───▶│  FRONTEND   │───▶│   GATEWAY   │───▶│   SERVICE   │
+│             │    │             │    │             │    │             │
+│ Credentials │    │ Store Token │    │ Validate    │    │ Process     │
+│             │    │ in localStorage│   │ JWT Token   │    │ Request     │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+
+TECNOLOGÍAS UTILIZADAS
+======================
+
+Frontend:     React 18, Vite, Tailwind CSS, Axios
+Gateway:      Express, JWT, http-proxy-middleware, mysql2
+Admin:        Express, Node.js, MySQL2, bcryptjs, jsPDF
+Medico:       TypeScript, Express, Clean Architecture
+Database:     MySQL (Single Database)
+Container:    Docker, Docker Compose
+Monorepo:     npm workspaces
+
+PUERTOS
+=======
+
+Frontend:     3003
+Gateway:      3000
+Admin:        3001
+Medico:       3002
+MySQL:        3306

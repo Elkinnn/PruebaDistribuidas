@@ -9,6 +9,7 @@ export class Paciente {
         public sexo: "MASCULINO" | "FEMENINO" | "OTRO",
         public telefono: string | null,
         public email: string | null,
+        public documento: string | null,
         public activo: boolean,
         public hospital: Hospital,
     ) {

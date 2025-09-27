@@ -4,12 +4,16 @@ import { IMapper } from "./mapper.abstract";
 
 export class UsuarioMapper extends IMapper<Usuario> {
     public toDomain(model: UsuarioModel): Usuario {
+        if (!model) {
+            throw new Error('UsuarioModel is undefined or null');
+        }
+        
         return new Usuario(
             model.id ?? null,
-            model.email,
-            model.password,
-            model.rol,
-            model.activo,
+            model.email ?? '',
+            model.password ?? '',
+            model.rol ?? 'MEDICO',
+            model.activo ?? true,
             model.medicoId ? Number(model.medicoId) : undefined
         );
     }

@@ -17,6 +17,13 @@ export class Cita {
         public actualizadaPor: Usuario | null,
         public createdAt: Date,
         public updatedAt: Date,
+        // Snapshot del paciente (al momento de crear la cita)
+        public pacienteNombre?: string | null,
+        public pacienteTelefono?: string | null,
+        public pacienteEmail?: string | null,
+        public pacienteId?: number | null,
+        public medicoId?: number | null,
+        public hospitalId?: number | null,
     ) {
 
     }

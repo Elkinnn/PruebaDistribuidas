@@ -30,6 +30,16 @@ export class CitaModel {
     @Column({ nullable: true })
     pacienteId!: string | null;
 
+    // Snapshot del paciente (al momento de crear la cita)
+    @Column({ type: "varchar", length: 255, nullable: true })
+    pacienteNombre!: string | null;
+
+    @Column({ type: "varchar", length: 50, nullable: true })
+    pacienteTelefono!: string | null;
+
+    @Column({ type: "varchar", length: 150, nullable: true })
+    pacienteEmail!: string | null;
+
     @Column("text")
     motivo!: string;
 

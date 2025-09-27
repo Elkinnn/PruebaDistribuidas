@@ -4,12 +4,16 @@ import { IMapper } from "./mapper.abstract";
 
 export class HospitalMapper extends IMapper<Hospital> {
     public toDomain(model: any): Hospital {
+        if (!model) {
+            throw new Error('HospitalModel is undefined or null');
+        }
+        
         return new Hospital(
             model.id ?? null, 
-            model.nombre,
-            model.direccion,
-            model.telefono,
-            model.activo,
+            model.nombre ?? '',
+            model.direccion ?? '',
+            model.telefono ?? '',
+            model.activo ?? true,
         )
     }
     public toModel(entity: Hospital) {

@@ -1,7 +1,7 @@
 import { Column, Entity, OneToOne, PrimaryGeneratedColumn, JoinColumn } from "typeorm";
 import { MedicoModel } from "./medico.model";
 
-@Entity("usuarios")
+@Entity("usuario")
 export class UsuarioModel {
     @PrimaryGeneratedColumn()
     id!: number;

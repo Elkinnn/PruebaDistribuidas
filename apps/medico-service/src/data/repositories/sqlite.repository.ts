@@ -36,12 +36,12 @@ export class SQLiteRepository<T extends ObjectLiteral> extends IDatabaseReposito
         })
     }
 
-    public async create(created: T): Promise<[boolean, CustomError?]> {
+    public async create(created: T): Promise<[T, CustomError?]> {
         try {
-            const flag = !!this.datasource.save(created);
-            return [flag]
+            const savedEntity = await this.datasource.save(created);
+            return [savedEntity]
         } catch (error) {
-            return [false, new CustomError(400, "Error al crear", error)]
+            return [created, new CustomError(400, "Error al crear", error)]
         }
     }
 
