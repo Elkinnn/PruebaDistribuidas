@@ -36,8 +36,8 @@ export default function MedicoLayout() {
   const SIDEBAR_W_PX = collapsed ? "80px" : "256px";
 
   useEffect(() => {
-    const token = localStorage.getItem("clinix_token_medico");
-    const userData = localStorage.getItem("clinix_user_medico");
+    const token = localStorage.getItem("clinix_medico_token");
+    const userData = localStorage.getItem("clinix_medico_user");
 
     if (!token || !userData) {
       setLoading(false);

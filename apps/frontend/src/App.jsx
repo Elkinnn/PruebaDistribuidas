@@ -22,7 +22,7 @@ import MedicoLogin from "./pages/medico/Login";
 
 /* ===== Guards (TOP-LEVEL, NO ANIDADOS) ===== */
 function AdminProtected({ children }) {
-  const token = localStorage.getItem("clinix_token");
+  const token = localStorage.getItem("authToken");
   const user = JSON.parse(localStorage.getItem("clinix_user") || "null");
   if (!token || !user || user?.rol !== "ADMIN_GLOBAL") {
     return <Navigate to="/admin/login" replace />;
@@ -33,9 +33,19 @@ function AdminProtected({ children }) {
 function MedicoProtected({ children }) {
   const token = localStorage.getItem("clinix_medico_token");
   const user = JSON.parse(localStorage.getItem("clinix_medico_user") || "null");
+  
+  console.log('=== MedicoProtected Check ===');
+  console.log('Token:', token ? 'Presente' : 'Ausente');
+  console.log('User:', user);
+  console.log('User rol:', user?.rol);
+  console.log('Is MEDICO:', user?.rol === "MEDICO");
+  
   if (!token || !user || user?.rol !== "MEDICO") {
+    console.log('Redirigiendo a /medico/login - Token o usuario inválido');
     return <Navigate to="/medico/login" replace />;
   }
+  
+  console.log('Acceso autorizado al área médico');
   return children;
 }
 

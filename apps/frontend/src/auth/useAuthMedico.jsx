@@ -19,8 +19,12 @@ export const AuthMedicoProvider = ({ children }) => {
 
   useEffect(() => {
     async function validateToken() {
+      console.log('=== VALIDACIÓN DE TOKEN INICIADA ===')
       const token = localStorage.getItem('clinix_medico_token')
       const userStr = localStorage.getItem('clinix_medico_user')
+      
+      console.log('Token encontrado:', token ? 'SÍ' : 'NO')
+      console.log('Usuario encontrado:', userStr ? 'SÍ' : 'NO')
       
       if (token && userStr) {
         try {
@@ -59,7 +63,10 @@ export const AuthMedicoProvider = ({ children }) => {
             localStorage.removeItem('clinix_medico_user')
           }
         }
+      } else {
+        console.log('No hay token o usuario en localStorage')
       }
+      console.log('Finalizando validación de token, setting loading = false')
       setLoading(false)
     }
     
@@ -73,24 +80,26 @@ export const AuthMedicoProvider = ({ children }) => {
       
       console.log('Login response:', response)
       
-      // Verificar si la respuesta tiene la estructura correcta
-      if (response.data && response.data.token && response.data.user) {
+      // El backend devuelve directamente { token, user }
+      if (response.token && response.user) {
+        console.log('Guardando token y usuario en localStorage...')
         // Guardar token y usuario
-        localStorage.setItem('clinix_medico_token', response.data.token)
-        localStorage.setItem('clinix_medico_user', JSON.stringify(response.data.user))
-        
-        setUser(response.data.user)
-        toast.success('Inicio de sesión exitoso')
-        navigate('/medico')
-        return true
-      } else if (response.token && response.user) {
-        // Fallback para estructura directa
         localStorage.setItem('clinix_medico_token', response.token)
         localStorage.setItem('clinix_medico_user', JSON.stringify(response.user))
         
+        console.log('Token guardado:', localStorage.getItem('clinix_medico_token') ? 'SÍ' : 'NO')
+        console.log('Usuario guardado:', localStorage.getItem('clinix_medico_user') ? 'SÍ' : 'NO')
+        
+        console.log('Actualizando estado del usuario...')
         setUser(response.user)
+        
+        console.log('Mostrando toast de éxito...')
         toast.success('Inicio de sesión exitoso')
+        
+        console.log('Navegando a /medico...')
         navigate('/medico')
+        
+        console.log('Login completado exitosamente')
         return true
       } else {
         console.error('Estructura de respuesta inesperada:', response)
