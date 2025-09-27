@@ -7,7 +7,7 @@ const config = {
   // URLs de servicios
   services: {
     admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3001',
-    medico: process.env.MEDICO_SERVICE_URL || 'http://localhost:3002'
+    medico: process.env.MEDICO_SERVICE_URL || 'http://localhost:3100'
   },
   
   // Configuración de CORS

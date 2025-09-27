@@ -3,25 +3,70 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const axios = require('axios');
 const { createProxyConfig, createFileProxyConfig } = require('../middleware/proxy');
 const config = require('../config');
-
 const router = express.Router();
 
 // Proxy especial para archivos binarios (PDFs) en /admin/citas/reportes/**
 // IMPORTANTE: Esta ruta debe ir ANTES que /admin para que se ejecute
-router.use('/admin/citas/reportes', createProxyMiddleware(createFileProxyConfig(config.services.admin, {
-  '^/admin': '' // Remover /admin del path
-})));
+router.use('/admin/citas/reportes', createProxyMiddleware(
+  createFileProxyConfig(config.services.admin, {
+    '^/admin': '' // Remover /admin del path
+  })
+));
 
 // Namespacing: /admin/** → ADMIN_SERVICE_URL
-router.use('/admin', createProxyMiddleware(createProxyConfig(config.services.admin, {
-  '^/admin': '' // Remover /admin del path
-})));
+router.use('/admin', createProxyMiddleware(
+  createProxyConfig(config.services.admin, {
+    '^/admin': '' // Remover /admin del path
+  })
+));
 
-// Namespacing: /medico/** → MEDICO_SERVICE_URL
+// Proxy personalizado para médico-service usando axios
 if (config.services.medico) {
-  router.use('/medico', createProxyMiddleware(createProxyConfig(config.services.medico, {
-    '^/medico': '' // Remover /medico del path
-  })));
+  console.log(`[GATEWAY] Configurando proxy para médico-service: ${config.services.medico}`);
+  
+  router.use('/medico', async (req, res) => {
+    try {
+      // Reconstruir la ruta completa con /medico
+      const fullPath = `/medico${req.url}`;
+      console.log(`[MEDICO PROXY] ${req.method} ${req.url} -> ${config.services.medico}${fullPath}`);
+      
+      const axiosConfig = {
+        method: req.method,
+        url: `${config.services.medico}${fullPath}`,
+        headers: {
+          ...req.headers
+        },
+        timeout: config.timeout || 30000
+      };
+      
+      // Agregar body si existe
+      if (req.body && Object.keys(req.body).length > 0) {
+        axiosConfig.data = req.body;
+      }
+      
+      console.log(`[MEDICO PROXY] Enviando request:`, axiosConfig.method, axiosConfig.url);
+      
+      const response = await axios(axiosConfig);
+      res.status(response.status).json(response.data);
+      
+      console.log(`[MEDICO PROXY RESPONSE] ${req.method} ${req.url} -> ${response.status}`);
+    } catch (error) {
+      console.error(`[MEDICO PROXY ERROR] ${req.method} ${req.url}:`, error.message);
+      if (error.response) {
+        console.error(`[MEDICO PROXY ERROR] Response status: ${error.response.status}`);
+        console.error(`[MEDICO PROXY ERROR] Response data:`, error.response.data);
+        res.status(error.response.status).json(error.response.data);
+      } else {
+        console.error(`[MEDICO PROXY ERROR] No response from medico-service`);
+        res.status(502).json({
+          error: 'PROXY_ERROR',
+          message: 'Error de conexión con el servicio de médico'
+        });
+      }
+    }
+  });
+} else {
+  console.log(`[GATEWAY] No se configuró proxy para médico-service`);
 }
 
 // Proxy de compatibilidad para rutas legacy (sin namespacing)
@@ -34,7 +79,9 @@ const createAxiosProxy = (servicePath) => {
       const axiosConfig = {
         method: req.method,
         url: `${config.services.admin}${servicePath}${req.url}`,
-        headers: { ...req.headers },
+        headers: {
+          ...req.headers
+        },
         timeout: config.timeout || 30000
       };
       
@@ -66,7 +113,6 @@ const createAxiosProxy = (servicePath) => {
       console.log(`[PROXY RESPONSE] ${req.method} ${req.url} -> ${response.status}`);
     } catch (error) {
       console.error(`[PROXY ERROR] ${req.method} ${req.url}:`, error.message);
-      
       if (error.response) {
         res.status(error.response.status).json(error.response.data);
       } else {

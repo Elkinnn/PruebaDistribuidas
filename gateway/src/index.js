@@ -1,11 +1,12 @@
 const express = require('express');
 const morgan = require('morgan');
 const { randomUUID } = require('crypto');
+
 const { helmet, cors, rateLimit } = require('./middleware/security');
 const config = require('./config');
 
 // Swagger documentation
-const { swaggerUi, specs } = require('./swagger');
+const { swaggerUi, specs } = require('../swagger');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -48,17 +49,19 @@ app.use('/health', healthRoutes);
 app.use('/', proxyRoutes);
 
 // 404 del gateway
-app.use((_req, res) => res.status(404).json({ 
-  error: 'NOT_FOUND_GATEWAY',
-  message: 'Ruta no encontrada en el API Gateway'
-}));
+app.use((_req, res) => 
+  res.status(404).json({ 
+    error: 'NOT_FOUND_GATEWAY', 
+    message: 'Ruta no encontrada en el API Gateway' 
+  })
+);
 
 // Manejo de errores global
 app.use((error, req, res, next) => {
   console.error('[GATEWAY ERROR]', error.message);
-  res.status(500).json({
-    error: 'INTERNAL_SERVER_ERROR',
-    message: 'Error interno del servidor'
+  res.status(500).json({ 
+    error: 'INTERNAL_SERVER_ERROR', 
+    message: 'Error interno del servidor' 
   });
 });
 

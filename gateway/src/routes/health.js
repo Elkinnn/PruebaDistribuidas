@@ -2,7 +2,6 @@ const express = require('express');
 const axios = require('axios');
 const { performance } = require('node:perf_hooks');
 const config = require('../config');
-
 const router = express.Router();
 
 // Función para verificar el estado de un servicio con medición de tiempo
@@ -13,20 +12,23 @@ const checkServiceHealth = async (serviceName, url) => {
     // Intentar HEAD /health primero
     let response;
     try {
-      response = await axios.head(`${url}/health`, { 
+      response = await axios.head(`${url}/health`, {
         timeout: 5000,
-        headers: { 'User-Agent': 'API-Gateway-Health-Check' }
+        headers: {
+          'User-Agent': 'API-Gateway-Health-Check'
+        }
       });
     } catch (headError) {
       // Si HEAD falla, intentar GET /health
-      response = await axios.get(`${url}/health`, { 
+      response = await axios.get(`${url}/health`, {
         timeout: 5000,
-        headers: { 'User-Agent': 'API-Gateway-Health-Check' }
+        headers: {
+          'User-Agent': 'API-Gateway-Health-Check'
+        }
       });
     }
     
     const responseTime = performance.now() - startTime;
-    
     return {
       name: serviceName,
       url,
@@ -37,7 +39,6 @@ const checkServiceHealth = async (serviceName, url) => {
     };
   } catch (error) {
     const responseTime = performance.now() - startTime;
-    
     return {
       name: serviceName,
       url,
@@ -76,6 +77,7 @@ const checkServiceHealth = async (serviceName, url) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 // Endpoint de salud del gateway
 router.get('/', async (req, res) => {
   try {

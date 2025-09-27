@@ -1,33 +1,25 @@
-const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'API Gateway',
+      title: 'API Gateway - Hospital Management System',
       version: '1.0.0',
-      description: 'Gateway principal que enruta peticiones a microservicios',
+      description: 'API Gateway para el sistema de gestión hospitalaria',
       contact: {
-        name: 'Equipo de Desarrollo',
-        email: 'dev@hospital.com'
+        name: 'Hospital Management Team',
+        email: 'admin@hospital.com'
       }
     },
     servers: [
       {
         url: 'http://localhost:3000',
-        description: 'Gateway de desarrollo',
-      },
+        description: 'Servidor de desarrollo'
+      }
     ],
     components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Token JWT para autenticación'
-        },
-      },
       schemas: {
         Error: {
           type: 'object',
@@ -38,7 +30,7 @@ const options = {
             },
             message: {
               type: 'string',
-              description: 'Mensaje de error'
+              description: 'Descripción del error'
             }
           }
         },
@@ -47,13 +39,13 @@ const options = {
           properties: {
             gateway: {
               type: 'string',
-              enum: ['healthy', 'degraded', 'unhealthy'],
+              enum: ['healthy', 'unhealthy', 'degraded', 'error'],
               description: 'Estado del gateway'
             },
             timestamp: {
               type: 'string',
               format: 'date-time',
-              description: 'Timestamp del check'
+              description: 'Timestamp de la verificación'
             },
             services: {
               type: 'array',
@@ -79,11 +71,7 @@ const options = {
                   },
                   responseTimeMs: {
                     type: 'integer',
-                    description: 'Tiempo de respuesta en ms'
-                  },
-                  error: {
-                    type: 'string',
-                    description: 'Mensaje de error si aplica'
+                    description: 'Tiempo de respuesta en milisegundos'
                   },
                   lastCheck: {
                     type: 'string',
@@ -100,13 +88,24 @@ const options = {
           }
         }
       }
-    }
+    },
+    tags: [
+      {
+        name: 'Auth',
+        description: 'Autenticación y autorización'
+      },
+      {
+        name: 'Health',
+        description: 'Monitoreo de salud del sistema'
+      }
+    ]
   },
-  apis: [
-    './src/routes/*.js'
-  ],
+  apis: ['./src/routes/*.js'] // Ruta a los archivos que contienen las anotaciones Swagger
 };
 
-const specs = swaggerJsdoc(options);
+const specs = swaggerJSDoc(options);
 
-module.exports = { swaggerUi, specs };
+module.exports = {
+  swaggerUi,
+  specs
+};

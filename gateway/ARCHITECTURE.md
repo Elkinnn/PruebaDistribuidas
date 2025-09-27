@@ -1,90 +1,183 @@
 # Arquitectura del API Gateway
 
-## Flujo de Peticiones
+## 🏗️ Visión General
 
+El API Gateway actúa como punto de entrada único para el sistema de gestión hospitalaria, proporcionando:
+
+- **Enrutamiento inteligente** entre servicios
+- **Seguridad centralizada** (CORS, Rate Limiting, Helmet)
+- **Monitoreo de salud** de servicios
+- **Documentación automática** con Swagger
+- **Trazabilidad** de requests
+
+## 🔄 Flujo de Requests
+
+```mermaid
+graph TD
+    A[Cliente/Frontend] --> B[API Gateway :3000]
+    B --> C{Determinar Servicio}
+    C -->|/admin/**| D[Admin Service :3001]
+    C -->|/medico/**| E[Medico Service :3100]
+    C -->|/auth/login| F[Admin Service Auth]
+    C -->|/health| G[Health Check]
+    D --> H[Base de Datos Admin]
+    E --> I[Base de Datos Medico]
 ```
-Frontend (React) 
-    ↓ HTTP Request
-API Gateway (Node.js)
-    ↓ Proxy/Forward
-Backend Services (Admin/Medico)
-    ↓ Response
-API Gateway
-    ↓ Stream/JSON
-Frontend
-```
 
-## Estructura Modular
+## 📁 Estructura Modular
 
-### 1. Configuración (`config/index.js`)
-- Variables de entorno centralizadas
-- URLs de servicios backend
-- Configuración de CORS, rate limiting, timeouts
-
-### 2. Middlewares de Seguridad (`middleware/security.js`)
-- **Helmet**: Headers de seguridad HTTP
-- **CORS**: Restringido al dominio del frontend
-- **Rate Limiting**: 100 requests/15min por IP
-
-### 3. Middlewares de Proxy (`middleware/proxy.js`)
-- Configuración común para proxies
-- Propagación automática de headers de autorización
-- Manejo de errores de proxy
-- Soporte para streaming de archivos
-
-### 4. Rutas
-
-#### Autenticación (`routes/auth.js`)
-- `POST /auth/login` - Usa axios para lógica extra si es necesaria
-- Manejo de errores específico para autenticación
-
-#### Proxies (`routes/proxy.js`)
-- Proxies transparentes para todas las rutas del admin service:
-  - `/hospitales/*`
-  - `/especialidades/*`
-  - `/medicos/*`
-  - `/empleados/*`
-  - `/citas/*` (con streaming de PDFs)
-
-#### Health Checks (`routes/health.js`)
-- `GET /health` - Verifica estado de todos los servicios
-- Timeout de 5s para health checks
-- Respuesta detallada del estado de servicios
-
-## Características Principales
-
-### ✅ Proxy Transparente
-- Usa `http-proxy-middleware` en lugar de axios duplicado
-- Propagación automática de headers
-- Manejo de todos los métodos HTTP (GET, POST, PUT, DELETE)
-
-### ✅ Streaming de Archivos
-- Soporte nativo para PDFs y otros archivos binarios
-- No intenta parsear archivos como JSON
-- Copia headers relevantes del servicio backend
-
-### ✅ Seguridad
-- **Helmet**: Headers de seguridad
-- **CORS**: Solo permite el dominio del frontend
-- **Rate Limiting**: Protección contra abuso
-- **Timeouts**: Evita requests colgados
-
-### ✅ Monitoreo
-- Logging con Morgan
-- Health checks de servicios
-- Manejo centralizado de errores
-
-### ✅ Mantenibilidad
-- Código modular y separado por responsabilidades
+### Config (`src/config/index.js`)
 - Configuración centralizada
-- Fácil agregar nuevos servicios
-- Sin lógica de negocio en el gateway
+- Variables de entorno
+- URLs de servicios
+- Configuración de CORS y Rate Limiting
 
-## Ventajas de la Refactorización
+### Middleware (`src/middleware/`)
 
-1. **Código reducido**: De ~278 líneas a ~50 líneas en el archivo principal
-2. **Sin duplicación**: Un solo proxy configurado para todas las rutas
-3. **Más seguro**: Helmet, CORS restringido, rate limiting
-4. **Mejor rendimiento**: Streaming nativo de archivos
-5. **Más mantenible**: Código modular y bien organizado
-6. **Escalable**: Fácil agregar nuevos servicios backend
+#### `proxy.js`
+- Configuración base de proxies
+- Manejo de archivos binarios (PDFs)
+- Headers de trazabilidad
+- Manejo de errores de proxy
+
+#### `security.js`
+- Helmet para headers de seguridad
+- CORS configurado
+- Rate Limiting configurable
+
+### Routes (`src/routes/`)
+
+#### `auth.js`
+- Login de usuarios
+- Proxy a Admin Service para autenticación
+- Manejo de errores de autenticación
+
+#### `health.js`
+- Verificación de salud del gateway
+- Monitoreo de servicios backend
+- Métricas de tiempo de respuesta
+
+#### `proxy.js`
+- Proxy principal con namespacing
+- Fallback con axios para compatibilidad
+- Manejo de rutas legacy
+
+## 🔐 Seguridad
+
+### Headers de Seguridad (Helmet)
+```javascript
+helmet({
+  contentSecurityPolicy: false, // Deshabilitado para desarrollo
+  crossOriginEmbedderPolicy: false
+})
+```
+
+### CORS
+```javascript
+cors({
+  origin: ['http://localhost:5173', 'http://localhost:3003'],
+  credentials: true
+})
+```
+
+### Rate Limiting
+```javascript
+rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 1000, // 1000 requests por IP
+  skip: (req) => NODE_ENV === 'development'
+})
+```
+
+## 🔍 Trazabilidad
+
+Cada request recibe un ID único:
+```javascript
+req.id = req.headers['x-request-id'] || randomUUID()
+```
+
+Este ID se propaga a todos los servicios backend y se refleja en las respuestas.
+
+## 📊 Monitoreo
+
+### Health Check Detallado
+```json
+{
+  "gateway": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "services": [
+    {
+      "name": "admin-service",
+      "url": "http://localhost:3001",
+      "status": "healthy",
+      "statusCode": 200,
+      "responseTimeMs": 45,
+      "lastCheck": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "environment": "development"
+}
+```
+
+## 🚀 Proxy Inteligente
+
+### Namespacing
+- `/admin/**` → `ADMIN_SERVICE_URL`
+- `/medico/**` → `MEDICO_SERVICE_URL`
+
+### Fallback con Axios
+Para rutas legacy que no usan namespacing:
+- `/especialidades`
+- `/hospitales`
+- `/medicos`
+- `/empleados`
+- `/citas`
+
+### Manejo de Archivos Binarios
+Especial para PDFs en `/admin/citas/reportes/**`:
+- `responseType: 'arraybuffer'`
+- Preservación de headers
+- Manejo de errores específico
+
+## 🔧 Configuración por Entorno
+
+### Desarrollo
+- Rate limiting deshabilitado
+- CORS permisivo
+- Logs detallados
+- Swagger UI disponible
+
+### Producción
+- Rate limiting activo
+- CORS restringido
+- Logs optimizados
+- Swagger UI opcional
+
+## 📈 Escalabilidad
+
+### Horizontal
+- Múltiples instancias del gateway
+- Load balancer delante
+- Sticky sessions para WebSockets (si es necesario)
+
+### Vertical
+- Configuración de límites de memoria
+- Timeout configurables
+- Buffer management
+
+## 🛠️ Mantenimiento
+
+### Logs
+- Morgan para HTTP requests
+- Request IDs para trazabilidad
+- Errores estructurados
+
+### Health Checks
+- Verificación automática de servicios
+- Alertas de servicios caídos
+- Métricas de tiempo de respuesta
+
+### Documentación
+- Swagger automático
+- README actualizado
+- Arquitectura documentada

@@ -1,86 +1,125 @@
-# API Gateway
+# API Gateway - Hospital Management System
 
-Gateway minimalista para enrutar peticiones hacia microservicios backend.
+API Gateway para el sistema de gestión hospitalaria que actúa como punto de entrada único para todos los servicios backend.
 
-## Características
-
-- ✅ **Proxy transparente** usando `http-proxy-middleware`
-- ✅ **Seguridad básica** con Helmet, CORS restringido y rate limiting
-- ✅ **Streaming de archivos** (PDFs) sin parsear
-- ✅ **Propagación de headers** de autorización
-- ✅ **Health checks** de servicios backend
-- ✅ **Logging** con Morgan
-- ✅ **Código modular** y mantenible
-
-## Estructura
+## 🏗️ Arquitectura
 
 ```
-src/
-├── config/
-│   └── index.js          # Configuración centralizada
-├── middleware/
-│   ├── security.js     # Middlewares de seguridad
-│   └── proxy.js         # Configuración de proxies
-├── routes/
-│   ├── auth.js          # Rutas de autenticación
-│   ├── health.js        # Health checks
-│   └── proxy.js         # Proxies a servicios
-└── index.js             # Aplicación principal
+API Gateway (Puerto 3000)
+├── Admin Service (Puerto 3001)
+└── Medico Service (Puerto 3100)
 ```
 
-## Configuración
+## 📁 Estructura del Proyecto
 
-Copia `.env.example` a `.env` y configura las variables:
-
-```bash
-# URLs de servicios
-ADMIN_SERVICE_URL=http://localhost:3001
-MEDICO_SERVICE_URL=http://localhost:3002
-
-# Frontend para CORS
-FRONTEND_URL=http://localhost:5173
+```
+gateway/
+├── src/
+│   ├── config/
+│   │   └── index.js          # Configuración centralizada
+│   ├── middleware/
+│   │   ├── proxy.js          # Configuración de proxies
+│   │   └── security.js       # Middlewares de seguridad
+│   ├── routes/
+│   │   ├── auth.js           # Rutas de autenticación
+│   │   ├── health.js         # Endpoint de salud
+│   │   └── proxy.js          # Rutas de proxy
+│   └── index.js              # Punto de entrada
+├── swagger.js                # Documentación Swagger
+├── package.json
+└── README.md
 ```
 
-## Instalación
+## 🚀 Inicio Rápido
 
-```bash
-npm install
-```
+1. **Instalar dependencias:**
+   ```bash
+   npm install
+   ```
 
-## Desarrollo
+2. **Configurar variables de entorno:**
+   ```bash
+   cp .env.example .env
+   # Editar .env con tus configuraciones
+   ```
 
-```bash
-npm run dev
-```
+3. **Ejecutar en desarrollo:**
+   ```bash
+   npm run dev
+   ```
 
-## Producción
+4. **Ejecutar en producción:**
+   ```bash
+   npm start
+   ```
 
-```bash
-npm start
-```
+## 🔧 Configuración
 
-## Endpoints
+### Variables de Entorno
+
+| Variable | Descripción | Valor por Defecto |
+|----------|-------------|-------------------|
+| `PORT` | Puerto del gateway | `3000` |
+| `NODE_ENV` | Entorno de ejecución | `development` |
+| `ADMIN_SERVICE_URL` | URL del servicio admin | `http://localhost:3001` |
+| `MEDICO_SERVICE_URL` | URL del servicio médico | `http://localhost:3100` |
+| `FRONTEND_URL` | URL del frontend | `http://localhost:5173` |
+
+## 📚 Endpoints
 
 ### Autenticación
-- `POST /auth/login` - Login (usa axios para lógica extra)
+- `POST /auth/login` - Login de usuarios
 
-### Proxies (transparentes)
-- `GET|POST|PUT|DELETE /hospitales/*` → Admin Service
-- `GET|POST|PUT|DELETE /especialidades/*` → Admin Service  
-- `GET|POST|PUT|DELETE /medicos/*` → Admin Service
-- `GET|POST|PUT|DELETE /empleados/*` → Admin Service
-- `GET|POST|PUT|DELETE /citas/*` → Admin Service (con streaming de PDFs)
-
-### Health
+### Salud del Sistema
 - `GET /health` - Estado del gateway y servicios
 
-## Seguridad
+### Proxy de Servicios
+- `/admin/**` - Proxy al Admin Service
+- `/medico/**` - Proxy al Medico Service
+- `/especialidades` - Proxy legacy a Admin Service
+- `/hospitales` - Proxy legacy a Admin Service
+- `/medicos` - Proxy legacy a Admin Service
+- `/empleados` - Proxy legacy a Admin Service
+- `/citas` - Proxy legacy a Admin Service
 
-- **Helmet**: Headers de seguridad
-- **CORS**: Restringido al dominio del frontend
-- **Rate Limiting**: 100 requests/15min por IP
-- **Timeout**: 30s para requests a servicios
+### Documentación
+- `GET /api-docs` - Documentación Swagger UI
 
-## Streaming de Archivos
+## 🛡️ Seguridad
 
-El gateway maneja automáticamente el streaming de archivos (PDFs) sin intentar parsearlos, copiando todos los headers relevantes del servicio backend.
+- **Helmet**: Headers de seguridad HTTP
+- **CORS**: Configuración de Cross-Origin Resource Sharing
+- **Rate Limiting**: Limitación de requests por IP
+- **Request ID**: Trazabilidad de requests
+
+## 📊 Monitoreo
+
+El endpoint `/health` proporciona información detallada sobre:
+- Estado del gateway
+- Estado de los servicios backend
+- Tiempos de respuesta
+- Última verificación
+
+## 🔄 Proxy Inteligente
+
+El gateway incluye:
+- **Proxy automático** con `http-proxy-middleware`
+- **Fallback con axios** para compatibilidad
+- **Manejo de archivos binarios** (PDFs)
+- **Propagación de headers** de autenticación
+- **Trazabilidad** con Request IDs
+
+## 🐛 Troubleshooting
+
+### Error: "Servicio backend no disponible"
+- Verificar que los servicios backend estén corriendo
+- Revisar las URLs en la configuración
+- Comprobar conectividad de red
+
+### Error: "TOO_MANY_REQUESTS"
+- Rate limiting activo
+- En desarrollo, se puede deshabilitar configurando `NODE_ENV=development`
+
+### Error de CORS
+- Verificar que `FRONTEND_URL` esté configurado correctamente
+- Revisar la configuración de CORS en `src/config/index.js`
