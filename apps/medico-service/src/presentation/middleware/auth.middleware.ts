@@ -93,9 +93,21 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         usuario: usuario, // Agregar el usuario real
         hospital: defaultHospital
       };
+      
+      console.log('[AUTH MIDDLEWARE] ID calculado para médico:', {
+        usuarioId: usuario.id,
+        usuarioMedicoId: usuario.medicoId,
+        medicoInfoId: medicoInfo.id
+      });
     }
     (req as any).medico = medicoInfo;
 
+    console.log('[AUTH MIDDLEWARE] Usuario original:', {
+      id: usuario.id,
+      medicoId: usuario.medicoId,
+      email: usuario.email
+    });
+    
     console.log('[AUTH MIDDLEWARE] Médico asignado al request:', {
       id: medicoInfo.id,
       nombres: medicoInfo.nombres,

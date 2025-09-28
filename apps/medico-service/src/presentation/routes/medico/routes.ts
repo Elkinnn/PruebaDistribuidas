@@ -316,13 +316,14 @@ export class MedicoRoutes {
          * @swagger
          * /medico/especialidades:
          *   get:
-         *     summary: Obtener especialidades del médico
+         *     summary: Obtener especialidades del médico autenticado
          *     tags: [Información del Médico]
          *     security:
          *       - bearerAuth: []
+         *     description: Devuelve solo las especialidades asignadas al médico que inició sesión
          *     responses:
          *       200:
-         *         description: Lista de especialidades
+         *         description: Lista de especialidades del médico autenticado
          *         content:
          *           application/json:
          *             schema:

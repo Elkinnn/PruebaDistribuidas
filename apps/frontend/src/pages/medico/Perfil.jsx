@@ -6,6 +6,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import EditDoctorProfileModal from "../../components/medico_cita/EditDoctorProfileModal";
 import { getMedicoProfile, updateMedicoProfile } from "../../api/medico_profile";
+import { getMedicoEspecialidades } from "../../api/medico_especialidades";
 
 export default function Perfil() {
   const [data, setData] = useState(null);
@@ -15,9 +16,24 @@ export default function Perfil() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        console.log('🔥🔥🔥 INICIANDO CARGA DEL PERFIL 🔥🔥🔥');
         setLoading(true);
+        
+        console.log('🔥🔥🔥 LLAMANDO A getMedicoProfile() 🔥🔥🔥');
         const profileData = await getMedicoProfile();
-        setData(profileData);
+        console.log('🔥🔥🔥 PERFIL CARGADO:', profileData);
+        
+        console.log('🔥🔥🔥 LLAMANDO A getMedicoEspecialidades() 🔥🔥🔥');
+        const especialidadesData = await getMedicoEspecialidades();
+        console.log('🔥🔥🔥 ESPECIALIDADES CARGADAS:', especialidadesData);
+        
+        // Combinar los datos del perfil con las especialidades
+        const combinedData = {
+          ...profileData,
+          especialidades: especialidadesData.map(esp => esp.nombre) // Extraer solo los nombres
+        };
+        
+        setData(combinedData);
       } catch (error) {
         console.error('Error loading profile:', error);
         // Fallback a datos del localStorage si la API falla

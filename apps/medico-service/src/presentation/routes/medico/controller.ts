@@ -581,26 +581,40 @@ export class MedicoController {
     // ============ INFORMACIÓN DEL MÉDICO ============
     getEspecialidades = async (req: Request, res: Response) => {
         try {
+            console.log('🔥🔥🔥 GET ESPECIALIDADES LLAMADO 🔥🔥🔥');
             const medico = (req as any).medico;
-            console.log('[DEBUG] Medico hospital ID:', medico.hospital.id);
+            console.log('[DEBUG] ========== GET ESPECIALIDADES ==========');
+            console.log('[DEBUG] Medico completo:', JSON.stringify(medico, null, 2));
+            console.log('[DEBUG] Medico ID:', medico.id);
+            console.log('[DEBUG] Medico ID tipo:', typeof medico.id);
+            console.log('[DEBUG] Hospital ID:', medico.hospital?.id);
             
-            // Obtener especialidades del hospital del médico usando consulta SQL directa
+            // Obtener especialidades del médico específico usando consulta SQL directa
             const database = GlobalDatabase.getInstance().database;
             
             if (!(database as any).dataSource) {
                 throw new CustomError(500, "Error de conexión a la base de datos", null);
             }
             
-            // Consulta SQL directa para obtener especialidades del hospital
+            // Primero verificar si hay registros en MedicoEspecialidad para este médico
+            const checkMedicoEspecialidad = await (database as any).dataSource.query(`
+                SELECT * FROM MedicoEspecialidad WHERE medicoId = ?
+            `, [medico.id]);
+            
+            console.log('[DEBUG] Registros en medicoespecialidad para médico', medico.id, ':', checkMedicoEspecialidad?.length || 0);
+            console.log('[DEBUG] Detalles medicoespecialidad:', checkMedicoEspecialidad);
+            
+            // Consulta SQL directa para obtener especialidades del médico específico
             const especialidadesResult = await (database as any).dataSource.query(`
                 SELECT e.id, e.nombre, e.descripcion
-                FROM especialidad e
-                JOIN hospitalespecialidad he ON e.id = he.especialidadId
-                WHERE he.hospitalId = ?
+                FROM Especialidad e
+                JOIN MedicoEspecialidad me ON e.id = me.especialidadId
+                WHERE me.medicoId = ?
                 ORDER BY e.nombre
-            `, [medico.hospital.id]);
+            `, [medico.id]);
             
-            console.log('[DEBUG] Especialidades encontradas:', especialidadesResult?.length || 0);
+            console.log('[DEBUG] Especialidades del médico encontradas:', especialidadesResult?.length || 0);
+            console.log('[DEBUG] Detalles especialidades:', especialidadesResult);
             
             // Función para asignar iconos según la especialidad
             const getSpecialtyIcon = (nombre: string): string => {
@@ -637,6 +651,11 @@ export class MedicoController {
                 prev.medicos > current.medicos ? prev : current
             ) : { nombre: 'N/A', medicos: 0 };
 
+            console.log('🔥🔥🔥 RESPONSE ESPECIALIDADES:', {
+                data: especialidades,
+                total: totalEspecialidades
+            });
+            
             res.json({
                 data: especialidades,
                 total: totalEspecialidades,
