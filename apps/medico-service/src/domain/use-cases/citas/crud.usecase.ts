@@ -191,7 +191,12 @@ export class CRUDCitas {
                     
                     if (updateFields.fechaFin) {
                         setClause.push('`fechaFin` = ?');
-                        values.push(updateFields.fechaFin);
+                        // Asegurar que la fecha se maneje correctamente
+                        const fechaFin = new Date(updateFields.fechaFin);
+                        console.log('[CRUD CITAS UPDATE] Fecha fin recibida:', updateFields.fechaFin);
+                        console.log('[CRUD CITAS UPDATE] Fecha fin como Date:', fechaFin);
+                        console.log('[CRUD CITAS UPDATE] Fecha fin como ISO:', fechaFin.toISOString());
+                        values.push(fechaFin);
                     }
                     
                     setClause.push('`updatedAt` = ?');

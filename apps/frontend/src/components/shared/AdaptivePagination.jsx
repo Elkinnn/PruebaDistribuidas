@@ -59,10 +59,7 @@ export default function AdaptivePagination({ page, pageSize, total, onChange }) 
   if (totalPages <= 1) return null;
 
   return (
-    <div className="w-full space-y-2">
-      {/* Información de paginación */}
-      <PaginationInfo page={page} pageSize={safePageSize} total={safeTotal} />
-      
+    <div className="w-full">
       {/* Versión móvil compacta */}
       {isMobile ? (
          <div className="bg-white/95 backdrop-blur border-t border-slate-200 py-3 -mx-4">

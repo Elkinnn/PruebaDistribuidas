@@ -44,9 +44,20 @@ export class CitaController {
             const usecase = new CRUDCitas(medico)
             const { id } = req.params
             const _id = parseInt(id)
+            
+            console.log('[CITA CONTROLLER UPDATE] === INICIO ===');
+            console.log('[CITA CONTROLLER UPDATE] ID:', _id);
+            console.log('[CITA CONTROLLER UPDATE] Body recibido:', req.body);
+            console.log('[CITA CONTROLLER UPDATE] Médico:', medico?.id);
+            
             const updated = await usecase.update(_id, req.body)
+            
+            console.log('[CITA CONTROLLER UPDATE] Resultado:', updated);
+            console.log('[CITA CONTROLLER UPDATE] === FIN ===');
+            
             res.json(updated)
         } catch (error) {
+            console.error('[CITA CONTROLLER UPDATE] Error:', error);
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error)
                 return

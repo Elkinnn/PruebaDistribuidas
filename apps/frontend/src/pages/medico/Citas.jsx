@@ -324,8 +324,36 @@ export default function Citas() {
       
       if (editing) {
         // solo estado y fin
-        const updateData = { estado: form.estado, fechaFin: form.fin };
-        console.log('[CITAS COMPONENT] Actualizando cita:', editing.id, 'con datos:', updateData);
+        console.log('[CITAS COMPONENT] === INICIO ACTUALIZACIÓN ===');
+        console.log('[CITAS COMPONENT] ID cita:', editing.id);
+        console.log('[CITAS COMPONENT] Estado actual:', editing.estado);
+        console.log('[CITAS COMPONENT] Estado nuevo:', form.estado);
+        console.log('[CITAS COMPONENT] Fecha fin original:', editing.fin);
+        console.log('[CITAS COMPONENT] Fecha fin nueva (form.fin):', form.fin);
+        
+        // Validar que form.fin no esté vacío
+        if (!form.fin) {
+          throw new Error("La fecha de fin es requerida");
+        }
+        
+        // Crear objeto Date y validar
+        const fechaFinDate = new Date(form.fin);
+        if (isNaN(fechaFinDate.getTime())) {
+          throw new Error("La fecha de fin no es válida");
+        }
+        
+        console.log('[CITAS COMPONENT] Fecha fin como Date:', fechaFinDate);
+        console.log('[CITAS COMPONENT] Fecha fin como ISO:', fechaFinDate.toISOString());
+        console.log('[CITAS COMPONENT] Fecha fin como Local:', fechaFinDate.toLocaleString());
+        
+        // Preparar datos de actualización
+        const updateData = { 
+          estado: form.estado, 
+          fechaFin: fechaFinDate.toISOString() 
+        };
+        
+        console.log('[CITAS COMPONENT] Datos finales a enviar:', updateData);
+        
         await updateCita(editing.id, updateData);
         setMsg("Cita actualizada exitosamente.");
         showToast("Cita actualizada correctamente.", "success");
