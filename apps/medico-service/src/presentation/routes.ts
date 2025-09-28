@@ -8,7 +8,26 @@ export class AppRoutes {
 
     static get routes(): Router {
         const router = Router();
-        // Definir todos mis rutas principales
+        
+        /**
+         * @swagger
+         * /:
+         *   get:
+         *     summary: Información del servicio médico
+         *     tags: [Información del Servicio]
+         *     description: Endpoint principal que proporciona información básica sobre el servicio médico
+         *     responses:
+         *       200:
+         *         description: Información del servicio
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: "Medico Service - Sistema de Gestión Médica"
+         */
         router.get('/', (req, res) => {
             res.send({
                 message: "Medico Service - Sistema de Gestión Médica"

@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import { setupSwagger } from '../swagger';
 
 interface Options {
     port?: number;
@@ -17,6 +18,9 @@ export class Server {
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
         
+        // Configurar Swagger
+        setupSwagger(this.app);
+        
         // Endpoint de salud
         this.app.get('/health', (req, res) => {
             res.json({ 
@@ -29,6 +33,7 @@ export class Server {
         this.app.use(this.routes);
         this.app.listen(this.port, () => {
             console.log(`Server is running on port ${this.port}`);
+            console.log(`Swagger documentation available at http://localhost:${this.port}/api-docs`);
         })
     }
 }
