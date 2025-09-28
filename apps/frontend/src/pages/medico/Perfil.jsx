@@ -16,16 +16,13 @@ export default function Perfil() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        console.log('🔥🔥🔥 INICIANDO CARGA DEL PERFIL 🔥🔥🔥');
         setLoading(true);
         
-        console.log('🔥🔥🔥 LLAMANDO A getMedicoProfile() 🔥🔥🔥');
-        const profileData = await getMedicoProfile();
-        console.log('🔥🔥🔥 PERFIL CARGADO:', profileData);
-        
-        console.log('🔥🔥🔥 LLAMANDO A getMedicoEspecialidades() 🔥🔥🔥');
-        const especialidadesData = await getMedicoEspecialidades();
-        console.log('🔥🔥🔥 ESPECIALIDADES CARGADAS:', especialidadesData);
+        // Cargar perfil y especialidades en paralelo
+        const [profileData, especialidadesData] = await Promise.all([
+          getMedicoProfile(),
+          getMedicoEspecialidades()
+        ]);
         
         // Combinar los datos del perfil con las especialidades
         const combinedData = {
