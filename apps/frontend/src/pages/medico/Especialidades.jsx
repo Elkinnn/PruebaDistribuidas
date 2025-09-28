@@ -2,7 +2,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Card from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
-import Pagination from "../../components/shared/Pagination";
+import AdaptivePagination from "../../components/shared/AdaptivePagination";
 import { getEspecialidadesMedico } from "../../api/especialidad.medico";
 
 export default function Especialidades() {
@@ -96,7 +96,7 @@ export default function Especialidades() {
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative pb-20">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Especialidades Médicas</h1>
@@ -213,11 +213,11 @@ export default function Especialidades() {
         )}
       </div>
 
-      {/* ⬇️ Paginación SIEMPRE abajo */}
+      {/* ⬇️ Paginación adaptativa - Siempre abajo */}
       {total > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-20">
-          <div className="w-[calc(100%-16rem)] ml-auto px-6 py-3 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 rounded-t-lg shadow">
-            <Pagination
+        <div className="fixed bottom-0 left-0 right-0 z-20">
+          <div className="w-[calc(100%-16rem)] ml-auto pl-6 pr-6">
+            <AdaptivePagination
               page={page}
               pageSize={pageSize}
               total={total}

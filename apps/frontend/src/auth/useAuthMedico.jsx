@@ -114,11 +114,34 @@ export const AuthMedicoProvider = ({ children }) => {
   }
 
   const logout = () => {
-    localStorage.removeItem('clinix_medico_token')
-    localStorage.removeItem('clinix_medico_user')
-    setUser(null)
-    navigate('/medico/login')
-    toast.success('Sesión cerrada')
+    console.log('=== INICIANDO LOGOUT ===')
+    try {
+      // Limpiar localStorage
+      localStorage.removeItem('clinix_medico_token')
+      localStorage.removeItem('clinix_medico_user')
+      console.log('localStorage limpiado')
+      
+      // Limpiar estado
+      setUser(null)
+      console.log('Estado de usuario limpiado')
+      
+      // Mostrar mensaje de éxito
+      toast.success('Sesión cerrada')
+      
+      // Navegar al login
+      navigate('/medico/login', { replace: true })
+      console.log('Navegando a /medico/login')
+      
+      // Forzar recarga de la página para limpiar cualquier estado residual
+      setTimeout(() => {
+        window.location.href = '/medico/login'
+      }, 100)
+      
+    } catch (error) {
+      console.error('Error durante logout:', error)
+      // En caso de error, forzar navegación
+      window.location.href = '/medico/login'
+    }
   }
 
   const value = {

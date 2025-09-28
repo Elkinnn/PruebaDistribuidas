@@ -222,11 +222,14 @@ export default function MedicoLayout() {
 
           <div className="border-t border-slate-200 px-2 pb-3 pt-1">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Botón cerrar sesión clickeado en sidebar desktop');
                 logout();
               }}
               title="Cerrar sesión"
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
             >
               <LogOut size={18} />
               <span className={`${collapsed ? "hidden" : "inline"}`}>Cerrar sesión</span>
@@ -315,11 +318,14 @@ export default function MedicoLayout() {
 
                 <div className="border-t border-slate-200 px-2 pb-3 pt-1">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Botón cerrar sesión clickeado en drawer móvil');
                       logout();
                     }}
                     title="Cerrar sesión"
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
                   >
                     <LogOut size={18} />
                     <span>Cerrar sesión</span>

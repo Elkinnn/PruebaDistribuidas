@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Modal from "../../components/ui/Modal";
-import Pagination from "../../components/shared/Pagination";
+import AdaptivePagination from "../../components/shared/AdaptivePagination";
 import MedicoCitaForm from "../../components/medico_cita/MedicoCitaForm";
 import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
 // Si tu API está en src/api/cita.js cambia la import a "../../api/cita"
@@ -347,8 +347,8 @@ export default function Citas() {
   }
 
   return (
-    // ⬇️ contenedor relativo (no cambia nada visual)
-    <div className="space-y-6 relative">
+    // ⬇️ contenedor con padding inferior para el paginador fijo
+    <div className="space-y-6 relative pb-20">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -383,10 +383,10 @@ export default function Citas() {
           const i = new Date(c.inicio), f = new Date(c.fin);
           const fecha = i.toLocaleDateString();
           const hora = `${i.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — ${f.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-          const badge =
-            c.estado === "PROGRAMADA" ? "bg-blue-100 text-blue-700" :
-            c.estado === "ATENDIDA"   ? "bg-gray-200 text-gray-700" :
-                                         "bg-rose-100 text-rose-700";
+            const badge =
+              c.estado === "PROGRAMADA" ? "bg-blue-100 text-blue-700" :
+              c.estado === "ATENDIDA"   ? "bg-green-100 text-green-700" :
+                                           "bg-rose-100 text-rose-700";
           return (
             <Card key={c.id} className="p-6">
               <div className="flex items-center justify-between gap-4">
@@ -454,12 +454,11 @@ export default function Citas() {
         })}
       </div>
 
-      {/* ⬇️ Paginación SIEMPRE abajo */}
+      {/* ⬇️ Paginación adaptativa - Siempre abajo */}
       {!loading && total > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-20">
-          {/* ajusta 16rem si deseas mover más/menos a la izquierda */}
-          <div className="w-[calc(100%-16rem)] ml-auto px-6 py-3 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 rounded-t-lg shadow">
-            <Pagination
+        <div className="fixed bottom-0 left-0 right-0 z-20">
+          <div className="w-[calc(100%-16rem)] ml-auto pl-6 pr-6">
+            <AdaptivePagination
               page={page}
               pageSize={pageSize}
               total={total}
