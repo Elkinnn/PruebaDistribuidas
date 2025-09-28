@@ -4,8 +4,17 @@ const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 async function handle(res) {
   if (!res.ok) {
     // intenta parsear error JSON; si no, usa statusText
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw err;
+    const errorData = await res.json().catch(() => ({ message: res.statusText }));
+    
+    // Crear error que preserve el status code
+    const error = new Error(errorData.message || res.statusText);
+    error.status = res.status;
+    error.response = {
+      status: res.status,
+      data: errorData
+    };
+    
+    throw error;
   }
   return res.json();
 }

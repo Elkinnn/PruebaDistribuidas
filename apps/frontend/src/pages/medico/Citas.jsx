@@ -8,6 +8,7 @@ import MedicoCitaForm from "../../components/medico_cita/MedicoCitaForm";
 import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
 // Si tu API está en src/api/cita.js cambia la import a "../../api/cita"
 import { listCitas, createCita, updateCita, deleteCita } from "../../api/medico_cita";
+import { checkScheduleOverlap, generateOverlapMessage } from "../../utils/scheduleValidator";
 
 function isoToLocal(dt) {
   if (!dt) return "";
@@ -237,6 +238,11 @@ export default function Citas() {
   function getFriendlyErrorMessage(errorMessage, errorResponse = null) {
     if (!errorMessage) return "Error al procesar la solicitud.";
     
+    // Verificar primero si es error 409 (Conflict) - solapamiento de horarios
+    if (errorResponse?.status === 409 || errorResponse?.response?.status === 409) {
+      return "Ya existe una cita en este horario. Selecciona otro horario.";
+    }
+    
     // Si el error viene del backend con un mensaje específico, usarlo
     if (errorResponse?.response?.data?.message) {
       return errorResponse.response.data.message;
@@ -266,9 +272,10 @@ export default function Citas() {
       return "Ya existe un paciente con este teléfono. Por favor, usa un número diferente.";
     }
     
-    // Error de solapamiento de horarios
-    if (errorMessage.includes("solapamiento") || errorMessage.includes("overlap")) {
-      return "Ya existe una cita programada en este horario. Por favor, selecciona otro horario.";
+    // Error de solapamiento de horarios (por mensaje)
+    if (errorMessage.includes("solapamiento") || errorMessage.includes("overlap") || 
+        errorMessage.includes("se solapa con otra cita")) {
+      return "Ya existe una cita en este horario. Selecciona otro horario.";
     }
     
     // Error de conexión a base de datos
@@ -293,7 +300,28 @@ export default function Citas() {
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg("");
+    
     try {
+      // Validación de solapamiento en el frontend (solo para creación y si se cambian fechas)
+      if (!editing && form.inicio && form.fin) {
+        console.log('[CITAS COMPONENT] Validando solapamiento para nueva cita...');
+        
+        const newStart = new Date(form.inicio);
+        const newEnd = new Date(form.fin);
+        
+        // Verificar solapamiento con todas las citas existentes
+        const allCitas = await getAllCitasForValidation();
+        const overlapCheck = checkScheduleOverlap(newStart, newEnd, allCitas);
+        
+        if (overlapCheck.hasOverlap) {
+          const overlapMessage = generateOverlapMessage(overlapCheck, newStart, newEnd);
+          console.log('[CITAS COMPONENT] Solapamiento detectado:', overlapMessage);
+          setMsg(overlapMessage);
+          showToast(overlapMessage, "error");
+          return;
+        }
+      }
+      
       if (editing) {
         // solo estado y fin
         const updateData = { estado: form.estado, fechaFin: form.fin };
@@ -302,6 +330,7 @@ export default function Citas() {
         setMsg("Cita actualizada exitosamente.");
         showToast("Cita actualizada correctamente.", "success");
       } else {
+        console.log('[CITAS COMPONENT] Creando cita con datos:', form);
         await createCita(form);
         setMsg("Cita creada exitosamente.");
         showToast("Cita creada correctamente.", "success");
@@ -312,9 +341,26 @@ export default function Citas() {
       await load(editing ? page : 1);
       if (!editing) setPage(1);
     } catch (err) {
+      console.error('[CITAS COMPONENT] Error capturado:', err);
+      console.error('[CITAS COMPONENT] Error status:', err.status);
+      console.error('[CITAS COMPONENT] Error response:', err.response);
+      console.error('[CITAS COMPONENT] Error message:', err.message);
+      
       const friendlyMessage = getFriendlyErrorMessage(err.message, err);
       setMsg(friendlyMessage);
       showToast(friendlyMessage, "error");
+    }
+  }
+
+  // Función auxiliar para obtener todas las citas para validación
+  async function getAllCitasForValidation() {
+    try {
+      // Obtener todas las citas sin paginación para validación
+      const { items } = await listCitas({ page: 1, pageSize: 1000, q: "" });
+      return items || [];
+    } catch (error) {
+      console.error('[CITAS COMPONENT] Error obteniendo citas para validación:', error);
+      return [];
     }
   }
 
