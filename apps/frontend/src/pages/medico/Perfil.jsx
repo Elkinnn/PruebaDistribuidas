@@ -62,31 +62,44 @@ export default function Perfil() {
       // Separar los datos que van al backend de los que solo se actualizan en el frontend
       const { diasTrabajo, ...backendData } = patch;
       
-      // Actualizar en el backend solo nombre y email
-      if (backendData.nombre || backendData.email) {
+      // Actualizar en el backend solo nombres, apellidos y email
+      if (backendData.nombres || backendData.apellidos || backendData.email) {
         await updateMedicoProfile(backendData);
         
         // Actualizar el estado local inmediatamente después de la actualización exitosa
         setData(prev => ({
           ...prev,
-          ...backendData
+          ...backendData,
+          // Combinar nombres y apellidos si vienen separados
+          nombre: backendData.nombres && backendData.apellidos 
+            ? `${backendData.nombres} ${backendData.apellidos}` 
+            : backendData.nombre || prev.nombre
         }));
 
-        // Actualizar localStorage con el nuevo nombre y email
-        if (backendData.nombre || backendData.email) {
-          const userData = JSON.parse(localStorage.getItem("clinix_user_medico") || "{}");
-          if (backendData.nombre) {
-            userData.nombre = backendData.nombre;
+        // Actualizar localStorage con los nuevos datos
+        if (backendData.nombres || backendData.apellidos || backendData.email) {
+          const userData = JSON.parse(localStorage.getItem("clinix_medico_user") || "{}");
+          if (backendData.nombres) {
+            userData.nombres = backendData.nombres;
+          }
+          if (backendData.apellidos) {
+            userData.apellidos = backendData.apellidos;
           }
           if (backendData.email) {
             userData.email = backendData.email;
           }
-          localStorage.setItem("clinix_user_medico", JSON.stringify(userData));
+          // Actualizar también el nombre completo
+          if (backendData.nombres && backendData.apellidos) {
+            userData.nombre = `${backendData.nombres} ${backendData.apellidos}`;
+          }
+          localStorage.setItem("clinix_medico_user", JSON.stringify(userData));
           
           // Disparar evento personalizado para actualizar el layout
           window.dispatchEvent(new CustomEvent('medicoProfileUpdated', { 
             detail: { 
-              nombre: backendData.nombre,
+              nombre: backendData.nombres && backendData.apellidos 
+                ? `${backendData.nombres} ${backendData.apellidos}` 
+                : backendData.nombre,
               email: backendData.email 
             } 
           }));

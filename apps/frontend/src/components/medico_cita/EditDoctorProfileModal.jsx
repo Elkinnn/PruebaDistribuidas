@@ -13,7 +13,8 @@ export default function EditDoctorProfileModal({ open, onClose, initial, onSave 
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const payload = {
-      nombre: form.get("nombre") || "",
+      nombres: form.get("nombres") || "",
+      apellidos: form.get("apellidos") || "",
       email: form.get("email") || "",
       diasTrabajo: DIAS.filter(d => form.get(`dia_${d}`)),
     };
@@ -41,12 +42,12 @@ export default function EditDoctorProfileModal({ open, onClose, initial, onSave 
               <p className="text-sm text-slate-600">Actualiza tus datos de contacto</p>
             </div>
             
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="relative">
                 <Input 
-                  name="nombre" 
-                  label="Nombre Completo" 
-                  defaultValue={data.nombre}
+                  name="nombres" 
+                  label="Nombres" 
+                  defaultValue={data.nombres || data.nombre?.split(' ')[0] || ''}
                   required
                   className="pl-12"
                 />
@@ -58,6 +59,21 @@ export default function EditDoctorProfileModal({ open, onClose, initial, onSave 
               </div>
               
               <div className="relative">
+                <Input 
+                  name="apellidos" 
+                  label="Apellidos" 
+                  defaultValue={data.apellidos || data.nombre?.split(' ').slice(1).join(' ') || ''}
+                  required
+                  className="pl-12"
+                />
+                <div className="absolute left-4 top-8 w-5 h-5 text-slate-400">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              
+              <div className="relative md:col-span-2">
                 <Input 
                   name="email" 
                   type="email" 
