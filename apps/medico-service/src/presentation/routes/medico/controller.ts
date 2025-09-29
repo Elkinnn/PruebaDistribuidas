@@ -473,13 +473,14 @@ export class MedicoController {
         try {
             const medico = (req as any).medico;
             const { id } = req.params;
-            const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin, motivo } = req.body;
+            const { estado, inicio: nuevaFechaInicio, fin: nuevaFechaFin, fechaFin, motivo } = req.body;
 
             console.log('[UPDATE CITA CONTROLLER] Datos recibidos:');
             console.log('- ID de cita:', id);
             console.log('- Estado:', estado);
             console.log('- Fecha inicio:', nuevaFechaInicio);
-            console.log('- Fecha fin:', nuevaFechaFin);
+            console.log('- Fecha fin (fin):', nuevaFechaFin);
+            console.log('- Fecha fin (fechaFin):', fechaFin);
             console.log('- Motivo:', motivo);
             console.log('- Body completo:', req.body);
 
@@ -509,9 +510,11 @@ export class MedicoController {
                     });
                 }
             }
-            if (nuevaFechaFin) {
+            // Usar fechaFin si está disponible, sino usar fin (para compatibilidad)
+            const fechaFinValue = fechaFin || nuevaFechaFin;
+            if (fechaFinValue) {
                 try {
-                    updateData.fechaFin = new Date(nuevaFechaFin);
+                    updateData.fechaFin = new Date(fechaFinValue);
                     console.log('[UPDATE CITA CONTROLLER] Fecha fin convertida:', updateData.fechaFin);
                 } catch (error) {
                     console.error('[UPDATE CITA CONTROLLER] Error convirtiendo fecha fin:', error);

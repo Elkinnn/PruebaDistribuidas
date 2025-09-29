@@ -106,23 +106,17 @@ export class CRUDCitas {
             });
             // Validaciones de estado con mensajes claros
             if (toUpdate.estado == "ATENDIDA") {
-                // Solo permitir cambiar la fecha de fin en citas ATENDIDAS
-                if (data.estado && data.estado !== "ATENDIDA") {
-                    console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita ATENDIDA');
-                    throw new CustomError(400, "No se puede cambiar el estado de una cita atendida", 
-                        "Una cita que ya ha sido atendida solo puede tener su fecha de fin modificada.");
-                }
-                console.log('[CRUD CITAS UPDATE] Permitiendo actualización de fecha de fin en cita ATENDIDA');
+                // No permitir editar citas ATENDIDAS
+                console.log('[CRUD CITAS UPDATE] Error: No se puede editar una cita ATENDIDA');
+                throw new CustomError(400, "No se puede editar una cita atendida", 
+                    "No se puede editar una cita que ya ha sido atendida.");
             }
             
             if (toUpdate.estado == "CANCELADA") {
-                // Solo permitir cambiar la fecha de fin en citas CANCELADAS
-                if (data.estado && data.estado !== "CANCELADA") {
-                    console.log('[CRUD CITAS UPDATE] Error: No se puede cambiar el estado de una cita CANCELADA');
-                    throw new CustomError(400, "No se puede cambiar el estado de una cita cancelada", 
-                        "Una cita que ha sido cancelada solo puede tener su fecha de fin modificada.");
-                }
-                console.log('[CRUD CITAS UPDATE] Permitiendo actualización de fecha de fin en cita CANCELADA');
+                // No permitir editar citas CANCELADAS
+                console.log('[CRUD CITAS UPDATE] Error: No se puede editar una cita CANCELADA');
+                throw new CustomError(400, "No se puede editar una cita cancelada", 
+                    "No se puede editar una cita que ya ha sido cancelada.");
             }
             
             // Validar cambios de estado solo para citas PROGRAMADAS y solo si se está cambiando el estado
