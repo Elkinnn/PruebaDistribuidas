@@ -1,53 +1,76 @@
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-require('dotenv').config();
+const { randomUUID } = require('crypto');
+
+const { helmet, cors, rateLimit } = require('./middleware/security');
+const config = require('./config');
+
+// Swagger documentation
+const { swaggerUi, specs } = require('../swagger');
+
+// Importar rutas
+const authRoutes = require('./routes/auth');
+const proxyRoutes = require('./routes/proxy');
+const healthRoutes = require('./routes/health');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
+// Trust proxy para headers de forwarding
+app.set('trust proxy', 1);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+// Middleware de trazabilidad
+app.use((req, res, next) => {
+  // Generar ID único para la request
+  req.id = req.headers['x-request-id'] || randomUUID();
+  
+  // Añadir Vary: Origin para CORS
+  res.setHeader('Vary', 'Origin');
+  
+  next();
 });
 
-// Proxy routes
-app.use('/api/admin', createProxyMiddleware({
-  target: process.env.ADMIN_SERVICE_URL || 'http://localhost:3001',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/admin': ''
-  }
+// Middlewares de seguridad (orden importante)
+app.use(helmet);
+app.use(cors);
+
+// Middlewares básicos
+app.use(morgan('dev'));
+app.use(express.json({ limit: '10mb' })); // Aumentar límite para archivos grandes
+
+// Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'API Gateway Documentation'
 }));
 
-app.use('/api/medico', createProxyMiddleware({
-  target: process.env.MEDICO_SERVICE_URL || 'http://localhost:3002',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/medico': ''
-  }
-}));
+// Rutas
+app.use('/auth', rateLimit, authRoutes); // Rate limit solo en /auth
+app.use('/health', healthRoutes);
+app.use('/', proxyRoutes);
 
-// Serve frontend (en producción)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('../apps/frontend/build'));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../apps/frontend/build/index.html'));
+// 404 del gateway
+app.use((_req, res) => 
+  res.status(404).json({ 
+    error: 'NOT_FOUND_GATEWAY', 
+    message: 'Ruta no encontrada en el API Gateway' 
+  })
+);
+
+// Manejo de errores global
+app.use((error, req, res, next) => {
+  console.error('[GATEWAY ERROR]', error.message);
+  res.status(500).json({ 
+    error: 'INTERNAL_SERVER_ERROR', 
+    message: 'Error interno del servidor' 
   });
-}
+});
 
+// Arranque del servidor
+const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`🚀 Gateway running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Admin service: http://localhost:${PORT}/api/admin`);
-  console.log(`🔗 Medico service: http://localhost:${PORT}/api/medico`);
+  console.log(`🚀 API Gateway escuchando en puerto ${PORT}`);
+  console.log(`📊 Entorno: ${config.nodeEnv}`);
+  console.log(`🔗 Admin Service: ${config.services.admin}`);
+  console.log(`🔗 Medico Service: ${config.services.medico || 'No configurado'}`);
+  console.log(`🌐 CORS Origin: ${config.cors.origin}`);
 });

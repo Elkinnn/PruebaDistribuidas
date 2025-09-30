@@ -1,24 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Logo from "../../components/ui/Logo";
-import { logout } from "../../api/auth";
+import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
 
 export default function MedicoDashboard() {
   const nav = useNavigate();
-  const user = JSON.parse(localStorage.getItem("clinix_user") || "null");
+  const { user, logout } = useAuthMedico();
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <header className="mx-auto flex max-w-5xl items-center justify-between">
         <Logo />
         <div className="flex items-center gap-3 text-sm text-slate-600">
-          <span>{user?.email}</span>
+          <span>{user?.nombre} {user?.apellidos} - {user?.especialidades?.[0] || "Medicina General"}</span>
           <Button
             className="bg-slate-700 hover:bg-slate-800"
-            onClick={() => {
-              logout();
-              nav("/login", { replace: true });
-            }}
+            onClick={logout}
           >
             Cerrar sesión
           </Button>
@@ -30,7 +27,10 @@ export default function MedicoDashboard() {
           Panel Médico (Clinix)
         </h1>
         <p className="mt-2 text-slate-600">
-          Aquí irán agenda, citas y pacientes.
+          Bienvenido Dr. {user?.nombre} {user?.apellidos}, especialista en {user?.especialidades?.[0] || "Medicina General"}.
+        </p>
+        <p className="mt-2 text-slate-600">
+          Aquí podrás gestionar tus citas, pacientes y especialidades.
         </p>
       </main>
     </div>

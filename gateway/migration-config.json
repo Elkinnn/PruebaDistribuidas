@@ -1,0 +1,14 @@
+{
+  "current": "index.js",
+  "hybrid": "index-hybrid.js",
+  "clean": "index-clean.js",
+  "backup": "index-backup.js",
+  "status": "READY_FOR_MIGRATION",
+  "steps": [
+    "1. Probar Gateway Híbrido",
+    "2. Migrar rutas gradualmente",
+    "3. Probar cada migración",
+    "4. Cambiar a Gateway Limpio",
+    "5. Testing final"
+  ]
+}

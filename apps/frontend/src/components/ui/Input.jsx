@@ -6,7 +6,7 @@ export default function Input({ label, error, className = "", ...props }) {
             )}
             <input
                 className={
-                    "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm " +
+                    "w-full rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm " +
                     "placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 " +
                     "focus:border-emerald-500 " +
                     className

@@ -1,39 +1,44 @@
-const MOCK_USERS = [
-  {
-    id: "u-admin-1",
-    email: "admin@clinix.ec",
-    password: "Clinix123",      // demo
-    rol: "ADMIN_GLOBAL",
-  },
-  {
-    id: "u-medico-1",
-    email: "medico@clinix.ec",
-    password: "Clinix123",      // demo
-    rol: "MEDICO",
-  },
-];
+import apiClient from './client'
 
-export async function loginRequest({ email, password }) {
-  // pequeño delay para UX
-  await new Promise((r) => setTimeout(r, 500));
-
-  const user = MOCK_USERS.find(
-    (u) => u.email.toLowerCase() === String(email).toLowerCase()
-  );
-  if (!user || user.password !== password) {
-    const error = new Error("Credenciales inválidas");
-    error.response = { data: { message: "Correo o contraseña incorrectos." } };
-    throw error;
+export async function loginAdminRequest({ email, password }) {
+  try {
+    const response = await apiClient.post('/auth/login', { email, password });
+    const { token, user } = response.data;
+    
+    // Guardar token en localStorage
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('clinix_user', JSON.stringify(user));
+    
+    return { token, user };
+  } catch (error) {
+    // Re-lanzar error con formato consistente
+    const errorMessage = error.response?.data?.message || 'Error de conexión';
+    const newError = new Error(errorMessage);
+    newError.response = { data: { message: errorMessage } };
+    throw newError;
   }
+}
 
-  // token de mentira para simular sesión
-  const token = btoa(`${user.id}.${user.rol}.${Date.now()}`);
-  const { password: _omit, ...safeUser } = user;
-
-  return { token, user: safeUser };
+// Función genérica para login (admin y médico)
+export async function loginRequest({ email, password }) {
+  try {
+    const response = await apiClient.post('/auth/login', { email, password });
+    const { token, user } = response.data;
+    
+    // Guardar token en localStorage
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('clinix_user', JSON.stringify(user));
+    
+    return { token, user };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Error de conexión';
+    const newError = new Error(errorMessage);
+    newError.response = { data: { message: errorMessage } };
+    throw newError;
+  }
 }
 
 export function logout() {
-  localStorage.removeItem("clinix_token");
+  localStorage.removeItem("authToken");
   localStorage.removeItem("clinix_user");
 }

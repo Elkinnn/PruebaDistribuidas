@@ -18,36 +18,44 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Verificar si hay un token guardado
-    const token = localStorage.getItem('authToken')
-    if (token) {
-      // Aquí podrías validar el token con el servidor
-      setUser({ token })
+    async function validateToken() {
+      const token = localStorage.getItem('authToken')
+      const userStr = localStorage.getItem('clinix_user')
+      
+      if (token && userStr) {
+        try {
+          // Validar token con el servidor
+          const { default: apiClient } = await import('../api/client')
+          const response = await apiClient.post('/auth/validate-token', { token })
+          
+          if (response.data.success) {
+            setUser(JSON.parse(userStr))
+          } else {
+            // Token inválido, limpiar
+            localStorage.removeItem('authToken')
+            localStorage.removeItem('clinix_user')
+          }
+        } catch (error) {
+          // Token inválido, limpiar
+          localStorage.removeItem('authToken')
+          localStorage.removeItem('clinix_user')
+        }
+      }
+      setLoading(false)
     }
-    setLoading(false)
+    
+    validateToken()
   }, [])
 
   const login = async (email, password) => {
     try {
-      // Simular llamada a la API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem('authToken', data.token)
-        setUser(data.user)
-        toast.success('Inicio de sesión exitoso')
-        navigate('/')
-        return true
-      } else {
-        throw new Error('Credenciales inválidas')
-      }
+      const { loginAdminRequest } = await import('../api/auth')
+      const { token, user } = await loginAdminRequest({ email, password })
+      
+      setUser(user)
+      toast.success('Inicio de sesión exitoso')
+      navigate('/admin')
+      return true
     } catch (error) {
       toast.error('Error en el inicio de sesión')
       return false
@@ -56,8 +64,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('authToken')
+    localStorage.removeItem('clinix_user')
     setUser(null)
-    navigate('/login')
+    navigate('/admin/login')
     toast.success('Sesión cerrada')
   }
 

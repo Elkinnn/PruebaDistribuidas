@@ -1,0 +1,45 @@
+import { Router } from "express";
+import { LoginRoutes } from "./routes/login/routes";
+import { CitaRoutes } from "./routes/citas/routes";
+import { MedicoRoutes } from "./routes/medico/routes";
+
+export class AppRoutes {
+    constructor() { }
+
+    static get routes(): Router {
+        const router = Router();
+        
+        /**
+         * @swagger
+         * /:
+         *   get:
+         *     summary: Información del servicio médico
+         *     tags: [Información del Servicio]
+         *     description: Endpoint principal que proporciona información básica sobre el servicio médico
+         *     responses:
+         *       200:
+         *         description: Información del servicio
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: "Medico Service - Sistema de Gestión Médica"
+         */
+        router.get('/', (req, res) => {
+            res.send({
+                message: "Medico Service - Sistema de Gestión Médica"
+            })
+        });
+
+        // Rutas de autenticación y gestión de médicos
+        router.use('/medico', MedicoRoutes.routes);
+        
+        // Rutas legacy (mantener para compatibilidad)
+        router.use('/login', LoginRoutes.routes)
+        router.use('/citas', CitaRoutes.routes)
+        return router;
+    }
+}

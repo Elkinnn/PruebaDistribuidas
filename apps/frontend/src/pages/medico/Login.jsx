@@ -1,0 +1,108 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import Input from "../../components/ui/Input";
+import Logo from "../../components/ui/Logo";
+import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
+
+export default function MedicoLogin() {
+  const { login, loading } = useAuthMedico();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [serverError, setServerError] = useState("");
+
+  const emailError = touched && !/^\S+@\S+\.\S+$/.test(email) ? "Correo inválido" : "";
+  const pwdError = touched && password.length < 6 ? "Mínimo 6 caracteres" : "";
+  const formInvalid = !!emailError || !!pwdError || !email || !password;
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setTouched(true);
+    if (formInvalid) return;
+
+    setServerError("");
+    const success = await login(email, password);
+    if (!success) {
+      setServerError("Credenciales inválidas o usuario no autorizado.");
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-sky-50 to-indigo-50">
+      <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-center gap-12 px-6 py-10 md:grid-cols-2">
+        <div className="hidden md:block">
+          <Logo className="mb-6" />
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Acceso Médico</h1>
+          <p className="mt-3 max-w-md text-slate-600">
+            Inicia sesión para gestionar tus citas y especialidades.
+          </p>
+        </div>
+
+        <Card className="mx-auto w-full max-w-md backdrop-blur-sm">
+          <div className="border-b border-slate-200/70 p-6">
+            <div className="flex items-center justify-between">
+              <Logo />
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                Acceso médico
+              </span>
+            </div>
+          </div>
+
+          <form className="grid gap-4 p-6" onSubmit={onSubmit} noValidate>
+            <Input
+              label="Correo electrónico"
+              type="email"
+              autoComplete="email"
+              placeholder="tu-correo@clinix.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched(true)}
+              error={emailError}
+            />
+
+            <div className="grid gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Contraseña</span>
+                {/* Enlace eliminado */}
+              </div>
+              <div className="relative">
+                <input
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                  type={showPwd ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-xs text-slate-500 hover:bg-slate-100"
+                >
+                  {showPwd ? "Ocultar" : "Ver"}
+                </button>
+              </div>
+              {pwdError ? <span className="text-xs text-rose-600">{pwdError}</span> : null}
+            </div>
+
+            {serverError ? (
+              <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+                {serverError}
+              </div>
+            ) : null}
+
+            <Button type="submit" disabled={formInvalid || loading} loading={loading}>
+              Ingresar
+            </Button>
+
+            <p className="text-center text-xs text-slate-500">Acceso exclusivo para personal médico.</p>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+}
