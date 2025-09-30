@@ -1,0 +1,586 @@
+// src/pages/medico/Citas.jsx
+import { useEffect, useMemo, useState } from "react";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import Modal from "../../components/ui/Modal";
+import AdaptivePagination from "../../components/shared/AdaptivePagination";
+import MedicoCitaForm from "../../components/medico_cita/MedicoCitaForm";
+import { useAuthMedico } from "../../auth/useAuthMedico.jsx";
+// Si tu API está en src/api/cita.js cambia la import a "../../api/cita"
+import { listCitas, createCita, updateCita, deleteCita } from "../../api/medico_cita";
+import { checkScheduleOverlap, generateOverlapMessage } from "../../utils/scheduleValidator";
+
+function isoToLocal(dt) {
+  if (!dt) return "";
+  const d = new Date(dt);
+  if (isNaN(d)) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* --- Toast (alerta bonita) ------------------------------- */
+function Toast({ open, type = "success", text, onClose }) {
+  if (!open) return null;
+  const palette =
+    type === "success"
+      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+      : "bg-rose-50 text-rose-800 ring-1 ring-rose-200";
+
+  return (
+    <div className="fixed top-4 right-4 z-[60]">
+      <div className={`max-w-sm rounded-xl shadow-lg px-4 py-3 ${palette} backdrop-blur`}>
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">
+            {type === "success" ? (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm-1.1-6.1 6.3-6.3-1.4-1.4-4.9 4.9-2.1-2.1-1.4 1.4 3.5 3.5z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11 7h2v6h-2V7zm0 8h2v2h-2v-2zm1-13C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+              </svg>
+            )}
+          </div>
+          <div className="text-sm leading-5">{text}</div>
+          <button
+            onClick={onClose}
+            className="ml-2 rounded-lg px-2 py-1 text-xs/5 hover:bg-black/5"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* -------------------------------------------------------- */
+
+export default function Citas() {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);       // objeto cita o null
+  const [items, setItems] = useState([]);             // página actual
+  
+  const [total, setTotal] = useState(0);              // total registros
+  const [page, setPage] = useState(1);                // página actual
+  
+  
+  const pageSize = 4;                                  // ← paginación 4 en 4
+
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");                 // mensaje para el form
+  const [q, setQ] = useState("");
+
+  // toast state
+  const [toast, setToast] = useState({ open: false, type: "success", text: "" });
+  const showToast = (text, type = "success") => {
+    setToast({ open: true, type, text });
+    // autocierre
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast((t) => ({ ...t, open: false })), 3200);
+  };
+
+  // confirmación eliminar
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  // bloquear scroll del body con modal abierto
+  useEffect(() => {
+    if (open || confirmOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open, confirmOpen]);
+
+  const emptyForm = useMemo(
+    () => ({
+      medicoId: "",
+      inicio: "",
+      fin: "",
+      motivo: "",
+      estado: "PROGRAMADA",
+      paciente: {
+        nombres: "",
+        apellidos: "",
+        documento: "",
+        telefono: "",
+        email: "",
+        fechaNacimiento: "",
+        sexo: "masculino", // el form lo resetea a "" en modo crear
+      },
+    }),
+    []
+  );
+  const [form, setForm] = useState(emptyForm);
+
+  // Obtener médico autenticado
+  const { user } = useAuthMedico();
+  const [medicoInfo, setMedicoInfo] = useState(null);
+  
+  // Crear lista con solo el médico autenticado
+  const medicos = useMemo(() => {
+    if (user && user.medicoId) {
+      const nombreCompleto = medicoInfo?.nombre || `${user.nombre} ${user.apellidos}`;
+      console.log('[CITAS] Nombre del médico:', nombreCompleto, 'medicoInfo:', medicoInfo);
+      return [{
+        id: user.medicoId,
+        nombre: nombreCompleto
+      }];
+    }
+    return [];
+  }, [user, medicoInfo]);
+
+  async function load(pageNum) {
+    setLoading(true);
+    try {
+      const { items, total } = await listCitas({ q, page: pageNum, pageSize });
+      setItems(items);
+      setTotal(total);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // cuando cambia la búsqueda, vuelve a la primera página
+  useEffect(() => { setPage(1); }, [q]);
+
+  // cargar cada vez que cambie page o q
+  useEffect(() => { 
+    load(page); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, q, pageSize]);
+
+  // Cargar información inicial del médico
+  useEffect(() => {
+    const loadMedicoInfo = async () => {
+      try {
+        const { getMedicoInfo } = await import("../../api/medico_info");
+        const res = await getMedicoInfo();
+        if (res?.success) {
+          setMedicoInfo(res.data);
+        }
+      } catch (error) {
+        console.error("Error cargando información del médico:", error);
+      }
+    };
+
+    loadMedicoInfo();
+  }, []);
+
+  // Escuchar eventos de actualización del perfil
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      const { nombre, email } = event.detail;
+      console.log('[CITAS] Evento de actualización recibido:', { nombre, email });
+      if (nombre || email) {
+        setMedicoInfo(prev => ({
+          ...prev,
+          ...(nombre && { nombre }),
+          ...(email && { email })
+        }));
+      }
+    };
+
+    window.addEventListener('medicoProfileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('medicoProfileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
+  function openCreate() {
+    const newForm = { ...emptyForm };
+    // Si hay un médico autenticado, seleccionarlo automáticamente
+    if (user && user.medicoId) {
+      newForm.medicoId = user.medicoId;
+    }
+    setEditing(null);
+    setForm(newForm);
+    setMsg("");
+    setOpen(true);
+  }
+
+  function openEdit(cita) {
+    setEditing(cita);
+    
+    // Formatear fecha de nacimiento para el input date
+    let fechaNacimientoFormateada = "";
+    if (cita.paciente?.fechaNacimiento) {
+      const fecha = new Date(cita.paciente.fechaNacimiento);
+      if (!isNaN(fecha)) {
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        fechaNacimientoFormateada = `${year}-${month}-${day}`;
+      }
+    }
+    
+    setForm({
+      medicoId: cita.medicoId,
+      inicio: isoToLocal(cita.inicio),
+      fin: isoToLocal(cita.fin),
+      motivo: cita.motivo || "",
+      estado: cita.estado || "PROGRAMADA",
+      paciente: {
+        nombres: cita.paciente?.nombres || "",
+        apellidos: cita.paciente?.apellidos || "",
+        documento: cita.paciente?.documento || "",
+        telefono: cita.paciente?.telefono || "",
+        email: cita.paciente?.email || "",
+        fechaNacimiento: fechaNacimientoFormateada,
+        sexo: cita.paciente?.sexo || "masculino",
+      },
+    });
+    setMsg("");
+    setOpen(true);
+  }
+
+  // Función para convertir errores técnicos en mensajes amigables
+  function getFriendlyErrorMessage(errorMessage, errorResponse = null) {
+    if (!errorMessage) return "Error al procesar la solicitud.";
+    
+    // Verificar primero si es error 409 (Conflict) - solapamiento de horarios
+    if (errorResponse?.status === 409 || errorResponse?.response?.status === 409) {
+      return "Ya existe una cita en este horario. Selecciona otro horario.";
+    }
+    
+    // Si el error viene del backend con un mensaje específico, usarlo
+    if (errorResponse?.response?.data?.message) {
+      return errorResponse.response.data.message;
+    }
+    
+    // Si el error tiene un mensaje específico del backend, usarlo
+    if (errorMessage && !errorMessage.includes("Duplicate entry") && 
+        !errorMessage.includes("ECONNREFUSED") && 
+        !errorMessage.includes("database") && 
+        !errorMessage.includes("SQL") &&
+        !errorMessage.includes("connection")) {
+      return errorMessage;
+    }
+    
+    // Error de email duplicado
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("uk_paciente_hosp_email")) {
+      return "Ya existe un paciente con este email en el hospital. Por favor, usa un email diferente.";
+    }
+    
+    // Error de cédula duplicada
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("documento")) {
+      return "Ya existe un paciente con esta cédula. Por favor, verifica el número de cédula.";
+    }
+    
+    // Error de teléfono duplicado
+    if (errorMessage.includes("Duplicate entry") && errorMessage.includes("telefono")) {
+      return "Ya existe un paciente con este teléfono. Por favor, usa un número diferente.";
+    }
+    
+    // Error de solapamiento de horarios (por mensaje)
+    if (errorMessage.includes("solapamiento") || errorMessage.includes("overlap") || 
+        errorMessage.includes("se solapa con otra cita")) {
+      return "Ya existe una cita en este horario. Selecciona otro horario.";
+    }
+    
+    // Error de conexión a base de datos
+    if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("connection")) {
+      return "Error de conexión. Por favor, intenta nuevamente en unos momentos.";
+    }
+    
+    // Error de validación de datos
+    if (errorMessage.includes("validation") || errorMessage.includes("required")) {
+      return "Por favor, completa todos los campos obligatorios correctamente.";
+    }
+    
+    // Error genérico de base de datos
+    if (errorMessage.includes("database") || errorMessage.includes("SQL")) {
+      return "Error en el sistema. Por favor, intenta nuevamente.";
+    }
+    
+    // Si no coincide con ningún patrón conocido, devolver mensaje genérico
+    return "Error al procesar la solicitud. Por favor, intenta nuevamente.";
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMsg("");
+    
+    try {
+      // Validación de solapamiento en el frontend (solo para creación y si se cambian fechas)
+      if (!editing && form.inicio && form.fin) {
+        console.log('[CITAS COMPONENT] Validando solapamiento para nueva cita...');
+        
+        const newStart = new Date(form.inicio);
+        const newEnd = new Date(form.fin);
+        
+        // Verificar solapamiento con todas las citas existentes
+        const allCitas = await getAllCitasForValidation();
+        const overlapCheck = checkScheduleOverlap(newStart, newEnd, allCitas);
+        
+        if (overlapCheck.hasOverlap) {
+          const overlapMessage = generateOverlapMessage(overlapCheck, newStart, newEnd);
+          console.log('[CITAS COMPONENT] Solapamiento detectado:', overlapMessage);
+          setMsg(overlapMessage);
+          showToast(overlapMessage, "error");
+          return;
+        }
+      }
+      
+      if (editing) {
+        // solo estado y fin
+        console.log('[CITAS COMPONENT] === INICIO ACTUALIZACIÓN ===');
+        console.log('[CITAS COMPONENT] ID cita:', editing.id);
+        console.log('[CITAS COMPONENT] Estado actual:', editing.estado);
+        console.log('[CITAS COMPONENT] Estado nuevo:', form.estado);
+        console.log('[CITAS COMPONENT] Fecha fin original:', editing.fin);
+        console.log('[CITAS COMPONENT] Fecha fin nueva (form.fin):', form.fin);
+        
+        // Validar que form.fin no esté vacío
+        if (!form.fin) {
+          throw new Error("La fecha de fin es requerida");
+        }
+        
+        // Crear objeto Date y validar
+        const fechaFinDate = new Date(form.fin);
+        if (isNaN(fechaFinDate.getTime())) {
+          throw new Error("La fecha de fin no es válida");
+        }
+        
+        console.log('[CITAS COMPONENT] Fecha fin como Date:', fechaFinDate);
+        console.log('[CITAS COMPONENT] Fecha fin como ISO:', fechaFinDate.toISOString());
+        console.log('[CITAS COMPONENT] Fecha fin como Local:', fechaFinDate.toLocaleString());
+        
+        // Preparar datos de actualización
+        const updateData = { 
+          estado: form.estado, 
+          fechaFin: fechaFinDate.toISOString() 
+        };
+        
+        console.log('[CITAS COMPONENT] Datos finales a enviar:', updateData);
+        
+        await updateCita(editing.id, updateData);
+        setMsg("Cita actualizada exitosamente.");
+        showToast("Cita actualizada correctamente.", "success");
+      } else {
+        console.log('[CITAS COMPONENT] Creando cita con datos:', form);
+        await createCita(form);
+        setMsg("Cita creada exitosamente.");
+        showToast("Cita creada correctamente.", "success");
+      }
+      setOpen(false);
+      setForm(emptyForm);
+      // recargar página actual (o la primera si acabas de crear)
+      await load(editing ? page : 1);
+      if (!editing) setPage(1);
+    } catch (err) {
+      console.error('[CITAS COMPONENT] Error capturado:', err);
+      console.error('[CITAS COMPONENT] Error status:', err.status);
+      console.error('[CITAS COMPONENT] Error response:', err.response);
+      console.error('[CITAS COMPONENT] Error message:', err.message);
+      
+      const friendlyMessage = getFriendlyErrorMessage(err.message, err);
+      setMsg(friendlyMessage);
+      showToast(friendlyMessage, "error");
+    }
+  }
+
+  // Función auxiliar para obtener todas las citas para validación
+  async function getAllCitasForValidation() {
+    try {
+      // Obtener todas las citas sin paginación para validación
+      const { items } = await listCitas({ page: 1, pageSize: 1000, q: "" });
+      return items || [];
+    } catch (error) {
+      console.error('[CITAS COMPONENT] Error obteniendo citas para validación:', error);
+      return [];
+    }
+  }
+
+  function askDelete(id) {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    try {
+      await deleteCita(deleteId); // bloquea si está PROGRAMADA
+      await load();
+      showToast("Cita eliminada correctamente.", "success");
+    } catch (e) {
+      const friendlyMessage = getFriendlyErrorMessage(e.message, e);
+      showToast(friendlyMessage, "error");
+    } finally {
+      setConfirmOpen(false);
+      setDeleteId(null);
+    }
+  }
+
+  function cancelDelete() {
+    setConfirmOpen(false);
+    setDeleteId(null);
+  }
+  
+  function handlePageChange(newPage) {
+    setPage(newPage);
+  }
+
+  return (
+    // ⬇️ contenedor con padding inferior para el paginador fijo
+    <div className="space-y-6 relative pb-20">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Gestión de Citas</h1>
+          <p className="text-slate-600">
+            {q ? `(${total} resultados)` : `${total} registros`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar (paciente, motivo, estado)…"
+            className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+          />
+          <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
+            Nueva Cita
+          </Button>
+        </div>
+      </div>
+
+      {/* Lista (página actual) */}
+      <div className="grid gap-4">
+        {loading && <p className="text-slate-500 text-sm">Cargando…</p>}
+        {!loading && items.length === 0 && (
+          <Card className="p-6">
+            <p className="text-slate-500 text-sm">No hay citas.</p>
+          </Card>
+        )}
+        {items.map((c) => {
+          const nombre = `${c.paciente?.nombres || ""} ${c.paciente?.apellidos || ""}`.trim();
+          const i = new Date(c.inicio), f = new Date(c.fin);
+          const fecha = i.toLocaleDateString();
+          const hora = `${i.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — ${f.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+            const badge =
+              c.estado === "PROGRAMADA" ? "bg-blue-100 text-blue-700" :
+              c.estado === "ATENDIDA"   ? "bg-green-100 text-green-700" :
+                                           "bg-rose-100 text-rose-700";
+          return (
+            <Card key={c.id} className="p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900">{nombre || "Paciente"}</h3>
+                  <p className="text-slate-600">{c.motivo || "—"}</p>
+                  <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-500">
+                    <span className="flex items-center">
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" />
+                      </svg>
+                      {fecha}
+                    </span>
+                    <span className="flex items-center">
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
+                      </svg>
+                      {hora}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge}`}>
+                    {c.estado.charAt(0) + c.estado.slice(1).toLowerCase()}
+                  </span>
+
+                  {/* ====== ACCIONES: Íconos en lugar de botones ====== */}
+                  <div className="flex items-center gap-2">
+                    {/* Editar */}
+                    <button
+                      type="button"
+                      onClick={() => openEdit(c)}
+                      className="rounded-xl p-2 ring-1 ring-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+                      aria-label="Editar cita"
+                      title="Editar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                      </svg>
+                    </button>
+
+                    {/* Eliminar - Solo para citas ATENDIDA o CANCELADA */}
+                    {(c.estado === 'ATENDIDA' || c.estado === 'CANCELADA') && (
+                      <button
+                        type="button"
+                        onClick={() => askDelete(c.id)}
+                        className="rounded-xl p-2 text-rose-600 hover:bg-rose-50 transition"
+                        aria-label="Eliminar cita"
+                        title="Eliminar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1z" />
+                          <path d="M6 9h12l-1 10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {/* ================================================ */}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* ⬇️ Paginación adaptativa - Siempre abajo */}
+      {!loading && total > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-20">
+          <div className="w-[calc(100%-16rem)] ml-auto pl-6 pr-6">
+            <AdaptivePagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onChange={handlePageChange}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modal con formulario reusable */}
+      <Modal open={open} onClose={() => { setOpen(false); setMsg(""); }} width="max-w-3xl">
+        <MedicoCitaForm
+          form={form}
+          setForm={setForm}
+          medicos={medicos}
+          locked={Boolean(editing)}      // al editar: solo Estado y Fin
+          onCancel={() => { setOpen(false); setMsg(""); }}
+          onSubmit={handleSubmit}
+          submitLabel="Guardar"
+          title={editing ? "Editar Cita" : "Nueva Cita"}
+          subtitle="Agenda una nueva consulta médica"
+          msg={msg}
+        />
+      </Modal>
+
+      {/* Confirmación eliminar */}
+      <Modal open={confirmOpen} onClose={cancelDelete} width="max-w-md">
+        <div className="p-4">
+          <h3 className="text-lg font-semibold text-slate-900">Eliminar cita</h3>
+          <p className="text-slate-600 mt-2">
+            ¿Deseas eliminar esta cita? Esta acción no se puede deshacer.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={cancelDelete}>Cancelar</Button>
+            <Button className="bg-rose-600 hover:bg-rose-700" onClick={confirmDelete}>
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Toast superior-derecha */}
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        text={toast.text}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+      />
+    </div>
+  );
+}
