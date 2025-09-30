@@ -81,3 +81,11 @@ npm run build
 - **Medico Service**: Gestión de médicos
 
 ## Servicios
+- **Admin Service**:
+    - Manejo de las entidades de los centros
+    - Operaciones CRUD de la entidades
+    - Revision de los servicios globales
+- **Medico Service**:
+    - Manejo de las consultas que se hacen en los centros
+    - Operaciones CRUD sobre las consultas del medico particular
+    - Revision de informes de medico
