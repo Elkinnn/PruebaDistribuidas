@@ -2,6 +2,7 @@ import { DataSource } from "typeorm";
 import { IDatabase } from "../database.datasource";
 
 interface Options {
+    host: string,
     database: string,
     port: number,
     username: string,
@@ -11,6 +12,7 @@ interface Options {
 
 export class MySQLDatabase extends IDatabase {
     public dataSource?: DataSource
+    private host: string
     private database: string
     private port: number
     private username: string
@@ -19,7 +21,8 @@ export class MySQLDatabase extends IDatabase {
 
     constructor(options: Options) {
         super()
-        const { database, password, port, username, entities } = options
+        const { database, password, port, username, entities, host } = options
+        this.host = host
         this.database = database
         this.port = port
         this.password = password
@@ -31,6 +34,7 @@ export class MySQLDatabase extends IDatabase {
         try {
             this.dataSource = new DataSource({
                 type: 'mysql',
+                host: this.host,
                 database: this.database,
                 port: this.port,
                 username: this.username,
