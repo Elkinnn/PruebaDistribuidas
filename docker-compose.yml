@@ -5,7 +5,7 @@ services:
     container_name: mysql_prueba
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: Insertname_1
+      MYSQL_ROOT_PASSWORD: clave_piola
       MYSQL_DATABASE: hospital_service
     ports:
       - "3308:3306"
@@ -28,7 +28,7 @@ services:
       MYSQL_PORT: 3306
       MYSQL_DB: hospital_service
       MYSQL_USER: root
-      MYSQL_PASSWORD: Insertname_1
+      MYSQL_PASSWORD: clave_piola
       JWT_SECRET: Secret123
       PORT: 3000    
     ports:
@@ -52,7 +52,7 @@ services:
       DB_PORT: 3306
       DB_NAME: hospital_service
       DB_USER: root
-      DB_PASSWORD: Insertname_1
+      DB_PASSWORD: clave_piola
       JWT_SECRET: your-super-secret-jwt-key-here
       JWT_EXPIRES_IN: 24h
     ports:
