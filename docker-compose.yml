@@ -1,84 +1,121 @@
-version: '3.8'
-
 services:
-  # Base de datos PostgreSQL
-  postgres:
-    image: postgres:15
-    container_name: prueba_postgres
+  # 🗄️ Base de datos MySQL
+  mysql_prueba:
+    image: mysql:latest
+    container_name: mysql_prueba
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: prueba_sistema
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: clave_piola
+      MYSQL_DATABASE: hospital_service
     ports:
-      - "5432:5432"
+      - "3308:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/sql:/docker-entrypoint-initdb.d
+      - /home/usuario/.docker/xampp_borrame/mysql:/var/lib/mysql
+      - /home/usuario/.docker/xampp_borrame/mysql_conf/conf.d:/etc/mysql/conf.d
+    command: --lower_case_table_names=1
     networks:
-      - prueba_network
+      - dev_network
 
-  # Gateway
-  gateway:
-    build: ./gateway
-    container_name: prueba_gateway
+  # 🩺 Servicio Médico
+  medico-service:
+    build:
+      context: ./apps/medico-service
+      dockerfile: Dockerfile
+    container_name: medico_service
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql_prueba
+      MYSQL_PORT: 3306
+      MYSQL_DB: hospital_service
+      MYSQL_USER: root
+      MYSQL_PASSWORD: clave_piola
+      JWT_SECRET: Secret123
+      PORT: 3000    
     ports:
       - "3000:3000"
+    depends_on:
+      - mysql_prueba
+    networks:
+      - dev_network
+
+  # 🧑‍💼 Servicio Admin
+  admin-service:
+    build:
+      context: ./apps/admin-service
+      dockerfile: Dockerfile
+    container_name: admin_service
+    restart: unless-stopped
     environment:
-      - NODE_ENV=development
-      - ADMIN_SERVICE_URL=http://admin-service:3001
-      - MEDICO_SERVICE_URL=http://medico-service:3002
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: mysql_prueba
+      DB_PORT: 3306
+      DB_NAME: hospital_service
+      DB_USER: root
+      DB_PASSWORD: clave_piola
+      JWT_SECRET: your-super-secret-jwt-key-here
+      JWT_EXPIRES_IN: 24h
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql_prueba
+    networks:
+      - dev_network
+
+  # 🌐 API Gateway
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      ADMIN_SERVICE_URL: http://admin-service:3001
+      MEDICO_SERVICE_URL: http://medico-service:3000
+      FRONTEND_URL: http://localhost:3003
+      JWT_SECRET: your-super-secret-jwt-key-here
+      JWT_EXPIRES_IN: 24h
+    ports:
+      - "3002:3002"
     depends_on:
       - admin-service
       - medico-service
     networks:
-      - prueba_network
+      - dev_network
 
-  # Admin Service
-  admin-service:
-    build: ./apps/admin-service
-    container_name: prueba_admin_service
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/prueba_sistema
-    depends_on:
-      - postgres
-    networks:
-      - prueba_network
-
-  # Medico Service
-  medico-service:
-    build: ./apps/medico-service
-    container_name: prueba_medico_service
-    ports:
-      - "3002:3002"
-    environment:
-      - NODE_ENV=development
-      - PORT=3002
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/prueba_sistema
-    depends_on:
-      - postgres
-    networks:
-      - prueba_network
-
-  # Frontend
+  # 💻 Frontend (Vite + React)
   frontend:
-    build: ./apps/frontend
-    container_name: prueba_frontend
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: frontend_app
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3002
     ports:
       - "3003:3003"
-    environment:
-      - VITE_API_URL=http://localhost:3000/api
     depends_on:
       - gateway
     networks:
-      - prueba_network
+      - dev_network
 
-volumes:
-  postgres_data:
+  # 🧰 phpMyAdmin (opcional)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin_prueba
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql_prueba
+      PMA_PORT: 3306
+    ports:
+      - "8083:80"
+    depends_on:
+      - mysql_prueba
+    networks:
+      - dev_network
 
 networks:
-  prueba_network:
+  dev_network:
     driver: bridge

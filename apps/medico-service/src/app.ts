@@ -16,6 +16,7 @@ import { Server } from "./presentation/server"
 async function main() {
     // Usar MySQL como el servicio de admin
     const database = new MySQLDatabase({
+        host: envs.MYSQL_HOST,
         database: envs.MYSQL_DB,
         entities: Models,
         password: envs.MYSQL_PASSWORD ?? "",

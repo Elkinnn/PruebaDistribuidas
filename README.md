@@ -79,3 +79,13 @@ npm run build
 - **Frontend**: Interfaz de usuario en React
 - **Admin Service**: Gestión de administradores
 - **Medico Service**: Gestión de médicos
+
+## Servicios
+- **Admin Service**:
+    - Manejo de las entidades de los centros
+    - Operaciones CRUD de la entidades
+    - Revision de los servicios globales
+- **Medico Service**:
+    - Manejo de las consultas que se hacen en los centros
+    - Operaciones CRUD sobre las consultas del medico particular
+    - Revision de informes de medico
