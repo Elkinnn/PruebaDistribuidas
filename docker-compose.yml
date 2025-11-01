@@ -12,7 +12,7 @@ services:
     volumes:
       - /home/usuario/.docker/xampp_borrame/mysql:/var/lib/mysql
       - /home/usuario/.docker/xampp_borrame/mysql_conf/conf.d:/etc/mysql/conf.d
-    command: --lower_case_table_names=1
+    command: --lower_case_table_names=1 --require_secure_transport=OFF
     networks:
       - dev_network
 
