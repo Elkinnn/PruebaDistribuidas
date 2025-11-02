@@ -1,6 +1,6 @@
 const express = require('express');
 const config = require('../config');
-const http = require('../http');
+const { requestWithRetry } = require('../http');
 const router = express.Router();
 
 /**
@@ -76,13 +76,22 @@ router.post('/login', async (req, res) => {
     delete forwardHeaders['host'];
     delete forwardHeaders['Host'];
 
-    const response = await http.post(`${config.services.admin}/auth/login`, req.body, {
-      headers: forwardHeaders
-    });
+    const requestConfig = {
+      method: 'POST',
+      url: `${config.services.admin}/auth/login`,
+      headers: forwardHeaders,
+      data: req.body,
+      __serviceName: 'admin-service'
+    };
+
+    const response = await requestWithRetry(requestConfig);
     res.status(response.status).json(response.data);
   } catch (error) {
     console.error('[AUTH ERROR]', error.message);
-    if (error.response) {
+    if (error.isCircuitOpen && error.response) {
+      console.error('[AUTH ERROR] Circuit Breaker abierto');
+      res.status(error.response.status).json(error.response.data);
+    } else if (error.response) {
       res.status(error.response.status).json(error.response.data);
     } else {
       res.status(500).json({

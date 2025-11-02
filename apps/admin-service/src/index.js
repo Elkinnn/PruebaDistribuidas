@@ -31,15 +31,30 @@ app.head('/health', (_req, res) => {
 });
 
 /* ------------ Health de BD (ping) ------------ */
+const fs = require('fs');
+
+const DB_SSL = process.env.DB_SSL === 'true';
+const DB_SSL_CA_PATH = process.env.DB_SSL_CA_PATH;
+
+function createDBConnection() {
+  const connConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'hospitalservice',
+  };
+
+  if (DB_SSL) {
+    connConfig.ssl = DB_SSL_CA_PATH ? { ca: fs.readFileSync(DB_SSL_CA_PATH) } : { rejectUnauthorized: true };
+  }
+
+  return mysql.createConnection(connConfig);
+}
+
 app.get('/db/health', async (_req, res) => {
   try {
-    const conn = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'hospitalservice',
-    });
+    const conn = await createDBConnection();
     await conn.query('SELECT 1');
     await conn.end();
     res.json({ ok: true, db: 'up' });
@@ -50,13 +65,7 @@ app.get('/db/health', async (_req, res) => {
 
 app.get('/db/ready', async (_req, res) => {
   try {
-    const conn = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'hospitalservice',
-    });
+    const conn = await createDBConnection();
     await conn.query('SELECT 1');
     await conn.end();
     res.json({ ok: true, db: 'ready' });
@@ -67,13 +76,7 @@ app.get('/db/ready', async (_req, res) => {
 
 app.head('/db/ready', async (_req, res) => {
   try {
-    const conn = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'hospitalservice',
-    });
+    const conn = await createDBConnection();
     await conn.query('SELECT 1');
     await conn.end();
     res.status(200).end();

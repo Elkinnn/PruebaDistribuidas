@@ -1,39 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+// Este archivo fue creado por error - el admin-service usa Express, no NestJS
+// Los endpoints de health están en src/index.js
+// Este archivo se mantiene solo para documentación
+// 
+// Los endpoints correctos son:
+// - GET /health (Express en index.js)
+// - GET /db/health (Express en index.js)
+// - GET /db/ready (Express en index.js)
 
-@Controller('db')
-export class DbHealthController {
-  constructor(private readonly dataSource: DataSource) {}
-
-  @Get()
-  status() {
-    return { ok: true, db: 'ready' };
-  }
-
-  @Get('health')
-  async health() {
-    try {
-      await this.dataSource.query('SELECT 1');
-      return { ok: true, db: 'up' };
-    } catch (e) {
-      return { ok: false, db: 'down', error: (e as Error).message };
-    }
-  }
-
-  @Get('ready')
-  async ready() {
-    try {
-      await this.dataSource.query('SELECT 1');
-      return { ok: true, db: 'ready' };
-    } catch (error) {
-      throw new HttpException(
-        {
-          ok: false,
-          db: 'unavailable',
-          error: (error as Error).message,
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-  }
-}
+export const DbHealthController = {};

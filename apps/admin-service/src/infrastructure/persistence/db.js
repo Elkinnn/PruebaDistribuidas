@@ -1,5 +1,13 @@
 // Pool de MySQL para reusar conexiones
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+
+const DB_SSL = process.env.DB_SSL === 'true';
+const DB_SSL_CA_PATH = process.env.DB_SSL_CA_PATH;
+
+const ssl = DB_SSL
+  ? (DB_SSL_CA_PATH ? { ca: fs.readFileSync(DB_SSL_CA_PATH) } : { rejectUnauthorized: true })
+  : undefined;
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -11,6 +19,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   namedPlaceholders: true,
+  ssl
 });
 
 module.exports = { pool };

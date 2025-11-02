@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { IDatabase } from "../database.datasource";
+import * as fs from 'fs';
 
 interface Options {
     host: string,
@@ -35,6 +36,13 @@ export class MySQLDatabase extends IDatabase {
 
     public async connect(): Promise<boolean> {
         try {
+            const sslConfig = this.useSSL
+                ? {
+                    rejectUnauthorized: true,
+                    ...(process.env.DB_SSL_CA_PATH ? { ca: fs.readFileSync(process.env.DB_SSL_CA_PATH, 'utf8') } : {})
+                }
+                : undefined;
+
             this.dataSource = new DataSource({
                 type: 'mysql',
                 host: this.host,
@@ -45,9 +53,7 @@ export class MySQLDatabase extends IDatabase {
                 entities: this.entities,
                 synchronize: false, // No sincronizar automáticamente
                 logging: false, // Deshabilitar logs para evitar spam
-                ssl: this.useSSL ? {
-                    rejectUnauthorized: true,
-                } : undefined,
+                ssl: sslConfig,
             })
             await this.dataSource.initialize()
             return true

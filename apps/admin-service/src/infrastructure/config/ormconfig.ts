@@ -1,4 +1,5 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import * as fs from 'fs';
 
 export const ormconfig = (): TypeOrmModuleOptions => ({
   type: 'mysql',
@@ -11,6 +12,7 @@ export const ormconfig = (): TypeOrmModuleOptions => ({
   synchronize: false, // ⚠️ no poner true en producción
   ssl: shouldUseSSL() ? {
     rejectUnauthorized: true,
+    ...(process.env.DB_SSL_CA_PATH ? { ca: fs.readFileSync(process.env.DB_SSL_CA_PATH) } : {})
   } : undefined,
 });
 
