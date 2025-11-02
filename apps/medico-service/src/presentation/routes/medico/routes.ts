@@ -9,6 +9,14 @@ export class MedicoRoutes {
         const router = Router();
         const controller = new MedicoController()
         
+        router.get('/health', (_req, res) => {
+            res.json({ ok: true, service: 'medico-service', ts: new Date().toISOString() })
+        });
+
+        router.head('/health', (_req, res) => {
+            res.status(200).end();
+        });
+
         /**
          * @swagger
          * /medico/auth/login:

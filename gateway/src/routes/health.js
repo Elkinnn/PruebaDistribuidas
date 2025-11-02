@@ -4,51 +4,69 @@ const { performance } = require('node:perf_hooks');
 const config = require('../config');
 const router = express.Router();
 
+const HEALTH_ENDPOINTS = ['/db/health', '/health'];
+
+const tryRequest = async (method, url) => {
+  return axios({
+    method,
+    url,
+    timeout: 5000,
+    headers: {
+      'User-Agent': 'API-Gateway-Health-Check'
+    },
+    validateStatus: () => true
+  });
+};
+
 // Función para verificar el estado de un servicio con medición de tiempo
-const checkServiceHealth = async (serviceName, url) => {
+const checkServiceHealth = async (serviceName, baseUrl) => {
   const startTime = performance.now();
-  
-  try {
-    // Intentar HEAD /health primero
-    let response;
+
+  for (const endpoint of HEALTH_ENDPOINTS) {
+    const fullUrl = `${baseUrl}${endpoint}`;
     try {
-      response = await axios.head(`${url}/health`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'API-Gateway-Health-Check'
-        }
-      });
-    } catch (headError) {
-      // Si HEAD falla, intentar GET /health
-      response = await axios.get(`${url}/health`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'API-Gateway-Health-Check'
-        }
-      });
+      let response = await tryRequest('head', fullUrl);
+      if (response.status >= 400) {
+        response = await tryRequest('get', fullUrl);
+      }
+
+      if (response.status < 400) {
+        const responseTime = performance.now() - startTime;
+        return {
+          name: serviceName,
+          url: fullUrl,
+          status: 'healthy',
+          statusCode: response.status,
+          responseTimeMs: Math.round(responseTime),
+          lastCheck: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      if (endpoint === HEALTH_ENDPOINTS[HEALTH_ENDPOINTS.length - 1]) {
+        const responseTime = performance.now() - startTime;
+        return {
+          name: serviceName,
+          url: fullUrl,
+          status: error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' ? 'unreachable' : 'unhealthy',
+          statusCode: error.response?.status || null,
+          responseTimeMs: Math.round(responseTime),
+          error: error.message,
+          lastCheck: new Date().toISOString()
+        };
+      }
     }
-    
-    const responseTime = performance.now() - startTime;
-    return {
-      name: serviceName,
-      url,
-      status: 'healthy',
-      statusCode: response.status,
-      responseTimeMs: Math.round(responseTime),
-      lastCheck: new Date().toISOString()
-    };
-  } catch (error) {
-    const responseTime = performance.now() - startTime;
-    return {
-      name: serviceName,
-      url,
-      status: error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' ? 'unreachable' : 'unhealthy',
-      statusCode: error.response?.status || null,
-      responseTimeMs: Math.round(responseTime),
-      error: error.message,
-      lastCheck: new Date().toISOString()
-    };
   }
+
+  const responseTime = performance.now() - startTime;
+  return {
+    name: serviceName,
+    url: baseUrl,
+    status: 'unhealthy',
+    statusCode: null,
+    responseTimeMs: Math.round(responseTime),
+    error: 'No se pudo verificar la salud del servicio',
+    lastCheck: new Date().toISOString()
+  };
 };
 
 /**

@@ -1,9 +1,70 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const axios = require('axios');
 const { createProxyConfig, createFileProxyConfig } = require('../middleware/proxy');
 const config = require('../config');
+const http = require('../http');
 const router = express.Router();
+
+const RETRYABLE_METHODS = new Set(['GET', 'HEAD']);
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRetryableError = (error) => {
+  if (!error) return false;
+
+  if (error.response && error.response.status >= 500) {
+    return true;
+  }
+
+  const code = error.code ? String(error.code).toUpperCase() : undefined;
+  const transientCodes = new Set(['ECONNRESET', 'ECONNABORTED', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN']);
+
+  if (code && transientCodes.has(code)) {
+    return true;
+  }
+
+  if (typeof error.message === 'string' && error.message.toLowerCase().includes('timeout')) {
+    return true;
+  }
+
+  return false;
+};
+
+const shouldRetry = (method) => {
+  if (!config.resilience.enabled) return false;
+  if (!config.resilience.retry.enabled) return false;
+  return RETRYABLE_METHODS.has(String(method || '').toUpperCase());
+};
+
+const performRequest = async (requestConfig, method) => {
+  const normalizedMethod = String(method || requestConfig.method || 'GET').toUpperCase();
+  const maxAttempts = Math.max(1, config.resilience.retry.maxAttempts);
+  const retryable = shouldRetry(normalizedMethod);
+
+  let attempt = 0;
+  let lastError;
+
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      return await http({
+        ...requestConfig,
+        method: normalizedMethod
+      });
+    } catch (error) {
+      lastError = error;
+
+      if (!retryable || attempt >= maxAttempts || !isRetryableError(error)) {
+        throw error;
+      }
+
+      const backoff = config.resilience.retry.baseDelayMs * Math.pow(2, attempt - 1);
+      await sleep(backoff);
+    }
+  }
+
+  throw lastError;
+};
 
 // Proxy especial para archivos binarios (PDFs) en /admin/citas/reportes/**
 // IMPORTANTE: Esta ruta debe ir ANTES que /admin para que se ejecute
@@ -20,7 +81,7 @@ router.use('/admin', createProxyMiddleware(
   })
 ));
 
-// Proxy personalizado para médico-service usando axios
+// Proxy personalizado para médico-service usando el cliente HTTP compartido
 if (config.services.medico) {
   console.log(`[GATEWAY] Configurando proxy para médico-service: ${config.services.medico}`);
   
@@ -30,25 +91,24 @@ if (config.services.medico) {
       const fullPath = `/medico${req.url}`;
       console.log(`[MEDICO PROXY] ${req.method} ${req.url} -> ${config.services.medico}${fullPath}`);
       
-      const axiosConfig = {
+      const requestConfig = {
         method: req.method,
         url: `${config.services.medico}${fullPath}`,
         headers: {
           ...req.headers
-        },
-        timeout: config.timeout || 30000
+        }
       };
       
       // Agregar body si existe
       if (req.body && Object.keys(req.body).length > 0) {
-        axiosConfig.data = req.body;
+        requestConfig.data = req.body;
         console.log(`[MEDICO PROXY] Body enviado:`, req.body);
       }
       
-      console.log(`[MEDICO PROXY] Enviando request:`, axiosConfig.method, axiosConfig.url);
-      console.log(`[MEDICO PROXY] Headers:`, axiosConfig.headers);
+      console.log(`[MEDICO PROXY] Enviando request:`, requestConfig.method, requestConfig.url);
+      console.log(`[MEDICO PROXY] Headers:`, requestConfig.headers);
       
-      const response = await axios(axiosConfig);
+      const response = await performRequest(requestConfig, req.method);
       res.status(response.status).json(response.data);
       
       console.log(`[MEDICO PROXY RESPONSE] ${req.method} ${req.url} -> ${response.status}`);
@@ -79,32 +139,31 @@ if (config.services.medico) {
 }
 
 // Proxy de compatibilidad para rutas legacy (sin namespacing)
-// Usando axios como fallback para garantizar compatibilidad
+// Usando el cliente HTTP como fallback para garantizar compatibilidad
 const createAxiosProxy = (servicePath) => {
   return async (req, res) => {
     try {
       console.log(`[PROXY] ${req.method} ${req.url} -> ${config.services.admin}${servicePath}${req.url}`);
       
-      const axiosConfig = {
+      const requestConfig = {
         method: req.method,
         url: `${config.services.admin}${servicePath}${req.url}`,
         headers: {
           ...req.headers
-        },
-        timeout: config.timeout || 30000
+        }
       };
       
       // Agregar body si existe
       if (req.body && Object.keys(req.body).length > 0) {
-        axiosConfig.data = req.body;
+        requestConfig.data = req.body;
       }
       
       // Para rutas de reportes (PDFs), usar responseType arraybuffer
       if (req.url.includes('/reportes/')) {
-        axiosConfig.responseType = 'arraybuffer';
+        requestConfig.responseType = 'arraybuffer';
       }
       
-      const response = await axios(axiosConfig);
+      const response = await performRequest(requestConfig, req.method);
       
       // Manejar PDFs
       if (req.url.includes('/reportes/')) {

@@ -7,7 +7,8 @@ interface Options {
     port: number,
     username: string,
     password: string,
-    entities: Function[]
+    entities: Function[],
+    ssl: boolean
 }
 
 export class MySQLDatabase extends IDatabase {
@@ -18,16 +19,18 @@ export class MySQLDatabase extends IDatabase {
     private username: string
     private password: string
     private entities: Function[]
+    private readonly useSSL: boolean
 
     constructor(options: Options) {
         super()
-        const { database, password, port, username, entities, host } = options
+        const { database, password, port, username, entities, host, ssl } = options
         this.host = host
         this.database = database
         this.port = port
         this.password = password
         this.username = username
         this.entities = entities
+        this.useSSL = ssl
     }
 
     public async connect(): Promise<boolean> {
@@ -42,12 +45,21 @@ export class MySQLDatabase extends IDatabase {
                 entities: this.entities,
                 synchronize: false, // No sincronizar automáticamente
                 logging: false, // Deshabilitar logs para evitar spam
+                ssl: this.useSSL ? {
+                    rejectUnauthorized: true,
+                } : undefined,
             })
             await this.dataSource.initialize()
             return true
         } catch (error) {
             console.log('Error de conexion')
             throw error
+        }
+    }
+
+    public async disconnect(): Promise<void> {
+        if (this.dataSource?.isInitialized) {
+            await this.dataSource.destroy()
         }
     }
 

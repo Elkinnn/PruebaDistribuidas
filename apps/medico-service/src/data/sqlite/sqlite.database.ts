@@ -35,4 +35,10 @@ export class SQLiteDatabase extends IDatabase {
         }
     }
 
+    public async disconnect(): Promise<void> {
+        if (this.dataSource?.isInitialized) {
+            await this.dataSource.destroy()
+        }
+    }
+
 }

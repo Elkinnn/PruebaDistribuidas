@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     container_name: medico_service
     restart: unless-stopped
+    env_file:
+      - ./apps/medico-service/.env
     environment:
       MYSQL_HOST: mysql_prueba
       MYSQL_PORT: 3306
@@ -45,6 +47,8 @@ services:
       dockerfile: Dockerfile
     container_name: admin_service
     restart: unless-stopped
+    env_file:
+      - ./apps/admin-service/.env
     environment:
       NODE_ENV: development
       PORT: 3001
@@ -69,6 +73,8 @@ services:
       dockerfile: Dockerfile
     container_name: api_gateway
     restart: unless-stopped
+    env_file:
+      - ./gateway/.env
     environment:
       NODE_ENV: development
       PORT: 3002

@@ -9,4 +9,15 @@ export const ormconfig = (): TypeOrmModuleOptions => ({
   database: process.env.DB_NAME,
   autoLoadEntities: true,
   synchronize: false, // ⚠️ no poner true en producción
+  ssl: shouldUseSSL() ? {
+    rejectUnauthorized: true,
+  } : undefined,
 });
+
+const shouldUseSSL = () => {
+  const value = process.env.DB_SSL;
+  if (value === undefined) {
+    return false;
+  }
+  return ['true', '1', 'yes'].includes(value.toLowerCase());
+};

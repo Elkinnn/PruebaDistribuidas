@@ -18,14 +18,30 @@ const app = express();
 // Trust proxy para headers de forwarding
 app.set('trust proxy', 1);
 
-// Middleware de trazabilidad
+// Middleware de trazabilidad y encabezados
 app.use((req, res, next) => {
-  // Generar ID único para la request
-  req.id = req.headers['x-request-id'] || randomUUID();
-  
-  // Añadir Vary: Origin para CORS
+  const incomingId = req.headers['x-request-id'];
+  const requestId = typeof incomingId === 'string' && incomingId.trim().length > 0 ? incomingId : randomUUID();
+
+  req.id = requestId;
+  res.setHeader('x-request-id', requestId);
   res.setHeader('Vary', 'Origin');
-  
+
+  next();
+});
+
+// Forzar HTTPS cuando aplique
+app.use((req, res, next) => {
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+  if (!isSecure && config.nodeEnv !== 'development') {
+    const host = req.headers.host;
+    if (host) {
+      const target = `https://${host}${req.originalUrl}`;
+      return res.redirect(307, target);
+    }
+  }
+
   next();
 });
 

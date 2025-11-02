@@ -1,6 +1,6 @@
 const express = require('express');
-const axios = require('axios');
 const config = require('../config');
+const http = require('../http');
 const router = express.Router();
 
 /**
@@ -66,12 +66,18 @@ const router = express.Router();
 router.post('/login', async (req, res) => {
   try {
     console.log(`[AUTH] Login request to: ${config.services.admin}/auth/login`);
-    const response = await axios.post(`${config.services.admin}/auth/login`, req.body, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...req.headers
-      },
-      timeout: config.timeout
+    const forwardHeaders = {
+      'Content-Type': 'application/json',
+      ...req.headers,
+    };
+
+    delete forwardHeaders['content-length'];
+    delete forwardHeaders['Content-Length'];
+    delete forwardHeaders['host'];
+    delete forwardHeaders['Host'];
+
+    const response = await http.post(`${config.services.admin}/auth/login`, req.body, {
+      headers: forwardHeaders
     });
     res.status(response.status).json(response.data);
   } catch (error) {

@@ -21,6 +21,15 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 
 const PORT = process.env.ADMIN_SERVICE_PORT || 3001;
 
+/* ------------ Health básico del servicio ------------ */
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'admin-service', ts: new Date().toISOString() });
+});
+
+app.head('/health', (_req, res) => {
+  res.status(200).end();
+});
+
 /* ------------ Health de BD (ping) ------------ */
 app.get('/db/health', async (_req, res) => {
   try {
@@ -36,6 +45,40 @@ app.get('/db/health', async (_req, res) => {
     res.json({ ok: true, db: 'up' });
   } catch (e) {
     res.status(500).json({ ok: false, db: 'down', error: e.message });
+  }
+});
+
+app.get('/db/ready', async (_req, res) => {
+  try {
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'hospitalservice',
+    });
+    await conn.query('SELECT 1');
+    await conn.end();
+    res.json({ ok: true, db: 'ready' });
+  } catch (e) {
+    res.status(503).json({ ok: false, db: 'unavailable', error: e.message });
+  }
+});
+
+app.head('/db/ready', async (_req, res) => {
+  try {
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'hospitalservice',
+    });
+    await conn.query('SELECT 1');
+    await conn.end();
+    res.status(200).end();
+  } catch (e) {
+    res.status(503).end();
   }
 });
 
