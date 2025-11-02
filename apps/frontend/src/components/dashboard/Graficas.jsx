@@ -59,7 +59,17 @@ export default function Graficas({ filtros }) {
       setDatosGraficas(data);
     } catch (err) {
       console.error('Error cargando datos de gráficas:', err);
-      setError('Error al cargar los datos de las gráficas');
+      
+      // Manejar Circuit Breaker específicamente
+      let errorMessage = 'Error al cargar los datos de las gráficas';
+      if (err.status === 503 || err.isCircuitOpen || err.response?.status === 503) {
+        errorMessage = 'El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.';
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

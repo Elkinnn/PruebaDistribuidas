@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const { performance } = require('node:perf_hooks');
 const config = require('../config');
+const { reset: resetCircuitBreaker } = require('../resilience/circuitBreaker');
 const router = express.Router();
 
 const HEALTH_ENDPOINTS = ['/db/health', '/health'];
@@ -139,6 +140,24 @@ router.get('/', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// Endpoint para resetear Circuit Breaker manualmente (solo en desarrollo)
+router.post('/reset-circuit-breaker', async (req, res) => {
+  if (config.nodeEnv === 'production') {
+    return res.status(403).json({ error: 'Este endpoint solo está disponible en desarrollo' });
+  }
+  
+  const { serviceName } = req.body;
+  const result = resetCircuitBreaker(serviceName);
+  
+  res.json({
+    success: result,
+    message: serviceName 
+      ? `Circuit Breaker reseteado para ${serviceName}` 
+      : 'Todos los Circuit Breakers reseteados',
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;

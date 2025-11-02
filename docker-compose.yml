@@ -89,8 +89,9 @@ services:
       RETRY_MAX_ATTEMPTS: 2
       RETRY_BASE_DELAY_MS: 250
       CB_WINDOW_MS: 30000
-      CB_THRESHOLD_PERCENT: 30
-      CB_HALF_OPEN_AFTER_MS: 20000
+      CB_THRESHOLD_PERCENT: 80
+      CB_MIN_REQUESTS: 10
+      CB_HALF_OPEN_AFTER_MS: 5000
     ports:
       - "3002:3002"
     depends_on:

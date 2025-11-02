@@ -45,16 +45,59 @@ export default function Empleados() {
 
     async function load() {
         setLoading(true);
-        const response = await listEmpleados({ page, pageSize, q });
-        console.log('🔍 [EMPLEADOS PAGE] Response:', response);
-        setRows(response.data || []);
-        setTotal(response.meta?.total || 0);
-        setLoading(false);
+        try {
+            const response = await listEmpleados({ page, pageSize, q });
+            console.log('🔍 [EMPLEADOS PAGE] Response:', response);
+            setRows(response.data || []);
+            setTotal(response.meta?.total || 0);
+        } catch (error) {
+            console.error('Error loading empleados:', error);
+            setRows([]);
+            setTotal(0);
+            
+            // Manejar Circuit Breaker específicamente
+            let errorMessage = "No se pudieron cargar los empleados. Por favor, intenta nuevamente.";
+            if (error.status === 503 || error.isCircuitOpen) {
+                errorMessage = "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.status === 503) {
+                errorMessage = error.response?.data?.message || "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al cargar",
+                message: errorMessage,
+                duration: 6000
+            });
+        } finally {
+            setLoading(false);
+        }
     }
 
     async function loadHospitalsAll() {
-        const { items } = await listHospitals({ page: 1, pageSize: 5000, q: "" });
-        setHospitals(items);
+        try {
+            const { items } = await listHospitals({ page: 1, pageSize: 5000, q: "" });
+            setHospitals(items);
+        } catch (error) {
+            console.error('Error loading hospitals:', error);
+            setHospitals([]);
+            
+            // Mostrar notificación solo si es error 503 (Circuit Breaker)
+            if (error.status === 503 || error.isCircuitOpen || error.response?.status === 503) {
+                setNotification({
+                    open: true,
+                    type: "error",
+                    title: "Error al cargar hospitales",
+                    message: "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.",
+                    duration: 6000
+                });
+            }
+        }
     }
 
     useEffect(() => {

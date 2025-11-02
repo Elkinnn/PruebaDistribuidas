@@ -46,16 +46,59 @@ export default function Medicos() {
 
     async function load() {
         setLoading(true);
-        const { items, total } = await listMedicos({ page, pageSize, q });
-        setRows(items);
-        setTotal(total);
-        setLoading(false);
+        try {
+            const { items, total } = await listMedicos({ page, pageSize, q });
+            setRows(items);
+            setTotal(total);
+        } catch (error) {
+            console.error('Error loading medicos:', error);
+            setRows([]);
+            setTotal(0);
+            
+            // Manejar Circuit Breaker específicamente
+            let errorMessage = "No se pudieron cargar los médicos. Por favor, intenta nuevamente.";
+            if (error.status === 503 || error.isCircuitOpen) {
+                errorMessage = "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.status === 503) {
+                errorMessage = error.response?.data?.message || "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al cargar",
+                message: errorMessage,
+                duration: 6000
+            });
+        } finally {
+            setLoading(false);
+        }
     }
 
     async function loadHospitalsAll() {
-        // Trae muchos para el selector
-        const { items } = await listHospitals({ page: 1, pageSize: 5000, q: "" });
-        setHospitals(items);
+        try {
+            // Trae muchos para el selector
+            const { items } = await listHospitals({ page: 1, pageSize: 5000, q: "" });
+            setHospitals(items);
+        } catch (error) {
+            console.error('Error loading hospitals:', error);
+            setHospitals([]);
+            
+            // Mostrar notificación solo si es error 503 (Circuit Breaker)
+            if (error.status === 503 || error.isCircuitOpen || error.response?.status === 503) {
+                setNotification({
+                    open: true,
+                    type: "error",
+                    title: "Error al cargar hospitales",
+                    message: "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.",
+                    duration: 6000
+                });
+            }
+        }
     }
 
     async function loadEspecialidadesByHospital(hospitalId) {
@@ -65,6 +108,7 @@ export default function Medicos() {
         } catch (error) {
             console.error('Error loading especialidades:', error);
             setEspecialidades([]);
+            // No mostrar notificación aquí porque es una carga silenciosa para un selector
         }
     }
 

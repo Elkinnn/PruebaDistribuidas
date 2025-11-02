@@ -38,10 +38,51 @@ export default function Especialidades() {
 
     async function load() {
         setLoading(true);
-        const { items, total } = await listEspecialidades({ page, pageSize, q });
-        setItems(items);
-        setTotal(total);
-        setLoading(false);
+        try {
+            const res = await listEspecialidades({ page, pageSize, q });
+            const { items = [], total = 0, degraded, _stale } = res.data || res || {};
+            
+            setItems(items);
+            setTotal(total);
+            
+            // Mostrar advertencia si está degraded o stale
+            if (degraded || _stale) {
+                const message = _stale 
+                    ? "Mostrando datos en caché (pueden estar desactualizados)"
+                    : "Datos no disponibles temporalmente";
+                setNotification({
+                    title: "Advertencia",
+                    message,
+                    variant: "warning"
+                });
+            }
+        } catch (error) {
+            console.error('Error loading especialidades:', error);
+            setItems([]);
+            setTotal(0);
+            
+            // Manejar Circuit Breaker específicamente
+            let errorMessage = "No se pudieron cargar las especialidades. Por favor, intenta nuevamente.";
+            if (error.status === 503 || error.isCircuitOpen) {
+                errorMessage = "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.status === 503) {
+                errorMessage = error.response?.data?.message || "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al cargar",
+                message: errorMessage,
+                duration: 6000
+            });
+        } finally {
+            setLoading(false);
+        }
     }
 
     useEffect(() => {

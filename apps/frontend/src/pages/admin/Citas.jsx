@@ -52,13 +52,49 @@ export default function Citas() {
     async function load() {
         setLoading(true);
         try {
-            const { items, total } = await listCitas({ page, pageSize, q });
+            const res = await listCitas({ page, pageSize, q });
+            const { items = [], total = 0, degraded, _stale } = res.data || res || {};
+            
             setRows(items);
             setTotal(total);
+            
+            // Mostrar advertencia si está degraded o stale
+            if (degraded || _stale) {
+                const message = _stale 
+                    ? "Mostrando datos en caché (pueden estar desactualizados)"
+                    : "Datos no disponibles temporalmente";
+                setNotification({
+                    title: "Advertencia",
+                    message,
+                    variant: "warning"
+                });
+            }
         } catch (error) {
             console.error('Error loading citas:', error);
             setRows([]);
             setTotal(0);
+            
+            // Mostrar notificación de error
+            let errorMessage = "No se pudieron cargar las citas. Por favor, intenta nuevamente.";
+            
+            // Manejar Circuit Breaker específicamente
+            if (error.status === 503 || error.isCircuitOpen) {
+                errorMessage = "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.status === 503) {
+                errorMessage = error.response?.data?.message || "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            setNotification({
+                open: true,
+                type: "error",
+                title: "Error al cargar",
+                message: errorMessage,
+                duration: 6000
+            });
         } finally {
             setLoading(false);
         }
@@ -79,6 +115,17 @@ export default function Citas() {
                 console.error('Error loading catalogs:', error);
                 setMedicos([]);
                 setHospitals([]);
+                
+                // Mostrar notificación solo si es error 503 (Circuit Breaker)
+                if (error.status === 503 || error.isCircuitOpen || error.response?.status === 503) {
+                    setNotification({
+                        open: true,
+                        type: "error",
+                        title: "Error al cargar catálogos",
+                        message: "El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.",
+                        duration: 6000
+                    });
+                }
             }
         })();
     }, []);

@@ -87,16 +87,28 @@ router.post('/login', async (req, res) => {
     const response = await requestWithRetry(requestConfig);
     res.status(response.status).json(response.data);
   } catch (error) {
-    console.error('[AUTH ERROR]', error.message);
+    // Normalizar el error para logging consistente
+    const errorCode = error.code || 'UNKNOWN';
+    const errorMessage = error.message || 'Error desconocido';
+    const isCircuitOpen = error.isCircuitOpen || false;
+    
+    console.error(`[AUTH ERROR] ${req.method} ${req.path} -> admin-service | code=${errorCode} | msg=${errorMessage} | circuitOpen=${isCircuitOpen}`);
+    
     if (error.isCircuitOpen && error.response) {
-      console.error('[AUTH ERROR] Circuit Breaker abierto');
+      console.error('[AUTH ERROR] Circuit Breaker abierto para admin-service');
       res.status(error.response.status).json(error.response.data);
     } else if (error.response) {
       res.status(error.response.status).json(error.response.data);
     } else {
-      res.status(500).json({
+      // Para errores de red/DNS (ENOTFOUND, ECONNREFUSED, etc.)
+      const status = (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') ? 503 : 500;
+      res.status(status).json({
         error: 'CONNECTION_ERROR',
-        message: 'Error de conexión con el servicio de autenticación'
+        message: error.code === 'ENOTFOUND' 
+          ? 'Servicio de autenticación no disponible (DNS error)'
+          : 'Error de conexión con el servicio de autenticación',
+        code: error.code,
+        service: 'admin-service'
       });
     }
   }

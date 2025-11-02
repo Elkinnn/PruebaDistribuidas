@@ -38,12 +38,32 @@ export default function AdminDashboard() {
                 ? { desde: filtros.desde, hasta: filtros.hasta }
                 : {};
             
-            const kpisData = await getKpisDashboard(filtrosAplicar);
+            const res = await getKpisDashboard(filtrosAplicar);
+            const kpisData = res.data || res;
+            const { degraded, _stale } = kpisData || {};
             
             setKpis(kpisData);
+            
+            // Mostrar advertencia si está degraded o stale
+            if (degraded || _stale) {
+                const message = _stale 
+                    ? "Mostrando datos en caché (pueden estar desactualizados)"
+                    : "Datos no disponibles temporalmente";
+                setError(message);
+            }
         } catch (err) {
             console.error('Error cargando KPIs:', err);
-            setError('Error al cargar los datos del dashboard');
+            
+            // Manejar Circuit Breaker específicamente
+            let errorMessage = 'Error al cargar los datos del dashboard';
+            if (err.status === 503 || err.isCircuitOpen || err.response?.status === 503) {
+                errorMessage = 'El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.';
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
