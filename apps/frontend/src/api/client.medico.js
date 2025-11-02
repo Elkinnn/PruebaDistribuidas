@@ -1,5 +1,5 @@
 // src/api/client.medico.js
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3002";
 
 async function handle(res) {
   if (!res.ok) {

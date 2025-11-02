@@ -58,11 +58,21 @@ export default function Reportes({ filtros }) {
     try {
       setDescargando(true);
       
-      // Llamar al endpoint de reportes
-      const response = await fetch(`http://localhost:3000/citas/reportes/${tipoReporte}?desde=${filtros.desde}&hasta=${filtros.hasta}`, {
+      // Obtener token de autorización
+      const token = localStorage.getItem('authToken');
+      
+      // Llamar al endpoint de reportes a través del gateway (siempre usar puerto 3002)
+      const gatewayUrl = 'http://localhost:3002';
+      const reportUrl = `${gatewayUrl}/citas/reportes/${tipoReporte}?desde=${filtros.desde}&hasta=${filtros.hasta}`;
+      
+      console.log('[REPORTES] Descargando reporte desde:', reportUrl);
+      console.log('[REPORTES] Token presente:', !!token);
+      
+      const response = await fetch(reportUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
 
