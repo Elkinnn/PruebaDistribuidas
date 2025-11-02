@@ -56,13 +56,31 @@ export default function Graficas({ filtros }) {
       
       const data = await getGraficasData(filtrosAplicar);
       
-      setDatosGraficas(data);
+      // Asegurar que todos los campos sean arrays válidos
+      setDatosGraficas({
+        citasPorDia: Array.isArray(data?.citasPorDia) ? data.citasPorDia : [],
+        especialidades: Array.isArray(data?.especialidades) ? data.especialidades : [],
+        pacientesPorHospital: Array.isArray(data?.pacientesPorHospital) ? data.pacientesPorHospital : [],
+        medicosTop: Array.isArray(data?.medicosTop) ? data.medicosTop : [],
+        estadosPorDia: Array.isArray(data?.estadosPorDia) ? data.estadosPorDia : [],
+        empleadosPorHospital: Array.isArray(data?.empleadosPorHospital) ? data.empleadosPorHospital : []
+      });
     } catch (err) {
       console.error('Error cargando datos de gráficas:', err);
       
+      // Mantener arrays vacíos en caso de error para evitar errores de .map()
+      setDatosGraficas({
+        citasPorDia: [],
+        especialidades: [],
+        pacientesPorHospital: [],
+        medicosTop: [],
+        estadosPorDia: [],
+        empleadosPorHospital: []
+      });
+      
       // Manejar Circuit Breaker específicamente
       let errorMessage = 'Error al cargar los datos de las gráficas';
-      if (err.status === 503 || err.isCircuitOpen || err.response?.status === 503) {
+      if (err.status === 503 || err.isCircuitOpen || err.response?.status === 503 || err.normalized?.status === 503) {
         errorMessage = 'El servicio está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.';
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
@@ -165,11 +183,11 @@ export default function Graficas({ filtros }) {
 
   // 1. Gráfica de líneas: Citas por día
   const datosCitasPorDia = {
-    labels: datosGraficas.citasPorDia.map(item => new Date(item.fecha).toLocaleDateString()),
+    labels: (datosGraficas.citasPorDia || []).map(item => new Date(item.fecha).toLocaleDateString()),
     datasets: [
       {
         label: 'Citas por día',
-        data: datosGraficas.citasPorDia.map(item => item.cantidad),
+        data: (datosGraficas.citasPorDia || []).map(item => item.cantidad),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         pointBackgroundColor: 'rgb(59, 130, 246)',
@@ -183,10 +201,10 @@ export default function Graficas({ filtros }) {
 
   // 2. Gráfica de pastel: Top especialidades
   const datosEspecialidades = {
-    labels: datosGraficas.especialidades.map(item => item.especialidad),
+    labels: (datosGraficas.especialidades || []).map(item => item.especialidad),
     datasets: [
       {
-        data: datosGraficas.especialidades.map(item => item.cantidad),
+        data: (datosGraficas.especialidades || []).map(item => item.cantidad),
         backgroundColor: [
           'rgba(99, 102, 241, 0.8)',
           'rgba(34, 197, 94, 0.8)',
@@ -218,8 +236,9 @@ export default function Graficas({ filtros }) {
   };
 
   // 3. Gráfica de barras apiladas: Pacientes por hospital
-  const hospitales = [...new Set(datosGraficas.pacientesPorHospital.map(item => item.hospital))];
-  const estados = [...new Set(datosGraficas.pacientesPorHospital.map(item => item.estado))];
+  const pacientesPorHospital = datosGraficas.pacientesPorHospital || [];
+  const hospitales = [...new Set(pacientesPorHospital.map(item => item.hospital))];
+  const estados = [...new Set(pacientesPorHospital.map(item => item.estado))];
   
   // Función para obtener colores según el estado
   const getEstadoColors = (estado) => {
@@ -238,7 +257,7 @@ export default function Graficas({ filtros }) {
       return {
         label: estado,
         data: hospitales.map(hospital => {
-          const item = datosGraficas.pacientesPorHospital.find(
+          const item = pacientesPorHospital.find(
             p => p.hospital === hospital && p.estado === estado
           );
           return item ? item.cantidad : 0;
@@ -254,11 +273,11 @@ export default function Graficas({ filtros }) {
 
   // 4. Gráfica de barras horizontales: Top médicos
   const datosMedicosTop = {
-    labels: datosGraficas.medicosTop.map(item => item.medico),
+    labels: (datosGraficas.medicosTop || []).map(item => item.medico),
     datasets: [
       {
         label: 'Citas atendidas',
-        data: datosGraficas.medicosTop.map(item => item.citasAtendidas),
+        data: (datosGraficas.medicosTop || []).map(item => item.citasAtendidas),
         backgroundColor: [
           'rgba(34, 197, 94, 0.8)',
           'rgba(59, 130, 246, 0.8)',
@@ -308,7 +327,8 @@ export default function Graficas({ filtros }) {
   };
 
   // 5. Gráfica recomendada: Distribución de estados por día
-  const fechas = [...new Set(datosGraficas.estadosPorDia.map(item => item.fecha))];
+  const estadosPorDia = datosGraficas.estadosPorDia || [];
+  const fechas = [...new Set(estadosPorDia.map(item => item.fecha))];
   const datosEstadosPorDia = {
     labels: fechas.map(fecha => new Date(fecha).toLocaleDateString()),
     datasets: estados.map((estado) => {
@@ -316,7 +336,7 @@ export default function Graficas({ filtros }) {
       return {
         label: estado,
         data: fechas.map(fecha => {
-          const item = datosGraficas.estadosPorDia.find(
+          const item = estadosPorDia.find(
             e => e.fecha === fecha && e.estado === estado
           );
           return item ? item.cantidad : 0;
@@ -332,10 +352,10 @@ export default function Graficas({ filtros }) {
 
   // 6. Gráfica de donut: Empleados por hospital
   const datosEmpleadosPorHospital = {
-    labels: datosGraficas.empleadosPorHospital.map(item => item.hospital),
+    labels: (datosGraficas.empleadosPorHospital || []).map(item => item.hospital),
     datasets: [
       {
-        data: datosGraficas.empleadosPorHospital.map(item => item.cantidadEmpleados),
+        data: (datosGraficas.empleadosPorHospital || []).map(item => item.cantidadEmpleados),
         backgroundColor: [
           'rgba(147, 51, 234, 0.8)',
           'rgba(99, 102, 241, 0.8)',

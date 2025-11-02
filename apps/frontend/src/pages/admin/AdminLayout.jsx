@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import Logo from "../../components/ui/Logo";
 import { logout } from "../../api/auth";
+// import CircuitBreakerNotification from "../../components/admin/CircuitBreakerNotification";
+// DESACTIVADO: Se usa el script inline en index.html para las notificaciones del circuit breaker
 
 const links = [
     { to: "/admin", label: "Dashboard", Icon: LayoutDashboard, end: true },
@@ -192,6 +194,9 @@ export default function AdminLayout() {
                     <Outlet />
                 </main>
             </div>
+            
+            {/* Notificación global de Circuit Breaker - DESACTIVADA: Se usa el script inline en index.html */}
+            {/* El script inline en index.html maneja las notificaciones del circuit breaker */}
         </div>
     );
 }

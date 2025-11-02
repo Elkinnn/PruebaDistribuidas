@@ -8,6 +8,484 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Script de detección de Circuit Breaker - Se ejecuta ANTES que React -->
+    <script>
+      // FORZAR EJECUCIÓN INMEDIATA - No esperar a nada
+      try {
+        console.error('🔴 [CB INLINE] ====== INICIANDO SCRIPT CB ======');
+        console.error('🔴 [CB INLINE] Timestamp:', new Date().toISOString());
+        console.error('🔴 [CB INLINE] typeof XMLHttpRequest:', typeof XMLHttpRequest);
+        
+        (function() {
+          console.error('🔴 [CB INLINE] Script de detección de CB cargado');
+          
+          // Estado global del circuit breaker para admin
+          window.__CB_STATE__ = {
+            isOpen: false,
+            error: null,
+            notification: null
+          };
+          
+          // Estado global del circuit breaker para médico
+          window.__CB_STATE_MEDICO__ = {
+            isOpen: false,
+            error: null,
+            notification: null
+          };
+          
+          // Timers para auto-ocultar notificaciones
+          let notificationTimeout = null;
+          let notificationMedicoTimeout = null;
+          // Banderas para evitar múltiples notificaciones simultáneas
+          let isNotificationVisible = false;
+          let isNotificationMedicoVisible = false;
+          // Últimos momentos en que se mostraron notificaciones (para evitar spam)
+          let lastNotificationTime = 0;
+          let lastNotificationMedicoTime = 0;
+          const NOTIFICATION_COOLDOWN = 2000; // 2 segundos entre notificaciones
+          
+          // Función para detectar si estamos en una ruta del frontend médico
+          function isMedicoRoute() {
+            const path = window.location.pathname;
+            return path.startsWith('/medico/') || path === '/medico';
+          }
+          
+          // Función para mostrar/ocultar notificación (admin)
+          function updateNotification(isOpen, error) {
+            window.__CB_STATE__.isOpen = isOpen;
+            window.__CB_STATE__.error = error;
+            
+            // Si ya hay una notificación visible Y está intentando mostrar otra
+            // Y no ha pasado el cooldown, ignorar
+            const now = Date.now();
+            if (isOpen && isNotificationVisible && (now - lastNotificationTime < NOTIFICATION_COOLDOWN)) {
+              console.error('🔴 [CB INLINE] Notificación ya visible, ignorando duplicado');
+              return;
+            }
+            
+            // Limpiar timer anterior si existe
+            if (notificationTimeout) {
+              clearTimeout(notificationTimeout);
+              notificationTimeout = null;
+            }
+            
+            // Eliminar notificación anterior si existe
+            const existing = document.getElementById('cb-notification');
+            if (existing) {
+              existing.remove();
+              isNotificationVisible = false;
+            }
+            
+            if (isOpen) {
+              // Verificar nuevamente antes de crear (por si hubo una condición de carrera)
+              if (document.getElementById('cb-notification')) {
+                console.error('🔴 [CB INLINE] Notificación aún existe en DOM, abortando');
+                return;
+              }
+              
+              lastNotificationTime = now;
+              isNotificationVisible = true;
+              // Crear notificación
+              const notification = document.createElement('div');
+              notification.id = 'cb-notification';
+              notification.style.cssText = 'position: fixed; top: 16px; right: 16px; z-index: 99999; max-width: 400px; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out;';
+              
+              const errorMsg = error?.message || 'El servicio de administración está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.';
+              
+              notification.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 12px;">
+                  <div style="flex-shrink: 0; width: 40px; height: 40px; background: #fee2e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; animation: pulse 2s infinite;">
+                    <span style="font-size: 24px;">⚠️</span>
+                  </div>
+                  <div style="flex: 1;">
+                    <h4 style="font-weight: bold; color: #991b1b; font-size: 14px; margin: 0 0 4px 0;">
+                      ⚠️ Servicio no disponible
+                    </h4>
+                    <p style="color: #7f1d1d; font-size: 13px; margin: 0; line-height: 1.5;">
+                      ${errorMsg}
+                    </p>
+                    <p style="color: #9f1239; font-size: 11px; margin: 8px 0 0 0; font-style: italic;">
+                      El sistema intentará reconectarse automáticamente cuando el servicio esté disponible.
+                    </p>
+                  </div>
+                </div>
+                <style>
+                  @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.7; }
+                  }
+                  @keyframes slideIn {
+                    from {
+                      transform: translateX(100%);
+                      opacity: 0;
+                    }
+                    to {
+                      transform: translateX(0);
+                      opacity: 1;
+                    }
+                  }
+                  @keyframes slideOut {
+                    from {
+                      transform: translateX(0);
+                      opacity: 1;
+                    }
+                    to {
+                      transform: translateX(100%);
+                      opacity: 0;
+                    }
+                  }
+                </style>
+              `;
+              
+              document.body.appendChild(notification);
+              console.error('🔴 [CB INLINE] Notificación creada');
+              
+              // Auto-ocultar después de 6 segundos
+              notificationTimeout = setTimeout(function() {
+                const notif = document.getElementById('cb-notification');
+                if (notif) {
+                  notif.style.animation = 'slideOut 0.3s ease-out';
+                  setTimeout(function() {
+                    if (notif && notif.parentNode) {
+                      notif.remove();
+                    }
+                    isNotificationVisible = false;
+                  }, 300);
+                }
+                notificationTimeout = null;
+              }, 6000); // 6 segundos
+            } else {
+              // Si se está cerrando la notificación, actualizar bandera
+              isNotificationVisible = false;
+            }
+          }
+          
+          // Función para mostrar/ocultar notificación (médico)
+          function updateNotificationMedico(isOpen, error) {
+            window.__CB_STATE_MEDICO__.isOpen = isOpen;
+            window.__CB_STATE_MEDICO__.error = error;
+            
+            // Solo mostrar si estamos en una ruta médica
+            if (!isMedicoRoute()) {
+              return;
+            }
+            
+            // Si ya hay una notificación visible Y está intentando mostrar otra
+            // Y no ha pasado el cooldown, ignorar
+            const now = Date.now();
+            if (isOpen && isNotificationMedicoVisible && (now - lastNotificationMedicoTime < NOTIFICATION_COOLDOWN)) {
+              console.error('🟢 [CB MEDICO INLINE] Notificación ya visible, ignorando duplicado');
+              return;
+            }
+            
+            // Limpiar timer anterior si existe
+            if (notificationMedicoTimeout) {
+              clearTimeout(notificationMedicoTimeout);
+              notificationMedicoTimeout = null;
+            }
+            
+            // Eliminar notificación anterior si existe
+            const existing = document.getElementById('cb-notification-medico');
+            if (existing) {
+              existing.remove();
+              isNotificationMedicoVisible = false;
+            }
+            
+            if (isOpen) {
+              // Verificar nuevamente antes de crear (por si hubo una condición de carrera)
+              if (document.getElementById('cb-notification-medico')) {
+                console.error('🟢 [CB MEDICO INLINE] Notificación aún existe en DOM, abortando');
+                return;
+              }
+              
+              lastNotificationMedicoTime = now;
+              isNotificationMedicoVisible = true;
+              // Crear notificación
+              const notification = document.createElement('div');
+              notification.id = 'cb-notification-medico';
+              notification.style.cssText = 'position: fixed; top: 16px; right: 16px; z-index: 99999; max-width: 400px; background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out;';
+              
+              const errorMsg = error?.message || 'El servicio médico está temporalmente no disponible. Por favor, intenta nuevamente en unos momentos.';
+              
+              notification.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 12px;">
+                  <div style="flex-shrink: 0; width: 40px; height: 40px; background: #dcfce7; border-radius: 8px; display: flex; align-items: center; justify-content: center; animation: pulse 2s infinite;">
+                    <span style="font-size: 24px;">🏥</span>
+                  </div>
+                  <div style="flex: 1;">
+                    <h4 style="font-weight: bold; color: #166534; font-size: 14px; margin: 0 0 4px 0;">
+                      ⚠️ Servicio médico no disponible
+                    </h4>
+                    <p style="color: #15803d; font-size: 13px; margin: 0; line-height: 1.5;">
+                      ${errorMsg}
+                    </p>
+                    <p style="color: #16a34a; font-size: 11px; margin: 8px 0 0 0; font-style: italic;">
+                      El sistema intentará reconectarse automáticamente cuando el servicio esté disponible.
+                    </p>
+                  </div>
+                </div>
+              `;
+              
+              document.body.appendChild(notification);
+              console.error('🟢 [CB MEDICO INLINE] Notificación creada');
+              
+              // Auto-ocultar después de 6 segundos
+              notificationMedicoTimeout = setTimeout(function() {
+                const notif = document.getElementById('cb-notification-medico');
+                if (notif) {
+                  notif.style.animation = 'slideOut 0.3s ease-out';
+                  setTimeout(function() {
+                    if (notif && notif.parentNode) {
+                      notif.remove();
+                    }
+                    isNotificationMedicoVisible = false;
+                  }, 300);
+                }
+                notificationMedicoTimeout = null;
+              }, 6000); // 6 segundos
+            } else {
+              // Si se está cerrando la notificación, actualizar bandera
+              isNotificationMedicoVisible = false;
+            }
+          }
+          
+          // Detectar cambios de página/ruta para volver a mostrar la notificación si el servicio sigue caído
+          let lastUrl = window.location.href;
+          setInterval(function() {
+            const currentUrl = window.location.href;
+            const isMedico = isMedicoRoute();
+            
+            if (currentUrl !== lastUrl) {
+              // Para admin
+              if (!isMedico && window.__CB_STATE__.isOpen && !isNotificationVisible) {
+                console.error('🔴 [CB INLINE] Navegación detectada, servicio admin sigue caído - mostrando notificación');
+                lastNotificationTime = 0;
+                updateNotification(true, window.__CB_STATE__.error);
+              }
+              
+              // Para médico
+              if (isMedico && window.__CB_STATE_MEDICO__.isOpen && !isNotificationMedicoVisible) {
+                console.error('🟢 [CB MEDICO INLINE] Navegación detectada, servicio médico sigue caído - mostrando notificación');
+                lastNotificationMedicoTime = 0;
+                updateNotificationMedico(true, window.__CB_STATE_MEDICO__.error);
+              }
+            }
+            lastUrl = currentUrl;
+          }, 500);
+          
+          // Interceptar XMLHttpRequest
+          const originalXHROpen = XMLHttpRequest.prototype.open;
+          const originalXHRSend = XMLHttpRequest.prototype.send;
+          const xhrUrlMap = new WeakMap();
+          
+          XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            const fullUrl = typeof url === 'string' ? url : url.toString();
+            xhrUrlMap.set(this, fullUrl);
+            return originalXHROpen.apply(this, [method, url, ...rest]);
+          };
+          
+          XMLHttpRequest.prototype.send = function(...args) {
+            const xhr = this;
+            const url = xhrUrlMap.get(xhr) || '';
+            
+            // Agregar listener ANTES de enviar
+            xhr.addEventListener('load', function() {
+              const status = xhr.status;
+              const responseUrl = url || xhr.responseURL || '';
+              const normalizedUrl = responseUrl.toLowerCase();
+              
+              console.error('🔴 [CB INLINE] Evento load:', {
+                status: status,
+                url: responseUrl,
+                normalizedUrl: normalizedUrl
+              });
+              
+              // Detectar si es servicio médico o admin
+              const isMedicoService = normalizedUrl.includes('/medico/') || 
+                                     normalizedUrl.includes('/medico?') ||
+                                     normalizedUrl.includes('medico-service') ||
+                                     normalizedUrl.includes('api/medico') ||
+                                     (normalizedUrl.includes('/medico') && !normalizedUrl.includes('/medicos')); // /medicos es admin, /medico es médico
+              
+              if (status === 503) {
+                if (isMedicoService) {
+                  // Error 503 del servicio médico
+                  console.error('🟢 [CB MEDICO INLINE] ⚠️⚠️⚠️ DETECTADO 503 MÉDICO ⚠️⚠️⚠️:', {
+                    url: responseUrl,
+                    status,
+                    statusText: xhr.statusText,
+                    isMedicoService: true,
+                    notificacionVisible: isNotificationMedicoVisible
+                  });
+                  
+                  const errorInfo = {
+                    status: 503,
+                    code: 'CIRCUIT_OPEN',
+                    message: 'El servicio médico está temporalmente no disponible'
+                  };
+                  
+                  // Actualizar estado global del médico
+                  window.__CB_STATE_MEDICO__.isOpen = true;
+                  window.__CB_STATE_MEDICO__.error = errorInfo;
+                  
+                  // Solo mostrar si estamos en ruta médica
+                  if (isMedicoRoute()) {
+                    updateNotificationMedico(true, errorInfo);
+                  }
+                } else {
+                  // Error 503 del servicio admin
+                  console.error('🔴 [CB INLINE] ⚠️⚠️⚠️ DETECTADO 503 ADMIN ⚠️⚠️⚠️:', {
+                    url: responseUrl,
+                    status,
+                    statusText: xhr.statusText,
+                    isMedicoService: false,
+                    notificacionVisible: isNotificationVisible
+                  });
+                  
+                  const errorInfo = {
+                    status: 503,
+                    code: 'CIRCUIT_OPEN',
+                    message: 'El servicio de administración está temporalmente no disponible'
+                  };
+                  
+                  // Actualizar estado global primero
+                  window.__CB_STATE__.isOpen = true;
+                  window.__CB_STATE__.error = errorInfo;
+                  
+                  // Solo mostrar si NO estamos en ruta médica
+                  if (!isMedicoRoute()) {
+                    updateNotification(true, errorInfo);
+                  }
+                }
+              } else if (status >= 200 && status < 300) {
+                // Si hay una respuesta exitosa, cerrar notificaciones correspondientes
+                if (isMedicoService && window.__CB_STATE_MEDICO__.isOpen) {
+                  console.error('🟢 [CB MEDICO INLINE] Servicio médico disponible - cerrando notificación');
+                  window.__CB_STATE_MEDICO__.isOpen = false;
+                  window.__CB_STATE_MEDICO__.error = null;
+                  updateNotificationMedico(false, null);
+                } else if (!isMedicoService && window.__CB_STATE__.isOpen) {
+                  console.error('🔴 [CB INLINE] Servicio admin disponible - cerrando notificación');
+                  window.__CB_STATE__.isOpen = false;
+                  window.__CB_STATE__.error = null;
+                  updateNotification(false, null);
+                }
+              }
+            }, false);
+            
+            // También interceptar errores
+            xhr.addEventListener('error', function() {
+              console.error('🔴 [CB INLINE] Error en XHR:', {
+                url: url || xhr.responseURL || '',
+                status: xhr.status
+              });
+            });
+            
+            return originalXHRSend.apply(this, args);
+          };
+          
+          console.error('🔴 [CB INLINE] Interceptores XMLHttpRequest configurados');
+          console.error('🔴 [CB INLINE] XMLHttpRequest.prototype.open sobrescrito:', XMLHttpRequest.prototype.open !== originalXHROpen);
+          console.error('🔴 [CB INLINE] XMLHttpRequest.prototype.send sobrescrito:', XMLHttpRequest.prototype.send !== originalXHRSend);
+          
+          // Interceptar también fetch (usado por client.medico.js)
+          const originalFetch = window.fetch;
+          window.fetch = function(...args) {
+            const url = args[0];
+            const urlString = typeof url === 'string' ? url : url.toString();
+            const normalizedUrl = urlString.toLowerCase();
+            
+            const isMedicoService = normalizedUrl.includes('/medico/') || 
+                                   normalizedUrl.includes('/medico?') ||
+                                   normalizedUrl.includes('medico-service') ||
+                                   normalizedUrl.includes('api/medico') ||
+                                   (normalizedUrl.includes('/medico') && !normalizedUrl.includes('/medicos'));
+            
+            return originalFetch.apply(this, args)
+              .then(response => {
+                // Interceptar respuesta
+                if (response.status === 503) {
+                  if (isMedicoService) {
+                    console.error('🟢 [CB MEDICO FETCH] ⚠️⚠️⚠️ DETECTADO 503 MÉDICO ⚠️⚠️⚠️:', {
+                      url: urlString,
+                      status: response.status,
+                      isMedicoService: true
+                    });
+                    
+                    const errorInfo = {
+                      status: 503,
+                      code: 'CIRCUIT_OPEN',
+                      message: 'El servicio médico está temporalmente no disponible'
+                    };
+                    
+                    window.__CB_STATE_MEDICO__.isOpen = true;
+                    window.__CB_STATE_MEDICO__.error = errorInfo;
+                    
+                    if (isMedicoRoute()) {
+                      updateNotificationMedico(true, errorInfo);
+                    }
+                  } else {
+                    const errorInfo = {
+                      status: 503,
+                      code: 'CIRCUIT_OPEN',
+                      message: 'El servicio de administración está temporalmente no disponible'
+                    };
+                    
+                    window.__CB_STATE__.isOpen = true;
+                    window.__CB_STATE__.error = errorInfo;
+                    
+                    if (!isMedicoRoute()) {
+                      updateNotification(true, errorInfo);
+                    }
+                  }
+                } else if (response.status >= 200 && response.status < 300) {
+                  // Si hay una respuesta exitosa, cerrar notificaciones correspondientes
+                  if (isMedicoService && window.__CB_STATE_MEDICO__.isOpen) {
+                    window.__CB_STATE_MEDICO__.isOpen = false;
+                    window.__CB_STATE_MEDICO__.error = null;
+                    updateNotificationMedico(false, null);
+                  } else if (!isMedicoService && window.__CB_STATE__.isOpen) {
+                    window.__CB_STATE__.isOpen = false;
+                    window.__CB_STATE__.error = null;
+                    updateNotification(false, null);
+                  }
+                }
+                
+                return response;
+              })
+              .catch(error => {
+                // Si hay un error de red, también podría ser circuit breaker
+                const normalizedUrl = (typeof url === 'string' ? url : url.toString()).toLowerCase();
+                const isMedicoService = normalizedUrl.includes('/medico/') || 
+                                       normalizedUrl.includes('/medico?') ||
+                                       normalizedUrl.includes('medico-service') ||
+                                       normalizedUrl.includes('api/medico') ||
+                                       (normalizedUrl.includes('/medico') && !normalizedUrl.includes('/medicos'));
+                
+                if (isMedicoService && isMedicoRoute()) {
+                  const errorInfo = {
+                    status: 503,
+                    code: 'NETWORK_ERROR',
+                    message: 'El servicio médico no responde. Verificando estado...'
+                  };
+                  
+                  window.__CB_STATE_MEDICO__.isOpen = true;
+                  window.__CB_STATE_MEDICO__.error = errorInfo;
+                  updateNotificationMedico(true, errorInfo);
+                }
+                
+                throw error;
+              });
+          };
+          
+          console.error('🟢 [CB MEDICO INLINE] Interceptor fetch configurado');
+        })();
+      } catch(e) {
+        console.error('🔴 [CB INLINE] ERROR al configurar interceptores:', e);
+      }
+    </script>
+    
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,6 +1,7 @@
 // apps/frontend/src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthMedicoProvider } from "./auth/useAuthMedico.jsx";
+import { CircuitBreakerProvider } from "./contexts/CircuitBreakerContext";
 
 // ADMIN
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -52,8 +53,9 @@ function MedicoProtected({ children }) {
 /* ===== App ===== */
 export default function App() {
   return (
-    <AuthMedicoProvider>
-      <Routes>
+    <CircuitBreakerProvider>
+      <AuthMedicoProvider>
+        <Routes>
         {/* Público ADMIN */}
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -92,5 +94,6 @@ export default function App() {
         </Route>
       </Routes>
     </AuthMedicoProvider>
+    </CircuitBreakerProvider>
   );
 }
