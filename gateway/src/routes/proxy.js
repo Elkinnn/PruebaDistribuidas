@@ -486,8 +486,10 @@ if (config.services.medico) {
   
   router.use('/medico', async (req, res) => {
     try {
-      // Normalizar path
-      const rawPath = req.path.replace(/^\/medico/, '') || '/';
+      // Normalizar path - el servicio médico espera rutas con prefijo /medico
+      // req.path dentro de router.use('/medico', ...) ya viene sin /medico
+      // Necesitamos reconstruir el path completo: /medico + req.path
+      const rawPath = '/medico' + (req.path || '/');
       const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
       const targetUrl = buildTargetUrl(config.services.medico, rawPath, qs);
       
