@@ -599,19 +599,21 @@ export class MedicoController {
                 throw new CustomError(500, "Error de conexión a la base de datos", null);
             }
             
-            // Primero verificar si hay registros en MedicoEspecialidad para este médico
+            // Primero verificar si hay registros en medicoespecialidad para este médico
+            // NOTA: Las tablas en MySQL son minúsculas (medicoespecialidad, especialidad)
             const checkMedicoEspecialidad = await (database as any).dataSource.query(`
-                SELECT * FROM MedicoEspecialidad WHERE medicoId = ?
+                SELECT * FROM medicoespecialidad WHERE medicoId = ?
             `, [medico.id]);
             
             console.log('[DEBUG] Registros en medicoespecialidad para médico', medico.id, ':', checkMedicoEspecialidad?.length || 0);
             console.log('[DEBUG] Detalles medicoespecialidad:', checkMedicoEspecialidad);
             
             // Consulta SQL directa para obtener especialidades del médico específico
+            // NOTA: Usar nombres de tablas en minúsculas para coincidir con el esquema real
             const especialidadesResult = await (database as any).dataSource.query(`
                 SELECT e.id, e.nombre, e.descripcion
-                FROM Especialidad e
-                JOIN MedicoEspecialidad me ON e.id = me.especialidadId
+                FROM especialidad e
+                JOIN medicoespecialidad me ON e.id = me.especialidadId
                 WHERE me.medicoId = ?
                 ORDER BY e.nombre
             `, [medico.id]);

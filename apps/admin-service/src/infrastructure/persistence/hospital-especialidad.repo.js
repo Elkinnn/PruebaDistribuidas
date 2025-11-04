@@ -3,7 +3,7 @@ const { pool } = require('./db');
 async function addToHospital(hospitalId, especialidadId) {
   try {
     const [result] = await pool.query(
-      `INSERT INTO HospitalEspecialidad (hospitalId, especialidadId)
+      `INSERT INTO hospitalespecialidad (hospitalId, especialidadId)
        VALUES (:hospitalId, :especialidadId)`,
       { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
     );
@@ -25,7 +25,7 @@ async function removeFromHospital(hospitalId, especialidadId) {
     
     // 1. Eliminar la asignación hospital-especialidad
     const [result] = await conn.query(
-      `DELETE FROM HospitalEspecialidad
+      `DELETE FROM hospitalespecialidad
         WHERE hospitalId = :hospitalId AND especialidadId = :especialidadId`,
       { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
     );
@@ -38,8 +38,8 @@ async function removeFromHospital(hospitalId, especialidadId) {
     // 2. Limpiar especialidades huérfanas de médicos del hospital
     // Eliminar todas las asignaciones de esta especialidad a médicos de este hospital
     await conn.query(
-      `DELETE me FROM MedicoEspecialidad me
-       INNER JOIN Medico m ON me.medicoId = m.id
+      `DELETE me FROM medicoespecialidad me
+       INNER JOIN medico m ON me.medicoId = m.id
        WHERE m.hospitalId = :hospitalId AND me.especialidadId = :especialidadId`,
       { hospitalId: Number(hospitalId), especialidadId: Number(especialidadId) }
     );
@@ -62,16 +62,16 @@ async function listByHospital(hospitalId, { page = 1, size = 20 } = {}) {
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(*) AS total
-       FROM HospitalEspecialidad he
-       JOIN Especialidad e ON e.id = he.especialidadId
+       FROM hospitalespecialidad he
+       JOIN especialidad e ON e.id = he.especialidadId
       WHERE he.hospitalId = :hospitalId`,
     { hospitalId: Number(hospitalId) }
   );
 
   const [rows] = await pool.query(
     `SELECT e.id, e.nombre, e.descripcion
-       FROM HospitalEspecialidad he
-       JOIN Especialidad e ON e.id = he.especialidadId
+       FROM hospitalespecialidad he
+       JOIN especialidad e ON e.id = he.especialidadId
       WHERE he.hospitalId = :hospitalId
    ORDER BY e.nombre ASC
       LIMIT :limit OFFSET :offset`,
@@ -92,9 +92,9 @@ async function cleanupOrphanedEspecialidades() {
     
     // Encontrar y eliminar especialidades huérfanas
     const [orphaned] = await conn.query(
-      `DELETE me FROM MedicoEspecialidad me
-       INNER JOIN Medico m ON me.medicoId = m.id
-       LEFT JOIN HospitalEspecialidad he ON he.hospitalId = m.hospitalId AND he.especialidadId = me.especialidadId
+      `DELETE me FROM medicoespecialidad me
+       INNER JOIN medico m ON me.medicoId = m.id
+       LEFT JOIN hospitalespecialidad he ON he.hospitalId = m.hospitalId AND he.especialidadId = me.especialidadId
        WHERE he.especialidadId IS NULL`
     );
     

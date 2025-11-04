@@ -2,8 +2,12 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import { initDatabase } from './infrastructure/persistence/init-db';
 
 async function bootstrap() {
+  // Inicializar base de datos antes de crear la app
+  await initDatabase();
+  
   const app = await NestFactory.create(AppModule);
 
   const PORT = Number(process.env.PORT ?? 3001);

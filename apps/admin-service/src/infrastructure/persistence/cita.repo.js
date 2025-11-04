@@ -34,7 +34,7 @@ async function findPaciente(conn, hospitalId, p) {
 
   if (documento) {
     const [r] = await conn.query(
-      `SELECT id FROM Paciente
+      `SELECT id FROM paciente
        WHERE hospitalId = :hospitalId AND documento = :documento
        LIMIT 1`,
       { hospitalId, documento }
@@ -44,7 +44,7 @@ async function findPaciente(conn, hospitalId, p) {
 
   if (email) {
     const [r] = await conn.query(
-      `SELECT id FROM Paciente
+      `SELECT id FROM paciente
        WHERE hospitalId = :hospitalId AND LOWER(email) = :email
        LIMIT 1`,
       { hospitalId, email }
@@ -55,7 +55,7 @@ async function findPaciente(conn, hospitalId, p) {
   if (telefono) {
     // compara 'solo dígitos' en BD
     const [r] = await conn.query(
-      `SELECT id FROM Paciente
+      `SELECT id FROM paciente
        WHERE hospitalId = :hospitalId
          AND REPLACE(REPLACE(REPLACE(REPLACE(telefono,' ',''),'-',''),'(',''),')','') = :telefono
        LIMIT 1`,
@@ -66,7 +66,7 @@ async function findPaciente(conn, hospitalId, p) {
 
   if (nombres && apellidos && fechaNacimiento) {
     const [r] = await conn.query(
-      `SELECT id FROM Paciente
+      `SELECT id FROM paciente
        WHERE hospitalId = :hospitalId
          AND nombres = :nombres
          AND apellidos = :apellidos
@@ -100,7 +100,7 @@ async function ensurePacienteId(conn, hospitalId, paciente) {
 
   try {
     const [ins] = await conn.query(
-      `INSERT INTO Paciente
+      `INSERT INTO paciente
         (hospitalId, nombres, apellidos, fechaNacimiento, sexo, telefono, email, documento, activo)
        VALUES
         (:hospitalId, :nombres, :apellidos, :fechaNacimiento, :sexo, :telefono, :email, :documento, 1)`,
@@ -135,7 +135,7 @@ async function hasOverlapConn(conn, { medicoId, fechaInicio, fechaFin, excludeId
   if (excludeId) { exclude = 'AND c.id <> :excludeId'; params.excludeId = +excludeId; }
 
   const [rows] = await conn.query(
-    `SELECT c.id FROM Cita c
+    `SELECT c.id FROM cita c
       WHERE c.medicoId = :medicoId
         AND c.estado IN ('PROGRAMADA')
         ${exclude}
@@ -163,10 +163,10 @@ async function findById(id) {
        p.documento as pacienteDocumento, p.telefono as pacienteTelefonoCompleto,
        p.email as pacienteEmailCompleto, p.fechaNacimiento as pacienteFechaNacimiento,
        p.sexo as pacienteSexo
-     FROM Cita c
-     LEFT JOIN Hospital h ON c.hospitalId = h.id
-     LEFT JOIN Medico m ON c.medicoId = m.id
-     LEFT JOIN Paciente p ON c.pacienteId = p.id
+     FROM cita c
+     LEFT JOIN hospital h ON c.hospitalId = h.id
+     LEFT JOIN medico m ON c.medicoId = m.id
+     LEFT JOIN paciente p ON c.pacienteId = p.id
      WHERE c.id = :id
      LIMIT 1`,
     { id: +id }
@@ -219,7 +219,7 @@ async function createAdmin(dto) {
 
     // coherencia médico-hospital
     const [[{ okHosp }]] = await conn.query(
-      `SELECT COUNT(*) okHosp FROM Medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
+      `SELECT COUNT(*) okHosp FROM medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
       { medicoId: +dto.medicoId, hospitalId: +dto.hospitalId }
     );
     if (!okHosp) { const err = new Error('El médico no pertenece a ese hospital'); err.status = 400; throw err; }
@@ -241,7 +241,7 @@ async function createAdmin(dto) {
       snap = snapshotFromPaciente(dto.paciente);
     } else if (pacienteId) {
       const [pr] = await conn.query(
-        `SELECT nombres, apellidos, telefono, email FROM Paciente WHERE id = :id LIMIT 1`,
+        `SELECT nombres, apellidos, telefono, email FROM paciente WHERE id = :id LIMIT 1`,
         { id: pacienteId }
       );
       if (!pr.length) { const err = new Error('pacienteId no existe'); err.status = 400; throw err; }
@@ -249,7 +249,7 @@ async function createAdmin(dto) {
     }
 
     const [ins] = await conn.query(
-      `INSERT INTO Cita
+      `INSERT INTO cita
        (hospitalId, medicoId, pacienteId, pacienteNombre, pacienteTelefono, pacienteEmail,
         motivo, fechaInicio, fechaFin, estado, creadaPorId)
        VALUES
@@ -301,7 +301,7 @@ async function createByMedico({ medico, payload, userId }) {
       snap = snapshotFromPaciente(payload.paciente);
     } else if (pacienteId) {
       const [pr] = await conn.query(
-        `SELECT nombres, apellidos, telefono, email FROM Paciente WHERE id = :id LIMIT 1`,
+        `SELECT nombres, apellidos, telefono, email FROM paciente WHERE id = :id LIMIT 1`,
         { id: pacienteId }
       );
       if (!pr.length) { const err = new Error('pacienteId no existe'); err.status = 400; throw err; }
@@ -309,7 +309,7 @@ async function createByMedico({ medico, payload, userId }) {
     }
 
     const [ins] = await conn.query(
-      `INSERT INTO Cita
+      `INSERT INTO cita
        (hospitalId, medicoId, pacienteId, pacienteNombre, pacienteTelefono, pacienteEmail,
         motivo, fechaInicio, fechaFin, estado, creadaPorId)
        VALUES
@@ -384,7 +384,7 @@ async function list(filters = {}) {
 
   // Contar total
   const [countResult] = await pool.query(
-    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    `SELECT COUNT(*) as total FROM cita c ${whereClause}`,
     params
   );
   const total = countResult[0].total;
@@ -399,9 +399,9 @@ async function list(filters = {}) {
        c.creadaPorId, c.actualizadaPorId, c.createdAt, c.updatedAt,
        h.nombre as hospitalNombre,
        m.nombres as medicoNombres, m.apellidos as medicoApellidos
-     FROM Cita c
-     LEFT JOIN Hospital h ON c.hospitalId = h.id
-     LEFT JOIN Medico m ON c.medicoId = m.id
+     FROM cita c
+     LEFT JOIN hospital h ON c.hospitalId = h.id
+     LEFT JOIN medico m ON c.medicoId = m.id
      ${whereClause}
      ORDER BY c.fechaInicio DESC
      LIMIT :offset, :size`,
@@ -451,7 +451,7 @@ async function listByMedico(medicoId, filters = {}) {
 
   // Contar total
   const [countResult] = await pool.query(
-    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    `SELECT COUNT(*) as total FROM cita c ${whereClause}`,
     params
   );
   const total = countResult[0].total;
@@ -465,8 +465,8 @@ async function listByMedico(medicoId, filters = {}) {
        c.motivo, c.fechaInicio, c.fechaFin, c.estado,
        c.creadaPorId, c.actualizadaPorId, c.createdAt, c.updatedAt,
        h.nombre as hospitalNombre
-     FROM Cita c
-     LEFT JOIN Hospital h ON c.hospitalId = h.id
+     FROM cita c
+     LEFT JOIN hospital h ON c.hospitalId = h.id
      ${whereClause}
      ORDER BY c.fechaInicio DESC
      LIMIT :offset, :size`,
@@ -502,7 +502,7 @@ async function updateAdmin(id, dto, userId) {
     // Si se cambia médico, verificar coherencia hospital-médico
     if (dto.medicoId && dto.hospitalId) {
       const [[{ okHosp }]] = await conn.query(
-        `SELECT COUNT(*) okHosp FROM Medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
+        `SELECT COUNT(*) okHosp FROM medico WHERE id = :medicoId AND hospitalId = :hospitalId`,
         { medicoId: +dto.medicoId, hospitalId: +dto.hospitalId }
       );
       if (!okHosp) {
@@ -568,7 +568,7 @@ async function updateAdmin(id, dto, userId) {
     updates.push('updatedAt = NOW()');
 
     await conn.query(
-      `UPDATE Cita SET ${updates.join(', ')} WHERE id = :id`,
+      `UPDATE cita SET ${updates.join(', ')} WHERE id = :id`,
       params
     );
 
@@ -587,7 +587,7 @@ async function updateAdmin(id, dto, userId) {
    ============================ */
 async function remove(id) {
   const [result] = await pool.query(
-    'DELETE FROM Cita WHERE id = :id',
+    'DELETE FROM cita WHERE id = :id',
     { id: +id }
   );
   return result.affectedRows > 0;
@@ -603,7 +603,7 @@ async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, us
 
     // Verificar que la cita existe y pertenece al médico
     const [cita] = await conn.query(
-      `SELECT id, estado, fechaInicio FROM Cita 
+      `SELECT id, estado, fechaInicio FROM cita 
        WHERE id = :citaId AND medicoId = :medicoId`,
       { citaId: +citaId, medicoId: +medicoId }
     );
@@ -634,7 +634,7 @@ async function reprogramarByMedico({ citaId, medicoId, fechaInicio, fechaFin, us
 
     // Actualizar cita
     await conn.query(
-      `UPDATE Cita 
+      `UPDATE cita 
        SET fechaInicio = :fechaInicio, fechaFin = :fechaFin, 
            actualizadaPorId = :userId, updatedAt = NOW()
        WHERE id = :citaId`,
@@ -675,7 +675,7 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
 
   // 1. Total de citas en el rango
   const [totalResult] = await pool.query(
-    `SELECT COUNT(*) as total FROM Cita c ${whereClause}`,
+    `SELECT COUNT(*) as total FROM cita c ${whereClause}`,
     params
   );
   const totalCitas = totalResult[0].total;
@@ -683,7 +683,7 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
   // 2. Citas canceladas
   const canceladasWhere = whereClause ? `${whereClause} AND c.estado = 'CANCELADA'` : `WHERE c.estado = 'CANCELADA'`;
   const [canceladasResult] = await pool.query(
-    `SELECT COUNT(*) as canceladas FROM Cita c ${canceladasWhere}`,
+    `SELECT COUNT(*) as canceladas FROM cita c ${canceladasWhere}`,
     params
   );
   const canceladas = canceladasResult[0].canceladas;
@@ -691,7 +691,7 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
   // 3. Citas atendidas
   const atendidasWhere = whereClause ? `${whereClause} AND c.estado = 'ATENDIDA'` : `WHERE c.estado = 'ATENDIDA'`;
   const [atendidasResult] = await pool.query(
-    `SELECT COUNT(*) as atendidas FROM Cita c ${atendidasWhere}`,
+    `SELECT COUNT(*) as atendidas FROM cita c ${atendidasWhere}`,
     params
   );
   const atendidas = atendidasResult[0].atendidas;
@@ -699,7 +699,7 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
   // 4. Citas programadas
   const programadasWhere = whereClause ? `${whereClause} AND c.estado = 'PROGRAMADA'` : `WHERE c.estado = 'PROGRAMADA'`;
   const [programadasResult] = await pool.query(
-    `SELECT COUNT(*) as programadas FROM Cita c ${programadasWhere}`,
+    `SELECT COUNT(*) as programadas FROM cita c ${programadasWhere}`,
     params
   );
   const programadas = programadasResult[0].programadas;
@@ -710,7 +710,7 @@ async function getKpisDashboard({ desde, hasta, hospitalId } = {}) {
     : `WHERE c.estado = 'ATENDIDA' AND c.fechaInicio IS NOT NULL AND c.fechaFin IS NOT NULL`;
   const [tiempoResult] = await pool.query(
     `SELECT AVG(TIMESTAMPDIFF(MINUTE, c.fechaInicio, c.fechaFin)) as tiempoMedio 
-     FROM Cita c 
+     FROM cita c 
      ${tiempoWhere}`,
     params
   );
@@ -760,7 +760,7 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
     `SELECT 
        DATE(c.fechaInicio) as fecha,
        COUNT(*) as cantidad
-     FROM Cita c 
+     FROM cita c 
      ${whereClause}
      GROUP BY DATE(c.fechaInicio)
      ORDER BY fecha ASC`,
@@ -772,10 +772,10 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
     `SELECT 
        e.nombre as especialidad,
        COUNT(DISTINCT c.id) as cantidad
-     FROM Cita c
-     INNER JOIN Medico m ON c.medicoId = m.id
-     INNER JOIN MedicoEspecialidad me ON m.id = me.medicoId
-     INNER JOIN Especialidad e ON me.especialidadId = e.id
+     FROM cita c
+     INNER JOIN medico m ON c.medicoId = m.id
+     INNER JOIN medicoespecialidad me ON m.id = me.medicoId
+     INNER JOIN especialidad e ON me.especialidadId = e.id
      ${whereClause}
      GROUP BY e.id, e.nombre
      ORDER BY cantidad DESC
@@ -789,8 +789,8 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
        h.nombre as hospital,
        c.estado,
        COUNT(*) as cantidad
-     FROM Cita c
-     INNER JOIN Hospital h ON c.hospitalId = h.id
+     FROM cita c
+     INNER JOIN hospital h ON c.hospitalId = h.id
      ${whereClause}
      GROUP BY h.id, h.nombre, c.estado
      ORDER BY h.nombre, c.estado`,
@@ -802,8 +802,8 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
     `SELECT 
        CONCAT(m.nombres, ' ', m.apellidos) as medico,
        COUNT(*) as citasAtendidas
-     FROM Cita c
-     INNER JOIN Medico m ON c.medicoId = m.id
+     FROM cita c
+     INNER JOIN medico m ON c.medicoId = m.id
      ${whereClause}
      AND c.estado = 'ATENDIDA'
      GROUP BY m.id, m.nombres, m.apellidos
@@ -818,7 +818,7 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
        DATE(c.fechaInicio) as fecha,
        c.estado,
        COUNT(*) as cantidad
-     FROM Cita c
+     FROM cita c
      ${whereClause}
      GROUP BY DATE(c.fechaInicio), c.estado
      ORDER BY fecha ASC, c.estado`,
@@ -830,8 +830,8 @@ async function getGraficasData({ desde, hasta, hospitalId } = {}) {
     `SELECT 
        h.nombre as hospital,
        COUNT(DISTINCT e.id) as cantidadEmpleados
-     FROM Hospital h
-     LEFT JOIN Empleado e ON h.id = e.hospitalId
+     FROM hospital h
+     LEFT JOIN empleado e ON h.id = e.hospitalId
      GROUP BY h.id, h.nombre
      ORDER BY cantidadEmpleados DESC`,
     params
@@ -881,12 +881,12 @@ async function getReporteCitasDetalladas({ desde, hasta, hospitalId } = {}) {
        c.estado,
        c.createdAt,
        'Sistema' as creadoPor
-     FROM Cita c
-     INNER JOIN Hospital h ON c.hospitalId = h.id
-     INNER JOIN Medico m ON c.medicoId = m.id
-     INNER JOIN Paciente p ON c.pacienteId = p.id
-     INNER JOIN MedicoEspecialidad me ON m.id = me.medicoId
-     INNER JOIN Especialidad e ON me.especialidadId = e.id
+     FROM cita c
+     INNER JOIN hospital h ON c.hospitalId = h.id
+     INNER JOIN medico m ON c.medicoId = m.id
+     INNER JOIN paciente p ON c.pacienteId = p.id
+     INNER JOIN medicoespecialidad me ON m.id = me.medicoId
+     INNER JOIN especialidad e ON me.especialidadId = e.id
      ${whereClause}
      ORDER BY c.fechaInicio DESC`,
     params
@@ -927,10 +927,10 @@ async function getReporteResumenEspecialidad({ desde, hasta, hospitalId } = {}) 
        ROUND(
          (SUM(CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END) / COUNT(DISTINCT c.id)) * 100, 2
        ) as porcentajeAtencion
-     FROM Especialidad e
-     INNER JOIN MedicoEspecialidad me ON e.id = me.especialidadId
-     INNER JOIN Medico m ON me.medicoId = m.id
-     INNER JOIN Cita c ON m.id = c.medicoId
+     FROM especialidad e
+     INNER JOIN medicoespecialidad me ON e.id = me.especialidadId
+     INNER JOIN medico m ON me.medicoId = m.id
+     INNER JOIN cita c ON m.id = c.medicoId
      ${whereClause}
      GROUP BY e.id, e.nombre
      ORDER BY totalCitas DESC`,
@@ -974,10 +974,10 @@ async function getReporteProductividadMedico({ desde, hasta, hospitalId } = {}) 
          (SUM(CASE WHEN c.estado = 'CANCELADA' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 2
        ) as porcentajeCanceladas,
        ROUND(AVG(TIMESTAMPDIFF(MINUTE, c.fechaInicio, c.fechaFin)), 2) as promedioDuracion
-     FROM Medico m
-     INNER JOIN Cita c ON m.id = c.medicoId
-     LEFT JOIN MedicoEspecialidad me ON m.id = me.medicoId
-     LEFT JOIN Especialidad e ON me.especialidadId = e.id
+     FROM medico m
+     INNER JOIN cita c ON m.id = c.medicoId
+     LEFT JOIN medicoespecialidad me ON m.id = me.medicoId
+     LEFT JOIN especialidad e ON me.especialidadId = e.id
      ${whereClause}
      GROUP BY m.id, m.nombres, m.apellidos
      ORDER BY totalCitas DESC`,
@@ -1031,7 +1031,7 @@ module.exports = {
       // Primero consultar qué citas se van a cancelar para debug
       const [citasParaCancelar] = await conn.query(
         `SELECT id, fechaInicio, fechaFin, estado 
-         FROM Cita 
+         FROM cita 
          WHERE estado = 'PROGRAMADA' 
            AND fechaFin < NOW()`,
         {}
@@ -1045,7 +1045,7 @@ module.exports = {
       // Actualizar citas programadas que ya pasaron su fecha de fin
       // Usar NOW() de MySQL que respeta la zona horaria del servidor
       const [result] = await conn.query(
-        `UPDATE Cita 
+        `UPDATE cita 
          SET estado = 'CANCELADA', updatedAt = NOW()
          WHERE estado = 'PROGRAMADA' 
            AND fechaFin < NOW()`,

@@ -40,7 +40,9 @@ const config = {
   cors: {
     origin: [
       process.env.FRONTEND_URL || 'http://localhost:5173',
-      'http://localhost:3003' // Puerto del frontend actual
+      'http://localhost:3003', // Puerto del frontend local
+      'https://web-frontend.lemonsand-4de94d70.eastus2.azurecontainerapps.io', // Frontend en Azure
+      /\.azurecontainerapps\.io$/ // Permitir cualquier subdominio de Azure Container Apps
     ],
     credentials: true,
     optionsSuccessStatus: 200

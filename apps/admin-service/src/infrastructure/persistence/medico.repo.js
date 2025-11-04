@@ -19,7 +19,7 @@ async function list({ page = 1, size = 20, q = '', hospitalId }) {
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(*) AS total
-       FROM Medico m
+       FROM medico m
        ${where}`,
     params
   );
@@ -27,8 +27,8 @@ async function list({ page = 1, size = 20, q = '', hospitalId }) {
   const [rows] = await pool.query(
     `SELECT m.id, m.hospitalId, m.nombres, m.apellidos, m.email, m.activo,
             h.nombre AS hospitalNombre
-       FROM Medico m
-       JOIN Hospital h ON h.id = m.hospitalId
+       FROM medico m
+       JOIN hospital h ON h.id = m.hospitalId
        ${where}
    ORDER BY m.apellidos ASC, m.nombres ASC
       LIMIT :limit OFFSET :offset`,
@@ -40,8 +40,8 @@ async function list({ page = 1, size = 20, q = '', hospitalId }) {
     rows.map(async (medico) => {
       const [especialidades] = await pool.query(
         `SELECT e.id, e.nombre, e.descripcion
-           FROM MedicoEspecialidad me
-           JOIN Especialidad e ON e.id = me.especialidadId
+           FROM medicoespecialidad me
+           JOIN especialidad e ON e.id = me.especialidadId
           WHERE me.medicoId = :medicoId
        ORDER BY e.nombre ASC`,
         { medicoId: medico.id }
@@ -61,8 +61,8 @@ async function findById(id) {
   const [rows] = await pool.query(
     `SELECT m.id, m.hospitalId, m.nombres, m.apellidos, m.email, m.activo,
             h.nombre AS hospitalNombre
-       FROM Medico m
-       JOIN Hospital h ON h.id = m.hospitalId
+       FROM medico m
+       JOIN hospital h ON h.id = m.hospitalId
       WHERE m.id = :id`,
     { id: Number(id) }
   );
@@ -72,8 +72,8 @@ async function findById(id) {
   // Obtener especialidades del médico
   const [especialidades] = await pool.query(
     `SELECT e.id, e.nombre, e.descripcion
-       FROM MedicoEspecialidad me
-       JOIN Especialidad e ON e.id = me.especialidadId
+       FROM medicoespecialidad me
+       JOIN especialidad e ON e.id = me.especialidadId
       WHERE me.medicoId = :id
    ORDER BY e.nombre ASC`,
     { id: Number(id) }
@@ -92,7 +92,7 @@ async function create(dto) {
 
     // 1. Crear el médico
     const [medicoResult] = await conn.query(
-      `INSERT INTO Medico (hospitalId, nombres, apellidos, email, activo)
+      `INSERT INTO medico (hospitalId, nombres, apellidos, email, activo)
        VALUES (:hospitalId, :nombres, :apellidos, :email, COALESCE(:activo, TRUE))`,
       {
         hospitalId: dto.hospitalId,
@@ -109,7 +109,7 @@ async function create(dto) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     
     await conn.query(
-      `INSERT INTO Usuario (email, password, rol, medicoId, activo)
+      `INSERT INTO usuario (email, password, rol, medicoId, activo)
        VALUES (:email, :password, 'MEDICO', :medicoId, TRUE)`,
       {
         email: dto.email,
@@ -123,7 +123,7 @@ async function create(dto) {
       // Verificar que cada especialidad pertenezca al hospital del médico
       for (const especialidadId of dto.especialidades) {
         const [validacion] = await conn.query(
-          `SELECT 1 FROM HospitalEspecialidad 
+          `SELECT 1 FROM hospitalespecialidad 
            WHERE hospitalId = :hospitalId AND especialidadId = :especialidadId`,
           { hospitalId: dto.hospitalId, especialidadId: Number(especialidadId) }
         );
@@ -133,7 +133,7 @@ async function create(dto) {
         }
         
         await conn.query(
-          `INSERT INTO MedicoEspecialidad (medicoId, especialidadId)
+          `INSERT INTO medicoespecialidad (medicoId, especialidadId)
            VALUES (:medicoId, :especialidadId)`,
           { medicoId, especialidadId: Number(especialidadId) }
         );
@@ -193,9 +193,9 @@ async function update(id, dto) {
 
     const setClause = fields.join(', ');
     
-    // 1. Actualizar la tabla Medico
+    // 1. Actualizar la tabla medico
     const [result] = await conn.query(
-      `UPDATE Medico SET ${setClause} WHERE id = :id`,
+      `UPDATE medico SET ${setClause} WHERE id = :id`,
       params
     );
     
@@ -204,27 +204,27 @@ async function update(id, dto) {
       return null;
     }
 
-    // 2. Si se actualiza el email, también actualizar la tabla Usuario
+    // 2. Si se actualiza el email, también actualizar la tabla usuario
     if (dto.email !== undefined) {
       await conn.query(
-        `UPDATE Usuario SET email = :email WHERE medicoId = :id`,
+        `UPDATE usuario SET email = :email WHERE medicoId = :id`,
         { email: dto.email, id: Number(id) }
       );
     }
 
-    // 3. Si se actualiza la contraseña, también actualizar en Usuario
+    // 3. Si se actualiza la contraseña, también actualizar en usuario
     if (dto.password !== undefined) {
       const passwordHash = await bcrypt.hash(dto.password, 10);
       await conn.query(
-        `UPDATE Usuario SET password = :password WHERE medicoId = :id`,
+        `UPDATE usuario SET password = :password WHERE medicoId = :id`,
         { password: passwordHash, id: Number(id) }
       );
     }
 
-    // 4. Si se actualiza el estado activo, también actualizar en Usuario
+    // 4. Si se actualiza el estado activo, también actualizar en usuario
     if (dto.activo !== undefined) {
       await conn.query(
-        `UPDATE Usuario SET activo = :activo WHERE medicoId = :id`,
+        `UPDATE usuario SET activo = :activo WHERE medicoId = :id`,
         { activo: dto.activo, id: Number(id) }
       );
     }
@@ -233,7 +233,7 @@ async function update(id, dto) {
     if (dto.especialidades !== undefined) {
       // Eliminar todas las especialidades actuales
       await conn.query(
-        `DELETE FROM MedicoEspecialidad WHERE medicoId = :id`,
+        `DELETE FROM medicoespecialidad WHERE medicoId = :id`,
         { id: Number(id) }
       );
       
@@ -241,7 +241,7 @@ async function update(id, dto) {
       if (Array.isArray(dto.especialidades) && dto.especialidades.length > 0) {
         // Obtener el hospitalId del médico
         const [medicoData] = await conn.query(
-          `SELECT hospitalId FROM Medico WHERE id = :id`,
+          `SELECT hospitalId FROM medico WHERE id = :id`,
           { id: Number(id) }
         );
         
@@ -251,7 +251,7 @@ async function update(id, dto) {
           // Verificar que cada especialidad pertenezca al hospital del médico
           for (const especialidadId of dto.especialidades) {
             const [validacion] = await conn.query(
-              `SELECT 1 FROM HospitalEspecialidad 
+              `SELECT 1 FROM hospitalespecialidad 
                WHERE hospitalId = :hospitalId AND especialidadId = :especialidadId`,
               { hospitalId, especialidadId: Number(especialidadId) }
             );
@@ -261,7 +261,7 @@ async function update(id, dto) {
             }
             
             await conn.query(
-              `INSERT INTO MedicoEspecialidad (medicoId, especialidadId)
+              `INSERT INTO medicoespecialidad (medicoId, especialidadId)
                VALUES (:medicoId, :especialidadId)`,
               { medicoId: Number(id), especialidadId: Number(especialidadId) }
             );
@@ -305,19 +305,19 @@ async function remove(id) {
 
     // 1. Eliminar especialidades del médico
     await conn.query(
-      `DELETE FROM MedicoEspecialidad WHERE medicoId = :id`,
+      `DELETE FROM medicoespecialidad WHERE medicoId = :id`,
       { id: Number(id) }
     );
 
     // 2. Eliminar usuario asociado
     await conn.query(
-      `DELETE FROM Usuario WHERE medicoId = :id`,
+      `DELETE FROM usuario WHERE medicoId = :id`,
       { id: Number(id) }
     );
 
     // 3. Eliminar médico (DELETE físico)
     const [medicoResult] = await conn.query(
-      `DELETE FROM Medico WHERE id = :id`,
+      `DELETE FROM medico WHERE id = :id`,
       { id: Number(id) }
     );
 
@@ -343,7 +343,7 @@ async function reactivate(id) {
 
     // 1. Reactivar médico
     const [medicoResult] = await conn.query(
-      `UPDATE Medico SET activo = TRUE WHERE id = :id`,
+      `UPDATE medico SET activo = TRUE WHERE id = :id`,
       { id: Number(id) }
     );
 
@@ -354,7 +354,7 @@ async function reactivate(id) {
 
     // 2. Reactivar usuario asociado
     await conn.query(
-      `UPDATE Usuario SET activo = TRUE WHERE medicoId = :id`,
+      `UPDATE usuario SET activo = TRUE WHERE medicoId = :id`,
       { id: Number(id) }
     );
 

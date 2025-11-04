@@ -1,0 +1,25 @@
+# Dockerfile para un contenedor MySQL Client
+# Este contenedor puede ejecutarse como un job para ejecutar scripts SQL
+
+FROM mysql:8.0
+
+# Instalar herramientas adicionales si es necesario
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar script de ejecución
+COPY ejecutar-sql.sh /ejecutar-sql.sh
+RUN chmod +x /ejecutar-sql.sh
+
+# Directorio para scripts SQL
+RUN mkdir -p /scripts
+
+WORKDIR /scripts
+
+# El script espera los scripts SQL montados aquí o copiados
+# Puedes copiarlos durante el build o montarlos como volumen
+
+CMD ["/bin/bash", "/ejecutar-sql.sh"]
+

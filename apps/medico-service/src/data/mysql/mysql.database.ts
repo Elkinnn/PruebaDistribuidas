@@ -36,11 +36,19 @@ export class MySQLDatabase extends IDatabase {
 
     public async connect(): Promise<boolean> {
         try {
+            // Configuración SSL para TypeORM con MySQL
+            // TypeORM pasa estas opciones directamente al driver mysql2
             const sslConfig = this.useSSL
+                ? (process.env.DB_SSL_CA_PATH && fs.existsSync(process.env.DB_SSL_CA_PATH)
                 ? {
-                    rejectUnauthorized: true,
-                    ...(process.env.DB_SSL_CA_PATH ? { ca: fs.readFileSync(process.env.DB_SSL_CA_PATH, 'utf8') } : {})
+                        // Si tenemos un certificado CA, lo usamos y validamos
+                        ca: fs.readFileSync(process.env.DB_SSL_CA_PATH, 'utf8'),
+                        rejectUnauthorized: true
                 }
+                    : {
+                        // Sin CA: permitir certificados auto-firmados para desarrollo
+                        rejectUnauthorized: false
+                    })
                 : undefined;
 
             this.dataSource = new DataSource({

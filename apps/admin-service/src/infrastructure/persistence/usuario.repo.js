@@ -3,7 +3,7 @@ const { pool } = require('./db');
 async function findByEmail(email) {
   const [rows] = await pool.query(
     `SELECT id, email, password, rol, activo
-       FROM Usuario
+       FROM usuario
       WHERE email = :email AND activo = TRUE`,
     { email }
   );
@@ -12,7 +12,7 @@ async function findByEmail(email) {
 
 async function createAdmin({ email, hash }) {
   const [result] = await pool.query(
-    `INSERT INTO Usuario (email, password, rol, activo)
+    `INSERT INTO usuario (email, password, rol, activo)
      VALUES (:email, :password, 'ADMIN_GLOBAL', TRUE)`,
     { email, password: hash }
   );
@@ -21,7 +21,7 @@ async function createAdmin({ email, hash }) {
 
 async function createMedicoUser({ email, hash, medicoId }) {
   const [result] = await pool.query(
-    `INSERT INTO Usuario (email, password, rol, medicoId, activo)
+    `INSERT INTO usuario (email, password, rol, medicoId, activo)
      VALUES (:email, :password, 'MEDICO', :medicoId, TRUE)`,
     { email, password: hash, medicoId: Number(medicoId) }
   );

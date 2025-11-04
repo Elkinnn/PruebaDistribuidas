@@ -46,7 +46,9 @@ function createDBConnection() {
   };
 
   if (DB_SSL) {
-    connConfig.ssl = DB_SSL_CA_PATH ? { ca: fs.readFileSync(DB_SSL_CA_PATH) } : { rejectUnauthorized: true };
+    connConfig.ssl = (DB_SSL_CA_PATH && fs.existsSync(DB_SSL_CA_PATH)) 
+      ? { ca: fs.readFileSync(DB_SSL_CA_PATH) } 
+      : { rejectUnauthorized: false };
   }
 
   return mysql.createConnection(connConfig);
@@ -552,9 +554,22 @@ app.use((err, _req, res, _next) => {
 });
 
 /* ------------ Arranque ------------ */
-app.listen(PORT, () => {
-  console.log(`AdminService (Express) escuchando en :${PORT}`);
-  
-  // Iniciar servicio automático de cancelación de citas
-  autoCancelService.start();
-});
+// Inicializar base de datos antes de arrancar el servidor
+const { initDatabase } = require('./infrastructure/persistence/init-db');
+
+(async () => {
+  try {
+    await initDatabase();
+    console.log('✅ Base de datos inicializada');
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`AdminService (Express) escuchando en 0.0.0.0:${PORT}`);
+      
+      // Iniciar servicio automático de cancelación de citas
+      autoCancelService.start();
+    });
+  } catch (error) {
+    console.error('❌ Error al inicializar:', error);
+    process.exit(1);
+  }
+})();

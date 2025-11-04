@@ -22,7 +22,7 @@ async function list({ page = 1, size = 20, q = '', hospitalId, tipo }) {
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(*) AS total
-       FROM Empleado e
+       FROM empleado e
        ${where}`,
     params
   );
@@ -30,8 +30,8 @@ async function list({ page = 1, size = 20, q = '', hospitalId, tipo }) {
   const [rows] = await pool.query(
     `SELECT e.id, e.hospitalId, e.nombres, e.apellidos, e.tipo, e.email, e.telefono, e.activo,
             h.nombre AS hospitalNombre
-       FROM Empleado e
-       JOIN Hospital h ON h.id = e.hospitalId
+       FROM empleado e
+       JOIN hospital h ON h.id = e.hospitalId
        ${where}
    ORDER BY e.apellidos ASC, e.nombres ASC
       LIMIT :limit OFFSET :offset`,
@@ -45,8 +45,8 @@ async function findById(id) {
   const [rows] = await pool.query(
     `SELECT e.id, e.hospitalId, e.nombres, e.apellidos, e.tipo, e.email, e.telefono, e.activo,
             h.nombre AS hospitalNombre
-       FROM Empleado e
-       JOIN Hospital h ON h.id = e.hospitalId
+       FROM empleado e
+       JOIN hospital h ON h.id = e.hospitalId
       WHERE e.id = :id`,
     { id: Number(id) }
   );
@@ -55,12 +55,12 @@ async function findById(id) {
 
 async function create(dto) {
   try {
-    // Verificar si el email ya existe en Usuario o Empleado
+    // Verificar si el email ya existe en usuario o empleado
     if (dto.email) {
       const [existingUser] = await pool.query(
-        `SELECT id FROM Usuario WHERE email = :email 
+        `SELECT id FROM usuario WHERE email = :email 
          UNION
-         SELECT id FROM Empleado WHERE email = :email 
+         SELECT id FROM empleado WHERE email = :email 
          LIMIT 1`,
         { email: dto.email }
       );
@@ -73,7 +73,7 @@ async function create(dto) {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO Empleado (hospitalId, nombres, apellidos, tipo, email, telefono, activo)
+      `INSERT INTO empleado (hospitalId, nombres, apellidos, tipo, email, telefono, activo)
        VALUES (:hospitalId, :nombres, :apellidos, :tipo, :email, :telefono, COALESCE(:activo, TRUE))`,
       {
         hospitalId: dto.hospitalId,
@@ -104,12 +104,12 @@ async function update(id, dto) {
   const fields = [];
   const params = { id: Number(id) };
 
-  // Verificar si el email ya existe en Usuario o Empleado (excluyendo el empleado actual)
+  // Verificar si el email ya existe en usuario o empleado (excluyendo el empleado actual)
   if (dto.email !== undefined) {
     const [existingUser] = await pool.query(
-      `SELECT id FROM Usuario WHERE email = :email 
+      `SELECT id FROM usuario WHERE email = :email 
        UNION
-       SELECT id FROM Empleado WHERE email = :email AND id != :empleadoId
+       SELECT id FROM empleado WHERE email = :email AND id != :empleadoId
        LIMIT 1`,
       { email: dto.email, empleadoId: Number(id) }
     );
@@ -136,7 +136,7 @@ async function update(id, dto) {
   const setClause = fields.join(', ');
   try {
     const [result] = await pool.query(
-      `UPDATE Empleado SET ${setClause} WHERE id = :id`,
+      `UPDATE empleado SET ${setClause} WHERE id = :id`,
       params
     );
     if (result.affectedRows === 0) return null;
@@ -153,7 +153,7 @@ async function update(id, dto) {
 
 async function remove(id) {
   const [result] = await pool.query(
-    `DELETE FROM Empleado WHERE id = :id`,
+    `DELETE FROM empleado WHERE id = :id`,
     { id: Number(id) }
   );
   return result.affectedRows > 0;
@@ -168,7 +168,7 @@ async function getStatsByHospital(hospitalId) {
        SUM(CASE WHEN activo = 0 THEN 1 ELSE 0 END) as inactivos,
        tipo,
        COUNT(*) as cantidad_por_tipo
-     FROM Empleado 
+     FROM empleado 
      WHERE hospitalId = :hospitalId 
      GROUP BY tipo
      ORDER BY cantidad_por_tipo DESC`,

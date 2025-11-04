@@ -142,12 +142,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Endpoint para resetear Circuit Breaker manualmente (solo en desarrollo)
+// Endpoint para resetear Circuit Breaker manualmente
+// Permitido en producción para facilitar recuperación
 router.post('/reset-circuit-breaker', async (req, res) => {
-  if (config.nodeEnv === 'production') {
-    return res.status(403).json({ error: 'Este endpoint solo está disponible en desarrollo' });
-  }
-  
   const { serviceName } = req.body;
   const result = resetCircuitBreaker(serviceName);
   

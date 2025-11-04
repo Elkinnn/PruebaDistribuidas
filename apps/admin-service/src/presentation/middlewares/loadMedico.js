@@ -6,8 +6,8 @@ async function loadMedico(req, res, next) {
     // el token trae { id, email, rol }. Si es médico, su usuario debe tener medicoId
     const [rows] = await pool.query(
       `SELECT u.medicoId, m.hospitalId, m.id
-         FROM Usuario u
-         JOIN Medico m ON m.id = u.medicoId
+         FROM usuario u
+         JOIN medico m ON m.id = u.medicoId
         WHERE u.id = :id AND u.rol = 'MEDICO' AND u.activo = TRUE`,
       { id: req.user.id }
     );

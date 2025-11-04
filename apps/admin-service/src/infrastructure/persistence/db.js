@@ -6,7 +6,9 @@ const DB_SSL = process.env.DB_SSL === 'true';
 const DB_SSL_CA_PATH = process.env.DB_SSL_CA_PATH;
 
 const ssl = DB_SSL
-  ? (DB_SSL_CA_PATH ? { ca: fs.readFileSync(DB_SSL_CA_PATH) } : { rejectUnauthorized: true })
+  ? (DB_SSL_CA_PATH && fs.existsSync(DB_SSL_CA_PATH)
+      ? { ca: fs.readFileSync(DB_SSL_CA_PATH), rejectUnauthorized: true }
+      : { rejectUnauthorized: false }) // Permitir certificados auto-firmados
   : undefined;
 
 const pool = mysql.createPool({

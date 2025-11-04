@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const { pool } = require('../src/infrastructure/persistence/db');
 
 async function createTestUsers() {
-  console.log('🔧 Creando usuarios de prueba...');
+  console.log('[INFO] Creando usuarios de prueba...');
 
   try {
     // Crear admin de prueba
@@ -15,32 +15,29 @@ async function createTestUsers() {
 
     // Verificar si el admin ya existe
     const [existingAdmin] = await pool.query(
-      'SELECT id FROM Usuario WHERE email = ?',
+      'SELECT id FROM usuario WHERE email = ?',
       [adminEmail]
     );
 
     if (existingAdmin.length === 0) {
       await pool.query(
-        `INSERT INTO Usuario (email, password, rol, activo) 
+        `INSERT INTO usuario (email, password, rol, activo) 
          VALUES (?, ?, 'ADMIN_GLOBAL', TRUE)`,
         [adminEmail, adminHash]
       );
-      console.log('✅ Admin creado:', adminEmail, '| Password:', adminPassword);
+      console.log('[SUCCESS] Admin creado:', adminEmail, '| Password:', adminPassword);
     } else {
-      console.log('ℹ️  Admin ya existe:', adminEmail);
+      console.log('[INFO] Admin ya existe:', adminEmail);
     }
 
 
-    console.log('\n🎉 Usuario de prueba creado exitosamente!');
-    console.log('\n📋 Credenciales para Postman:');
-    console.log('┌─────────────────────────────────────────┐');
-    console.log('│ ADMIN:                                  │');
-    console.log('│ Email: admin@test.com                   │');
-    console.log('│ Password: admin123                      │');
-    console.log('└─────────────────────────────────────────┘');
+    console.log('\n[SUCCESS] Usuario de prueba creado exitosamente!');
+    console.log('\n[CREDENTIALS] Credenciales para Postman:');
+    console.log('Email: admin@test.com');
+    console.log('Password: admin123');
 
   } catch (error) {
-    console.error('❌ Error creando usuarios:', error);
+    console.error('[ERROR] Error creando usuarios:', error);
   } finally {
     await pool.end();
   }

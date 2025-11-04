@@ -9,13 +9,14 @@ async function testMedicoCreation() {
 
   try {
     // 1. Crear un hospital de prueba si no existe
-    const [hospitales] = await pool.query('SELECT id FROM Hospital LIMIT 1');
+    const [hospitales] = await pool.query('SELECT id FROM hospital LIMIT 1');
     let hospitalId;
 
     if (hospitales.length === 0) {
       const [result] = await pool.query(
-        `INSERT INTO Hospital (id, nombre, direccion, telefono, activo) 
-         VALUES (UUID(), 'Hospital de Prueba', 'Calle Test 123', '555-0001', TRUE)`
+        `INSERT INTO hospital (nombre, direccion, telefono, activo) 
+         VALUES (?, ?, ?, ?)`,
+        ['Hospital de Prueba', 'Calle Test 123', '555-0001', true]
       );
       hospitalId = result.insertId;
       console.log('✅ Hospital de prueba creado');
@@ -38,7 +39,7 @@ async function testMedicoCreation() {
 
     // Crear médico
     const [medicoResult] = await pool.query(
-      `INSERT INTO Medico (hospitalId, nombres, apellidos, email, activo)
+      `INSERT INTO medico (hospitalId, nombres, apellidos, email, activo)
        VALUES (?, ?, ?, ?, ?)`,
       [medicoData.hospitalId, medicoData.nombres, medicoData.apellidos, medicoData.email, medicoData.activo]
     );
@@ -50,7 +51,7 @@ async function testMedicoCreation() {
     const passwordHash = await bcrypt.hash(medicoData.password, 10);
     
     await pool.query(
-      `INSERT INTO Usuario (email, password, rol, medicoId, activo)
+      `INSERT INTO usuario (email, password, rol, medicoId, activo)
        VALUES (?, ?, 'MEDICO', ?, TRUE)`,
       [medicoData.email, passwordHash, medicoId]
     );
@@ -61,7 +62,7 @@ async function testMedicoCreation() {
     console.log('\n🔐 Probando login del médico...');
     
     const [usuario] = await pool.query(
-      'SELECT * FROM Usuario WHERE email = ?',
+      'SELECT * FROM usuario WHERE email = ?',
       [medicoData.email]
     );
 

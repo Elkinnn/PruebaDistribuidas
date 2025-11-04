@@ -134,6 +134,7 @@ const shouldRetry = (method) => {
 };
 
 const performRequest = async (requestConfig, method, serviceName, reqPath = null) => {
+  console.log(`[PERFORM REQUEST] service=${serviceName}, reqPath=${reqPath}, url=${requestConfig.url}`);
   const normalizedMethod = String(method || requestConfig.method || 'GET').toUpperCase();
   const maxAttempts = Math.max(1, config.resilience.retry.maxAttempts);
   const retryable = shouldRetry(normalizedMethod);
@@ -141,20 +142,23 @@ const performRequest = async (requestConfig, method, serviceName, reqPath = null
   // Circuit Breaker con configuración mejorada
   const svc = serviceName || 'default';
   
-  // C) Solo cuentan como fallo: timeout, errores de conexión y 5xx (no 4xx)
+  // C) Solo cuentan como fallo: timeout, errores de conexión graves y 5xx (no 4xx)
+  // ECONNRESET puede ser temporal en Azure, así que lo tratamos de manera más permisiva
   const isFailure = (err) => {
     const status = err?.response?.status;
-    if (err?.code === 'ECONNABORTED') return true; // timeout
+    if (err?.code === 'ECONNABORTED') return true; // timeout definitivo
+    // Solo errores de conexión graves cuentan como fallo inmediato
+    // ECONNRESET puede ser temporal, así que no lo contamos como fallo inmediato
     if (['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN'].includes(err?.code)) return true;
     if (typeof status === 'number' && status >= 500) return true;
-    return false; // 4xx NO cuenta como fallo
+    return false; // 4xx, ECONNRESET temporal NO cuentan como fallo inmediato
   };
   
   const cb = getBreaker(svc, {
     windowMs: Number(process.env.CB_WINDOW_MS ?? 60000), // 60s
-    thresholdPercent: Number(process.env.CB_THRESHOLD_PERCENT ?? 50), // 50%
-    halfOpenAfterMs: Number(process.env.CB_HALF_OPEN_AFTER_MS ?? 15000), // 15s
-    minRequests: Number(process.env.CB_MIN_REQUESTS ?? 20), // 20 muestras mínimas
+    thresholdPercent: Number(process.env.CB_THRESHOLD_PERCENT ?? 80), // 80% (más permisivo)
+    halfOpenAfterMs: Number(process.env.CB_HALF_OPEN_AFTER_MS ?? 5000), // 5s (más rápido)
+    minRequests: Number(process.env.CB_MIN_REQUESTS ?? 20), // 20 muestras mínimas (más tolerante)
     isFailure,
   });
 
@@ -166,7 +170,20 @@ const performRequest = async (requestConfig, method, serviceName, reqPath = null
     ? buildCacheKey(svc, normalizedMethod, requestConfig.url) 
     : null;
 
-  if (!cb.canPass()) {
+  // TEMPORAL: Bypass del circuit breaker para rutas de health
+  // El health check funciona porque usa axios directamente sin circuit breaker
+  // Hacer lo mismo para rutas de health en el proxy
+  // Verificar tanto en reqPath como en la URL completa
+  const urlStr = requestConfig.url || '';
+  const isHealthRoute = (reqPath && (reqPath.includes('/health') || reqPath.includes('/ready'))) ||
+                        (urlStr.includes('/health') || urlStr.includes('/ready'));
+  const bypassCircuitBreaker = isHealthRoute || process.env.BYPASS_CIRCUIT_BREAKER === 'true';
+  
+  if (isHealthRoute) {
+    console.log(`[BYPASS] Detectada ruta de health: reqPath=${reqPath}, url=${urlStr}, bypassCircuitBreaker=${bypassCircuitBreaker}`);
+  }
+  
+  if (!bypassCircuitBreaker && !cb.canPass()) {
     // Intentar servir stale cache si Circuit Breaker está abierto y es GET
     if (cacheKey && normalizedMethod === 'GET') {
       const cached = cacheGet(cacheKey);
@@ -198,19 +215,32 @@ const performRequest = async (requestConfig, method, serviceName, reqPath = null
     attempt += 1;
     try {
       // Request con validateStatus: () => true para clasificación manual
-      // D) Timeout del gateway (4000ms) ya configurado en http.js
-      const response = await http({
+      // D) Timeout del gateway (10000ms) ya configurado en http.js
+      // Para rutas de health, usar axios directamente como el health check
+      const axios = require('axios');
+      const httpClient = bypassCircuitBreaker 
+        ? axios.create({ timeout: 10000, validateStatus: () => true })
+        : http;
+      
+      if (bypassCircuitBreaker) {
+        console.log(`[BYPASS] Usando axios directamente para ${reqPath || 'unknown'}`);
+      }
+      
+      const response = await httpClient({
         ...requestConfig,
         method: normalizedMethod,
         validateStatus: () => true
-        // timeout ya está en http.js (4000ms) - no reescribir aquí
+        // timeout ya está en http.js (10000ms) - no reescribir aquí
       });
 
       const status = response.status;
 
       // No contaminar estadísticas del CB con probes
-      if (reqPath && isProbePath(reqPath)) {
-        cb.record(true); // Registrar éxito para "curar" más rápido
+      // Si es health route con bypass, no registrar en CB
+      if (bypassCircuitBreaker || (reqPath && isProbePath(reqPath))) {
+        if (!bypassCircuitBreaker) {
+          cb.record(true); // Registrar éxito para "curar" más rápido
+        }
         return response;
       }
 
@@ -245,7 +275,10 @@ const performRequest = async (requestConfig, method, serviceName, reqPath = null
         if (config.resilience.enabled) {
           console.log(`[CB] ${svc}: network/timeout error: ${err.code || err.message}`);
         }
-        cb.record(false, err);
+        // Usar isFailure para determinar si ECONNRESET cuenta como fallo
+        // Si isFailure retorna false, registrar como éxito (no fallo)
+        const shouldCountAsFailure = isFailure(err);
+        cb.record(!shouldCountAsFailure, err);
         
         if (!retryable || attempt >= maxAttempts) {
           // Intentar servir stale cache antes de lanzar error (solo para GET)
@@ -421,19 +454,56 @@ function sendStandardErrorResponse(req, res, error, serviceName) {
 // Reemplaza http-proxy-middleware para tener protección completa
 router.use('/admin', async (req, res) => {
   try {
-    // Remover /admin del path antes de enviarlo al servicio
-    const rawPath = req.path.replace(/^\/admin/, '') || '/';
+    // req.path dentro de router.use('/admin') ya NO incluye /admin
+    // Ejemplo: /admin/health -> req.path = /health
+    const rawPath = req.path || '/';
     const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
     const targetUrl = buildTargetUrl(config.services.admin, rawPath, qs);
     
     console.log(`[ADMIN PROXY] ${req.method} ${req.url} -> ${targetUrl}`);
     
+    // Construir headers, removiendo algunos que pueden causar problemas
+    const headers = { ...req.headers };
+    // Remover headers que pueden causar problemas en proxy
+    delete headers['host'];
+    delete headers['connection'];
+    delete headers['content-length']; // Se recalcula automáticamente
+    // Agregar User-Agent para identificación
+    headers['User-Agent'] = 'API-Gateway-Proxy';
+    
+    // Para rutas de health, usar axios directamente como el health check
+    const isHealthRoute = rawPath.includes('/health') || rawPath.includes('/ready') || 
+                          targetUrl.includes('/health') || targetUrl.includes('/ready');
+    
+    console.log(`[ADMIN PROXY DEBUG] rawPath=${rawPath}, targetUrl=${targetUrl}, isHealthRoute=${isHealthRoute}`);
+    
+    if (isHealthRoute) {
+      console.log(`[ADMIN PROXY] Ruta de health detectada, usando axios directamente (bypass circuit breaker)`);
+      const axios = require('axios');
+      try {
+        const response = await axios({
+          method: req.method,
+          url: targetUrl,
+          headers: headers,
+          timeout: 10000,
+          validateStatus: () => true
+        });
+        
+        // Responder directamente sin pasar por performRequest
+        res.status(response.status).json(response.data);
+        console.log(`[ADMIN PROXY] ${req.method} ${req.url} -> ${response.status} (axios directo)`);
+        return;
+      } catch (error) {
+        console.error(`[ADMIN PROXY ERROR] ${req.method} ${req.url} -> Error: ${error.message}`);
+        sendStandardErrorResponse(req, res, error, 'admin-service');
+        return;
+      }
+    }
+    
     const requestConfig = {
       method: req.method,
       url: targetUrl,
-      headers: {
-        ...req.headers
-      }
+      headers: headers
     };
     
     // Agregar body si existe
@@ -486,21 +556,36 @@ if (config.services.medico) {
   
   router.use('/medico', async (req, res) => {
     try {
-      // Normalizar path - el servicio médico espera rutas con prefijo /medico
-      // req.path dentro de router.use('/medico', ...) ya viene sin /medico
-      // Necesitamos reconstruir el path completo: /medico + req.path
-      const rawPath = '/medico' + (req.path || '/');
+      // req.path dentro de router.use('/medico') ya NO incluye /medico
+      // El servicio médico tiene rutas CON prefijo /medico:
+      // - /medico/auth/login, /medico/citas, /medico/especialidades, etc.
+      // También tiene rutas SIN prefijo: / (root), /health (si existe)
+      // Necesitamos agregar /medico al path para las rutas que lo requieren
+      // Pero mantener rutas raíz como / y /health sin prefijo
+      let rawPath = req.path || '/';
+      // Si el path NO empieza con /, agregar /medico
+      // Si el path es / o /health, mantenerlo sin prefijo
+      if (rawPath !== '/' && !rawPath.startsWith('/health') && !rawPath.startsWith('/ready')) {
+        rawPath = '/medico' + rawPath;
+      }
       const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
       const targetUrl = buildTargetUrl(config.services.medico, rawPath, qs);
       
       console.log(`[MEDICO PROXY] ${req.method} ${req.url} -> ${targetUrl}`);
       
+      // Construir headers, removiendo algunos que pueden causar problemas
+      const headers = { ...req.headers };
+      // Remover headers que pueden causar problemas en proxy
+      delete headers['host'];
+      delete headers['connection'];
+      delete headers['content-length']; // Se recalcula automáticamente
+      // Agregar User-Agent para identificación
+      headers['User-Agent'] = 'API-Gateway-Proxy';
+      
       const requestConfig = {
         method: req.method,
         url: targetUrl,
-        headers: {
-          ...req.headers
-        }
+        headers: headers
       };
       
       // Agregar body si existe
@@ -540,19 +625,28 @@ if (config.services.medico) {
 const createAxiosProxy = (servicePath) => {
   return async (req, res) => {
     try {
+      console.log(`[PROXY DEBUG] ====== INICIANDO createAxiosProxy ======`);
+      console.log(`[PROXY DEBUG] servicePath=${servicePath}, req.method=${req.method}, req.url=${req.url}, req.path=${req.path}`);
+      
       // Normalizar path
       const rawPath = servicePath + (req.path || req.url.split('?')[0]);
       const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
       const targetUrl = buildTargetUrl(config.services.admin, rawPath, qs);
       
       console.log(`[PROXY] ${req.method} ${req.url} -> ${targetUrl}`);
+      console.log(`[PROXY DEBUG] rawPath=${rawPath}, servicePath=${servicePath}, req.path=${req.path}, req.url=${req.url}, targetUrl=${targetUrl}`);
+      
+      // Limpiar headers problemáticos (igual que en /admin)
+      const headers = { ...req.headers };
+      delete headers['host'];
+      delete headers['connection'];
+      delete headers['content-length'];
+      headers['User-Agent'] = 'API-Gateway-Proxy';
       
       const requestConfig = {
         method: req.method,
         url: targetUrl,
-        headers: {
-          ...req.headers
-        }
+        headers: headers
       };
       
       // Agregar body si existe
@@ -565,7 +659,89 @@ const createAxiosProxy = (servicePath) => {
         requestConfig.responseType = 'arraybuffer';
       }
       
-      console.log(`[PROXY] Llamando performRequest para ${req.method} ${req.url}`);
+      // Para rutas legacy, verificar Circuit Breaker ANTES de llamar a performRequest
+      // Usar la MISMA instancia de getBreaker que se usa en performRequest
+      const svc = 'admin-service';
+      
+      console.log(`[PROXY DEBUG] Iniciando verificación de CB para ${req.method} ${req.url}, targetUrl=${targetUrl}`);
+      
+      // Usar la MISMA configuración que performRequest para que compartan el mismo estado
+      const isFailure = (err) => {
+        const status = err?.response?.status;
+        if (err?.code === 'ECONNABORTED') return true;
+        if (['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN'].includes(err?.code)) return true;
+        if (typeof status === 'number' && status >= 500) return true;
+        return false;
+      };
+      
+      // IMPORTANTE: Usar la MISMA función getBreaker que usa performRequest
+      // (ya está importada al inicio del archivo) para que compartan el mismo estado
+      const cb = getBreaker(svc, {
+        windowMs: Number(process.env.CB_WINDOW_MS ?? 60000),
+        thresholdPercent: Number(process.env.CB_THRESHOLD_PERCENT ?? 80),
+        halfOpenAfterMs: Number(process.env.CB_HALF_OPEN_AFTER_MS ?? 5000),
+        minRequests: Number(process.env.CB_MIN_REQUESTS ?? 20),
+        isFailure
+      });
+      
+      const cbState = cb.state();
+      const canPass = cb.canPass();
+      
+      console.log(`[PROXY DEBUG] Ruta legacy ${req.method} ${req.url}, CB state=${cbState}, canPass=${canPass}, targetUrl=${targetUrl}`);
+      
+      // Si el Circuit Breaker NO permite pasar (OPEN o HALF_OPEN bloqueado), usar axios directamente (bypass)
+      // Esto permite que las rutas legacy funcionen y ayuden a cerrar el CB
+      if (!canPass) {
+        console.log(`[PROXY] Circuit Breaker bloqueando (state=${cbState}), usando axios directamente para ruta legacy (bypass)`);
+        const axios = require('axios');
+        try {
+          const response = await axios({
+            method: req.method,
+            url: targetUrl,
+            headers: headers,
+            data: requestConfig.data,
+            timeout: Number(process.env.HTTP_TIMEOUT_MS ?? 15000),
+            validateStatus: () => true,
+            responseType: req.url.includes('/reportes/') ? 'arraybuffer' : undefined
+          });
+          
+          // Si la petición fue exitosa, registrar como éxito en el CB
+          if (response.status >= 200 && response.status < 300) {
+            cb.record(true, null);
+            console.log(`[PROXY] Éxito en ruta legacy, CB registrado como éxito`);
+          } else {
+            // Solo registrar como fallo si es 5xx (no 4xx)
+            const isFailureResponse = response.status >= 500;
+            cb.record(!isFailureResponse, { response: { status: response.status } });
+          }
+          
+          // Manejar respuesta
+          if (req.url.includes('/reportes/')) {
+            Object.keys(response.headers).forEach(key => {
+              if (key.toLowerCase() !== 'content-encoding') {
+                res.setHeader(key, response.headers[key]);
+              }
+            });
+            res.status(response.status).send(response.data);
+          } else {
+            res.status(response.status).json(response.data);
+          }
+          
+          console.log(`[PROXY] ${req.method} ${req.url} -> ${response.status} (axios directo, bypass CB)`);
+          return;
+        } catch (error) {
+          console.error(`[PROXY ERROR] ${req.method} ${req.url} -> Error: ${error.message}`);
+          // Registrar como fallo solo si es error grave
+          const isFailureError = error.code === 'ECONNABORTED' || 
+                           ['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN'].includes(error.code) ||
+                           (error.response?.status >= 500);
+          cb.record(!isFailureError, error);
+          sendStandardErrorResponse(req, res, error, 'admin-service');
+          return;
+        }
+      }
+      
+      console.log(`[PROXY] Circuit Breaker permite pasar (state=${cbState}), llamando performRequest para ${req.method} ${req.url}`);
       const response = await performRequest(requestConfig, req.method, 'admin-service', rawPath);
       console.log(`[PROXY] performRequest completado para ${req.method} ${req.url}`);
       

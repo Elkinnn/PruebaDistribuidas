@@ -20,13 +20,13 @@ async function list({ page = 1, size = 20, q = '' }) {
   }
 
   const [[{ total }]] = await pool.query(
-    `SELECT COUNT(*) AS total FROM Hospital ${where}`,
+    `SELECT COUNT(*) AS total FROM hospital ${where}`,
     params
   );
 
   const [rows] = await pool.query(
     `SELECT id, nombre, direccion, telefono, activo
-       FROM Hospital ${where}
+       FROM hospital ${where}
    ORDER BY nombre ASC
       LIMIT :limit OFFSET :offset`,
     params
@@ -45,7 +45,7 @@ async function list({ page = 1, size = 20, q = '' }) {
 async function findById(id) {
   const [rows] = await pool.query(
     `SELECT id, nombre, direccion, telefono, activo
-       FROM Hospital
+       FROM hospital
       WHERE id = :id`,
     { id: Number(id) }
   );
@@ -58,7 +58,7 @@ async function findById(id) {
  */
 async function create(dto) {
   const [result] = await pool.query(
-    `INSERT INTO Hospital (nombre, direccion, telefono, activo)
+    `INSERT INTO hospital (nombre, direccion, telefono, activo)
      VALUES (:nombre, :direccion, :telefono, COALESCE(:activo, TRUE))`,
     dto
   );
@@ -84,7 +84,7 @@ async function update(id, dto) {
 
   const setClause = fields.join(', ');
   const [result] = await pool.query(
-    `UPDATE Hospital SET ${setClause} WHERE id = :id`,
+    `UPDATE hospital SET ${setClause} WHERE id = :id`,
     params
   );
 
@@ -98,7 +98,7 @@ async function update(id, dto) {
  */
 async function remove(id) {
   const [result] = await pool.query(
-    `DELETE FROM Hospital WHERE id = :id`,
+    `DELETE FROM hospital WHERE id = :id`,
     { id: Number(id) }
   );
   return result.affectedRows > 0;

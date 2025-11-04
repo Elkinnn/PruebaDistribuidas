@@ -1,0 +1,35 @@
+[mysqld]
+# Requerir conexiones seguras (TLS)
+require_secure_transport = ON
+
+# Configuración TLS
+ssl-ca = /etc/mysql/ssl/ca.pem
+ssl-cert = /etc/mysql/ssl/server-cert.pem
+ssl-key = /etc/mysql/ssl/server-key.pem
+
+# Configuración de bind
+bind-address = 0.0.0.0
+
+# Configuración de logs
+general_log = 1
+general_log_file = /var/log/mysql/general.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Configuración de InnoDB
+innodb_buffer_pool_size = 128M
+innodb_log_file_size = 64M
+
+# Configuración general
+max_connections = 200
+max_allowed_packet = 64M
+
+# Timezone
+default-time-zone = '+00:00'
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+
